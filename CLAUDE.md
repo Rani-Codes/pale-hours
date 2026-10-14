@@ -18,7 +18,7 @@ Fill these in as they get created. Keep this section accurate.
 - Build sim to WASM: `TBD`
 - Run client dev server: `TBD`
 - Run signaling server: `TBD`
-- Run sim tests: `TBD`
+- Run sim tests: `cd sim && go test ./...`
 
 ## Hard rules
 
@@ -40,3 +40,7 @@ Fill these in as they get created. Keep this section accurate.
 ## Verification
 
 Once Week 1 is runnable, generate a project verification skill with `/pstack:create-verification-skill`. Until then, prove netcode work by running two browser tabs (host and client) against each other with added delay (100ms and 200ms) and packet loss (5%), and capturing what each tab shows.
+
+## pstack
+
+@~/.claude/pstack-models.md
