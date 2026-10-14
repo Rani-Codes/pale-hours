@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pale Hours</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b0b0d; color: #9a9aa3; overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+      #hud { position: fixed; top: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; pointer-events: none; }
+    </style>
+    <script src="/wasm_exec.js"></script>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="hud">loading sim…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -15,8 +15,10 @@ Original 1v4 asymmetric horror game that runs in the browser. One killer hunts f
 
 Fill these in as they get created. Keep this section accurate.
 
-- Build sim to WASM: `TBD`
-- Run client dev server: `TBD`
+- Build sim to WASM: `cd client && npm run wasm` (writes `client/public/sim.wasm` and copies Go's `wasm_exec.js`)
+- Run client dev server: `cd client && npm install && npm run dev` (rebuilds the WASM first, serves http://localhost:5173)
+- Type-check and build the client: `cd client && npm run build`
+- Drive the dots page in real Chrome: `cd tools && npm install && node drive-dots.mjs http://localhost:5173/ dots.png` (dev server must be running)
 - Run signaling server: `TBD`
 - Run sim tests: `cd sim && go test ./...`
 

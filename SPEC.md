@@ -55,7 +55,7 @@ The same `/sim` package later runs as a dedicated Go server with no rewrite.
 
 ### Week 1: netcode spike (riskiest work first)
 - [x] `/sim`: movement for 2 players on a flat plane, fixed tick, unit tests
-- [ ] Compile `/sim` to WASM and run it in the browser
+- [x] Compile `/sim` to WASM and run it in the browser
 - [ ] `/signal`: local room-code signaling server
 - [ ] Two tabs connected over WebRTC data channels
 - [ ] Client prediction and reconciliation for the local player, interpolation for the remote player
@@ -86,5 +86,5 @@ Killer powers, perks, progression, matchmaking, accounts, mobile, host migration
 ## Open decisions
 
 - Final name.
-- Standard Go vs TinyGo for WASM (bundle size). Start with standard Go, measure, then decide.
+- Standard Go vs TinyGo for WASM (bundle size). Start with standard Go, measure, then decide. Measured 2026-10-14 with Go 1.24.5: movement-only `sim.wasm` is 1.74 MB raw, 0.51 MB gzipped.
 - Production signaling host (must fit a free tier).

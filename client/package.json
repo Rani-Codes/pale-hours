@@ -1,0 +1,16 @@
+{
+  "name": "pale-hours-client",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "wasm": "cd ../sim && GOOS=js GOARCH=wasm go build -o ../client/public/sim.wasm ./cmd/wasm && cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" ../client/public/",
+    "dev": "npm run wasm && vite",
+    "build": "npm run wasm && tsc && vite build",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}
