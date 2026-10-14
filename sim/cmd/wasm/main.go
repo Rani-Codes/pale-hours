@@ -16,16 +16,17 @@ func main() {
 		"tickRate":      sim.TickRate,
 		"mapHalfExtent": sim.MapHalfExtent,
 		"roles":         map[string]any{"survivor": int(sim.Survivor), "killer": int(sim.Killer)},
-		"reset":         js.FuncOf(reset),
+		"load":          js.FuncOf(load),
 		"step":          js.FuncOf(step),
 		"state":         js.FuncOf(snapshot),
 	}))
 	select {}
 }
 
-// reset([{id, role, x, y}, ...]) replaces the state with these players at tick 0.
-func reset(_ js.Value, args []js.Value) any {
-	list := args[0]
+// load({tick, players: [{id, role, x, y}, ...]}) replaces the state, in the
+// same shape state() returns, so a guest can rewind to a host snapshot.
+func load(_ js.Value, args []js.Value) any {
+	list := args[0].Get("players")
 	players := make([]sim.Player, list.Length())
 	for i := range players {
 		p := list.Index(i)
@@ -35,7 +36,7 @@ func reset(_ js.Value, args []js.Value) any {
 			Pos:  sim.Vec2{X: int32(p.Get("x").Int()), Y: int32(p.Get("y").Int())},
 		}
 	}
-	state = sim.State{Players: players}
+	state = sim.State{Tick: uint32(args[0].Get("tick").Int()), Players: players}
 	return nil
 }
 

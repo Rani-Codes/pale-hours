@@ -1,11 +1,18 @@
-import { net } from "./config";
+import { lagSim, net } from "./config";
+
+/** JSON messages over one data channel. Incoming messages are untrusted; parse them. */
+export interface Channel {
+  send(msg: unknown): void;
+  onMessage(fn: (msg: unknown) => void): void;
+}
 
 // Two channels per link. "events" is reliable and ordered (lobby, one-off
 // events). "state" is unreliable and unordered (inputs, snapshots).
 export interface Link {
   peerId: string;
-  events: RTCDataChannel;
-  state: RTCDataChannel;
+  events: Channel;
+  state: Channel;
+  onClose(fn: () => void): void;
   close(): void;
 }
 
@@ -154,7 +161,13 @@ class Connection {
   private maybeReady() {
     const { events, state } = this.channels;
     if (events?.readyState !== "open" || state?.readyState !== "open") return;
-    this.handlers.onLink({ peerId: this.remote, events, state, close: () => this.close() });
+    this.handlers.onLink({
+      peerId: this.remote,
+      events: channel(events, false),
+      state: channel(state, true),
+      onClose: (fn) => state.addEventListener("close", fn),
+      close: () => this.close(),
+    });
   }
 
   private signal(data: object) {
@@ -162,4 +175,30 @@ class Connection {
       this.handlers.onClosed(String(err)),
     );
   }
+}
+
+function channel(ch: RTCDataChannel, unreliable: boolean): Channel {
+  const { delayMs, jitterMs, loss } = lagSim;
+  const sendNow = (data: string) => ch.readyState === "open" && ch.send(data);
+  return {
+    send(msg) {
+      if (unreliable && Math.random() < loss) return;
+      const data = JSON.stringify(msg);
+      // No jitter on the reliable channel: equal delays keep it in order.
+      const delay = delayMs + (unreliable ? Math.random() * jitterMs : 0);
+      if (delay > 0) setTimeout(() => sendNow(data), delay);
+      else sendNow(data);
+    },
+    onMessage(fn) {
+      ch.addEventListener("message", (e) => {
+        let msg: unknown;
+        try {
+          msg = JSON.parse(e.data);
+        } catch {
+          return;
+        }
+        fn(msg);
+      });
+    },
+  };
 }

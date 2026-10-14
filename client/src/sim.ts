@@ -20,7 +20,8 @@ export interface PaleSim {
   tickRate: number;
   mapHalfExtent: number;
   roles: { survivor: number; killer: number };
-  reset(players: SimPlayer[]): void;
+  /** Replace the whole state, e.g. with a host snapshot. */
+  load(state: SimState): void;
   step(inputs: SimInput[]): void;
   state(): SimState;
 }
