@@ -58,7 +58,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 ### Phase 1: netcode spike (riskiest work first)
 - [x] `/sim`: movement for 2 players on a flat plane, fixed tick, unit tests
 - [x] Compile `/sim` to WASM and run it in the browser
-- [ ] `/signal`: local room-code signaling server
+- [x] `/signal`: local room-code signaling server
 - [ ] Two tabs connected over WebRTC data channels
 - [ ] Client prediction and reconciliation for the local player, interpolation for the remote player (use Opus)
 - [ ] Latency test harness (delay plus loss), with movement verified at 100ms and 200ms

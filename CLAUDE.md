@@ -19,7 +19,8 @@ Fill these in as they get created. Keep this section accurate.
 - Run client dev server: `cd client && npm install && npm run dev` (rebuilds the WASM first, serves http://localhost:5173)
 - Type-check and build the client: `cd client && npm run build`
 - Drive the dots page in real Chrome: `cd tools && npm install && node drive-dots.mjs http://localhost:5173/ dots.png` (dev server must be running)
-- Run signaling server: `TBD`
+- Run signaling server: `cd signal && go run .` (http://localhost:8787, `-addr` to change)
+- Run signal tests: `cd signal && go test -race ./...`
 - Run sim tests: `cd sim && go test ./...`
 
 ## Hard rules
