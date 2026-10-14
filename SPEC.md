@@ -38,7 +38,7 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - **Prediction:** each client simulates its own movement immediately and reconciles against host snapshots.
 - **Hits:** the host rewinds survivor positions to what the killer saw at the moment of the attack, then checks the hit.
 - **Transport:** WebRTC data channels. Unreliable and unordered for inputs and snapshots, reliable for lobby and events.
-- **NAT traversal:** STUN first (`stun.cloudflare.com`). TURN fallback in Week 4.
+- **NAT traversal:** STUN first (`stun.cloudflare.com`). TURN fallback in Phase 4.
 - **Topology:** star. All survivors connect to the killer's browser.
 
 ## Architecture
@@ -53,7 +53,9 @@ The same `/sim` package later runs as a dedicated Go server with no rewrite.
 
 ## Milestones
 
-### Week 1: netcode spike (riskiest work first)
+Phases run in order, each as fast as the work allows. They are not calendar weeks.
+
+### Phase 1: netcode spike (riskiest work first)
 - [x] `/sim`: movement for 2 players on a flat plane, fixed tick, unit tests
 - [x] Compile `/sim` to WASM and run it in the browser
 - [ ] `/signal`: local room-code signaling server
@@ -62,18 +64,18 @@ The same `/sim` package later runs as a dedicated Go server with no rewrite.
 - [ ] Latency test harness (delay plus loss), with movement verified at 100ms and 200ms
 - [ ] Generate the project verification skill
 
-### Week 2: the scary part
+### Phase 2: the scary part
 - [ ] Three.js gray-box map
 - [ ] Killer first-person camera, survivor third-person camera
 - [ ] Fog, darkness, killer proximity audio (a heartbeat that ramps up as the killer gets close)
 
-### Week 3: the game loop
+### Phase 3: the game loop
 - [ ] Generators with skill checks, then exit gates
 - [ ] Killer attack with lag-compensated hits
 - [ ] Injured and downed states, carry, hook, rescue
 - [ ] Win and loss conditions
 
-### Week 4: playable with friends
+### Phase 4: playable with friends
 - [ ] Lobby with room codes, 5 players
 - [ ] TURN fallback
 - [ ] Low-poly art and sound pass
@@ -88,3 +90,4 @@ Killer powers, perks, progression, matchmaking, accounts, mobile, host migration
 - Final name.
 - Standard Go vs TinyGo for WASM (bundle size). Start with standard Go, measure, then decide. Measured 2026-10-14 with Go 1.24.5: movement-only `sim.wasm` is 1.74 MB raw, 0.51 MB gzipped.
 - Production signaling host (must fit a free tier).
+- Movement speed. First playtest (2026-10-14, dots page): stops, starts, and diagonals feel good, but both roles feel a little slow. Retune in `sim/config.go` once the map has obstacles.

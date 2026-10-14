@@ -34,14 +34,14 @@ Fill these in as they get created. Keep this section accurate.
 
 ## Working style
 
-- Small tasks. One milestone item per session.
+- Small tasks. Work milestone items in order and commit after each one.
 - Write sim tests first (table-driven Go tests).
 - Default model is Sonnet. Do not spawn parallel subagents. This project runs on a limited plan.
 - When a task finishes, update the Commands section and tick the item in `SPEC.md`.
 
 ## Verification
 
-Once Week 1 is runnable, generate a project verification skill with `/pstack:create-verification-skill`. Until then, prove netcode work by running two browser tabs (host and client) against each other with added delay (100ms and 200ms) and packet loss (5%), and capturing what each tab shows.
+Once Phase 1 is runnable, generate a project verification skill with `/pstack:create-verification-skill`. Until then, prove netcode work by running two browser tabs (host and client) against each other with added delay (100ms and 200ms) and packet loss (5%), and capturing what each tab shows.
 
 ## pstack
 
