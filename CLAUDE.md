@@ -1,0 +1,42 @@
+# CLAUDE.md
+
+Original 1v4 asymmetric horror game that runs in the browser. One killer hunts four survivors. Full design lives in `SPEC.md`. Read it before any non-trivial task.
+
+## Repo layout
+
+```
+/sim       Go. Pure game simulation. Compiled to WASM for the host's browser now, a dedicated server later.
+/client    TypeScript + Vite + Three.js. Rendering, input, audio, networking glue.
+/signal    Tiny signaling server for WebRTC room codes. Local Go server for dev.
+/tools     Test harnesses, latency simulators, scripts.
+```
+
+## Commands
+
+Fill these in as they get created. Keep this section accurate.
+
+- Build sim to WASM: `TBD`
+- Run client dev server: `TBD`
+- Run signaling server: `TBD`
+- Run sim tests: `TBD`
+
+## Hard rules
+
+1. **The sim is pure.** No I/O, no clocks, no randomness without a seed passed in. Same inputs plus same seed must produce the same state. Rendering and networking never live in `/sim`.
+2. **The host is the only authority.** Clients send inputs, never outcomes. A client never decides that a hit landed, a generator finished, or a player escaped.
+3. **Latency first.** Game state and inputs go over unreliable, unordered WebRTC data channels. Lobby and one-off events go over a reliable channel. Never put per-tick traffic on a reliable channel.
+4. **Every netcode change gets verified with simulated latency** (see Verification). Passing unit tests alone is not proof.
+5. **Original IP only.** No names, characters, maps, art, audio, perk names, or lore from Dead by Daylight or any other game. Mechanics are fine. Copied content is not.
+6. **Tunable numbers live in one config file,** not scattered as magic numbers.
+7. **AGPL-3.0 project.** Only add dependencies with AGPL-compatible licenses (MIT, BSD, Apache-2.0, ISC, MPL-2.0, LGPL, GPL-3.0). Check the license before adding anything. Never vendor code or assets without a compatible license.
+
+## Working style
+
+- Small tasks. One milestone item per session.
+- Write sim tests first (table-driven Go tests).
+- Default model is Sonnet. Do not spawn parallel subagents. This project runs on a limited plan.
+- When a task finishes, update the Commands section and tick the item in `SPEC.md`.
+
+## Verification
+
+Once Week 1 is runnable, generate a project verification skill with `/pstack:create-verification-skill`. Until then, prove netcode work by running two browser tabs (host and client) against each other with added delay (100ms and 200ms) and packet loss (5%), and capturing what each tab shows.
