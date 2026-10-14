@@ -44,7 +44,12 @@ const handlers = {
     wirePing(link);
   },
   onClosed(reason: string) {
-    say(`disconnected: ${reason}`);
+    say(
+      `disconnected: ${reason}`,
+      "no direct path to the other player. Check:",
+      "  macOS: System Settings > Privacy & Security > Local Network > Chrome on",
+      "  turn off any VPN, then reload both tabs",
+    );
   },
 };
 
