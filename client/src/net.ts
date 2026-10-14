@@ -25,6 +25,8 @@ interface Handlers {
   /** Both channels are open. */
   onLink(link: Link): void;
   onClosed(reason: string): void;
+  /** Connection setup moved to a new stage, for showing where a slow join is stuck. */
+  onProgress?(stage: string): void;
 }
 
 interface SignalMessage {
@@ -119,6 +121,10 @@ class Connection {
       }
     };
     this.pc.ondatachannel = (e) => this.track(e.channel);
+    const progress = () =>
+      handlers.onProgress?.(`ice gathering ${this.pc.iceGatheringState}, ice ${this.pc.iceConnectionState}`);
+    this.pc.onicegatheringstatechange = progress;
+    this.pc.oniceconnectionstatechange = progress;
   }
 
   /** Host side: create the channels, then send the offer. */

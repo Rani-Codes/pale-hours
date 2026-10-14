@@ -49,13 +49,18 @@ export interface Game {
 }
 
 export function initLobby(game: Game) {
+  let joinTimer: ReturnType<typeof setInterval> | undefined;
+  const stopJoinTimer = () => clearInterval(joinTimer);
+
   const handlers = (onLink: (link: Link) => void) => ({
     onLink(link: Link) {
+      stopJoinTimer();
       say(`connected to ${link.peerId}`);
       wirePing(link);
       onLink(link);
     },
     onClosed(reason: string) {
+      stopJoinTimer();
       say(
         `disconnected: ${reason}`,
         "no direct path to the other player. Check:",
@@ -77,10 +82,20 @@ export function initLobby(game: Game) {
 
   document.querySelector("#join")!.addEventListener("click", async () => {
     try {
-      say("joining…");
-      await joinRoom(codeInput.value, handlers(game.join()));
-      say("joined — connecting…");
+      const start = performance.now();
+      let stage = "waiting for the host's offer";
+      const show = () => say(`connecting: ${stage} (${((performance.now() - start) / 1000).toFixed(1)} s)`);
+      show();
+      joinTimer = setInterval(show, 250);
+      await joinRoom(codeInput.value, {
+        ...handlers(game.join()),
+        onProgress(s: string) {
+          stage = s;
+          show();
+        },
+      });
     } catch (err) {
+      stopJoinTimer();
       say(`join failed: ${err}`);
     }
   });

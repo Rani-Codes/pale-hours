@@ -34,8 +34,12 @@ await host.click("#host");
 await host.waitForFunction(() => /room [A-Z0-9]{4}/.test(document.querySelector("#netstatus").textContent));
 const code = (await host.textContent("#netstatus")).match(/room ([A-Z0-9]{4})/)[1];
 await guest.fill("#code", code);
+const joinStart = Date.now();
 await guest.click("#join");
+await guest.waitForFunction(() => /connected/.test(document.querySelector("#netstatus").textContent), null, { timeout: 15000 });
+const linkedMs = Date.now() - joinStart;
 await guest.waitForFunction(() => paleSession.stats?.().predicted, null, { timeout: 15000 });
+console.log(`join: link open after ${linkedMs} ms, playing after ${Date.now() - joinStart} ms`);
 await guest.waitForTimeout(1000);
 
 const settleMs = 2 * delayMs + jitterMs + 600;
@@ -76,6 +80,18 @@ check("host acks keep up with the guest", g1.unacked <= inFlight, `${g1.unacked}
 
 // 2. Killer (host) moves north for one second; sample what the guest draws each frame.
 const k0 = (await hostState()).players.find((p) => p.id === 1);
+const firstDrawn = guest.evaluate(
+  (y0) =>
+    new Promise((r) => {
+      const poll = () => {
+        if (paleSession.view(performance.now(), 0).players.find((p) => p.id === 1).y !== y0) r(Date.now());
+        else requestAnimationFrame(poll);
+      };
+      poll();
+    }),
+  k0.y,
+);
+const pressedAt = Date.now();
 await host.keyboard.down("KeyW");
 const trace = guest.evaluate(
   (ms) =>
@@ -95,6 +111,7 @@ const trace = guest.evaluate(
 await host.waitForTimeout(1000);
 await host.keyboard.up("KeyW");
 const ys = await trace;
+console.log(`killer keypress on host to motion drawn on guest: ${(await firstDrawn) - pressedAt} ms`);
 const k1 = (await hostState()).players.find((p) => p.id === 1);
 const drawn = ys.at(-1);
 check("guest draws the killer where the host has it once it stops", drawn === k1.y, `host y ${k1.y}, drawn y ${drawn}`);
@@ -107,7 +124,8 @@ check(
   biggest <= 2.5 * killerPerFrame,
   `largest step ${fmtM(biggest)} (killer covers ${fmtM(killerPerFrame)} per 60 Hz frame)`,
 );
-check("killer moved about one second north", k1.y - k0.y > 3.9e6 && k1.y - k0.y < 5.3e6, fmtM(k1.y - k0.y));
+// Only a lower bound: the key-up can reach the host tab late, which says nothing about netcode.
+check("killer moved for about one second", k1.y - k0.y > 3.9e6, fmtM(k1.y - k0.y));
 
 const hs = await hostStats();
 const gs = await guestStats();

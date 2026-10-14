@@ -6,8 +6,8 @@ export const net = {
   stateChannel: { ordered: false, maxRetransmits: 0 } as RTCDataChannelInit,
   pingIntervalMs: 500,
 
-  snapshotRate: 20, // host snapshots per second
-  interpDelayMs: 100, // how far behind the host clock remote players are drawn, plus measured jitter
+  snapshotRate: 30, // host snapshots per second; every tick at the 30 Hz sim
+  interpDelayMs: 70, // how far behind the host clock remote players are drawn, plus measured jitter; covers one lost snapshot
   clockSmoothing: 0.05, // weight of each new snapshot when estimating the host clock
 
   // Guest: every packet resends all unacknowledged inputs, so a lost packet

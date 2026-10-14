@@ -31,8 +31,8 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 | --- | --- |
 | Sim tick | 30 Hz (try 60 later) |
 | Client input send | every rendered frame, batched |
-| Host snapshot send | 20 Hz |
-| Remote player interpolation delay | ~100ms |
+| Host snapshot send | 30 Hz (every tick) |
+| Remote player interpolation delay | ~70ms plus measured jitter |
 | Lag compensation rewind cap | 200ms |
 
 - **Prediction:** each client simulates its own movement immediately and reconciles against host snapshots.
