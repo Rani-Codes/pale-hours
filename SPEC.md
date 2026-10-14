@@ -81,6 +81,16 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [ ] Low-poly art and sound pass
 - [ ] Playtest with 4 real people and log every "that hit felt unfair" moment
 
+## After launch: community feedback loop
+
+Not part of the MVP. Set this up once the game is playable by others.
+
+- **Intake.** Players report bugs and suggest features in a community channel, probably a Discord server with a thread for this game.
+- **Tracking.** Every report becomes a GitHub issue in this repo, labeled `bug` or `feature`, so nothing lives only in chat.
+- **Bugs.** An LLM agent can pick up a bug, fix it on a dev branch, and show the owner the result. The owner approves it (it ships to production), scraps it, or sends feedback for another round. Nothing reaches production without that approval.
+- **Features.** No work starts on a feature until the owner explicitly approves it. After approval it follows the same dev branch and review path as a bug.
+- Open questions: how reports get from Discord into issues (a bot, or by hand), what "production" means for a peer-hosted game (the hosted client build and signaling server), and how the owner signals approval (an issue label, a PR review, or a Discord reaction).
+
 ## Out of scope for the MVP
 
 Killer powers, perks, progression, matchmaking, accounts, mobile, host migration, anti-cheat.
