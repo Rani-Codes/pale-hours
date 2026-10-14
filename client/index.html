@@ -9,12 +9,22 @@
       html, body { margin: 0; height: 100%; background: #0b0b0d; color: #9a9aa3; overflow: hidden; }
       canvas { display: block; width: 100vw; height: 100vh; }
       #hud { position: fixed; top: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; pointer-events: none; }
+      #lobby { position: fixed; top: 12px; right: 12px; font: 13px ui-monospace, monospace; display: flex; gap: 6px; align-items: center; }
+      #lobby input, #lobby button { font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 4px 8px; }
+      #lobby input { width: 5em; text-transform: uppercase; }
+      #netstatus { position: fixed; bottom: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; }
     </style>
     <script src="/wasm_exec.js"></script>
   </head>
   <body>
     <canvas id="view"></canvas>
     <div id="hud">loading sim…</div>
+    <div id="lobby">
+      <button id="host">Host</button>
+      <input id="code" placeholder="CODE" maxlength="4" />
+      <button id="join">Join</button>
+    </div>
+    <div id="netstatus">offline</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

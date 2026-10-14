@@ -1,3 +1,4 @@
+import "./lobby";
 import { loadSim, type SimInput, type SimPlayer, type SimState } from "./sim";
 
 const MICROMETERS_PER_METER = 1_000_000;

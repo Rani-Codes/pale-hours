@@ -19,6 +19,7 @@ Fill these in as they get created. Keep this section accurate.
 - Run client dev server: `cd client && npm install && npm run dev` (rebuilds the WASM first, serves http://localhost:5173)
 - Type-check and build the client: `cd client && npm run build`
 - Drive the dots page in real Chrome: `cd tools && npm install && node drive-dots.mjs http://localhost:5173/ dots.png` (dev server must be running)
+- Drive two tabs over WebRTC in real Chrome: `cd tools && node drive-link.mjs http://localhost:5173/ link` (needs signaling server and dev server running; writes `link-host.png`, `link-guest.png`)
 - Run signaling server: `cd signal && go run .` (http://localhost:8787, `-addr` to change)
 - Run signal tests: `cd signal && go test -race ./...`
 - Run sim tests: `cd sim && go test ./...`
