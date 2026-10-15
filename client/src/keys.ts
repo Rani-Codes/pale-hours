@@ -11,25 +11,32 @@ export const arrows: Binding = { up: "ArrowUp", down: "ArrowDown", left: "ArrowL
 const held = new Set<string>();
 const bound = new Set([wasd, arrows].flatMap((b) => [b.up, b.down, b.left, b.right]).concat(["KeyE", "Space"]));
 let skillPress = false;
+let attackPress = false;
 addEventListener("keydown", (e) => {
   if (bound.has(e.code) && !(e.target instanceof HTMLInputElement)) e.preventDefault();
   if (e.code === "Space" && !e.repeat) skillPress = true;
   held.add(e.code);
 });
 addEventListener("keyup", (e) => held.delete(e.code));
+// Left click on the game view swings. The first click also captures the mouse.
+addEventListener("mousedown", (e) => {
+  if (e.button === 0 && e.target instanceof HTMLCanvasElement) attackPress = true;
+});
 addEventListener("blur", () => held.clear());
 
 const axis = (negative: string, positive: string) => (held.has(positive) ? 127 : 0) - (held.has(negative) ? 127 : 0);
 const clamp = (v: number) => Math.max(-127, Math.min(127, v));
 
 /**
- * Hold E to repair; press Space on a skill check. A press is reported for
- * exactly one tick, however long the key is held.
+ * Hold E to repair; press Space on a skill check; left click to attack. A
+ * press is reported for exactly one tick, however long it is held. Read
+ * once per tick: reading takes the presses.
  */
 export function readActions() {
   const skill = skillPress;
-  skillPress = false;
-  return { act: held.has("KeyE"), skill };
+  const attack = attackPress;
+  skillPress = attackPress = false;
+  return { act: held.has("KeyE"), skill, attack };
 }
 
 /** Facing in radians to the sim's 1/65536 turns, 0 to 65535. */
@@ -49,7 +56,6 @@ export function readIntent(yawRadians: number, ...bindings: Binding[]) {
     moveX: clamp(Math.round(right * c + forward * s)),
     moveY: clamp(Math.round(forward * c - right * s)),
     yaw: yawUnits(yawRadians),
-    ...readActions(),
   };
 }
 

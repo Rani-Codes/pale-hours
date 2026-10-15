@@ -5,7 +5,8 @@ export const look = { yaw: 0, pitch: 0 };
 
 export function initLook(canvas: HTMLCanvasElement) {
   canvas.addEventListener("click", () => {
-    if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
+    // The browser may refuse, e.g. in a tab without focus. The next click asks again.
+    if (document.pointerLockElement !== canvas) canvas.requestPointerLock()?.catch(() => {});
   });
   addEventListener("mousemove", (e) => {
     if (document.pointerLockElement !== canvas) return;

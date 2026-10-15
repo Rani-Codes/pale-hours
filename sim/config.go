@@ -38,6 +38,26 @@ const (
 	GateRange    = 2_500_000    // centre to centre, to open it or to walk out
 
 	MaxAxis = 127 // full stick deflection on one Input axis
+
+	// The killer's attack: a visible windup, one tick to resolve, then a
+	// recovery that is longer on a whiff so missing costs something.
+	AttackWindupTicks      = 6  // 0.2 s
+	AttackRecoverHitTicks  = 18 // 0.6 s
+	AttackRecoverMissTicks = 30 // 1.0 s
+	AttackRange            = 2_200_000
+	AttackHalfAngleDeg     = 50 // the cone is twice this wide
+	KillerRecoverSpeed     = 2_400_000
+
+	// A hit survivor sprints for a moment so the chase goes on.
+	HitBoostTicks = 2 * TickRate
+	HitBoostSpeed = 5_600_000
+	CrawlSpeed    = 700_000 // a downed survivor
+
+	// Lag compensation: a swing is checked against survivors as the killer
+	// saw them, at most this far back. TrailLen ticks of positions are kept;
+	// it must be a power of two and cover the cap plus two ticks.
+	RewindCapMs = 200
+	TrailLen    = 8
 )
 
 var roleSpeed = [...]int64{

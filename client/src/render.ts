@@ -48,6 +48,7 @@ export class Renderer {
   private readonly done = new Color(0x3f8a52);
   private readonly killerMat = new MeshLambertMaterial({ color: 0xc0392b });
   private readonly survivorMat = new MeshLambertMaterial({ color: 0xd8d4c8 });
+  private readonly injuredMat = new MeshLambertMaterial({ color: 0xa8514a });
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -142,6 +143,7 @@ export class Renderer {
       body.visible = !p.escaped;
       body.position.set(p.x / M, 0, -p.y / M);
       body.rotation.y = (-p.yaw / 65536) * 2 * Math.PI;
+      this.pose(body, p);
     }
     for (const [id, body] of this.bodies) {
       if (live.has(id)) continue;
@@ -195,7 +197,31 @@ export class Renderer {
     const nose = new Mesh(new BoxGeometry(0.2, 0.2, 0.5), killer ? this.killerMat : this.survivorMat);
     nose.position.set(0, h * 0.8, -0.45);
     group.add(torso, nose);
+    if (killer) {
+      // The weapon arm: it pivots at the shoulder, raised during the windup so survivors can read the swing.
+      const arm = new Group();
+      arm.name = "arm";
+      arm.position.set(0.45, h * 0.78, 0);
+      const blade = new Mesh(new BoxGeometry(0.12, 0.12, 1.1), this.killerMat);
+      blade.position.z = -0.55;
+      arm.add(blade);
+      group.add(arm);
+    }
     return group;
+  }
+
+  /** Swing tell for the killer; injured and downed looks for survivors. */
+  private pose(body: Group, p: SimPlayer): void {
+    const arm = body.getObjectByName("arm");
+    if (arm) {
+      const s = this.sim.swing;
+      arm.rotation.x = p.swing === s.windup ? 1.1 : p.swing === s.recover ? -0.5 : 0;
+      return;
+    }
+    const torso = body.children[0] as Mesh;
+    torso.material = p.health === this.sim.health.healthy ? this.survivorMat : this.injuredMat;
+    // Downed survivors lie low. A proper crawl animation comes with the art pass.
+    body.scale.y = p.health === this.sim.health.downed ? 0.3 : 1;
   }
 
   private resize(): void {

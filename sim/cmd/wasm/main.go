@@ -27,6 +27,10 @@ func main() {
 		"repairRange":   sim.RepairRange,
 		"generatorHalf": sim.GeneratorHalf,
 		"check":         map[string]any{"duration": sim.CheckDuration, "zoneLen": sim.CheckZoneLen},
+		"health":        map[string]any{"healthy": int(sim.Healthy), "injured": int(sim.Injured), "downed": int(sim.Downed)},
+		"swing":         map[string]any{"idle": int(sim.SwingIdle), "windup": int(sim.SwingWindup), "recover": int(sim.SwingRecover), "hit": int(sim.SwingHit), "miss": int(sim.SwingMiss)},
+		"rewindCapMs":   sim.RewindCapMs,
+		"inReach":       js.FuncOf(inReach),
 		"load":          js.FuncOf(load),
 		"step":          js.FuncOf(step),
 		"state":         js.FuncOf(snapshot),
@@ -56,6 +60,21 @@ func load(_ js.Value, args []js.Value) any {
 			CheckIn:     int16(p.Get("checkIn").Int()),
 			Rng:         uint32(p.Get("rng").Int()),
 			Escaped:     p.Get("escaped").Bool(),
+
+			Health:      sim.Health(p.Get("health").Int()),
+			Boost:       int16(p.Get("boost").Int()),
+			AttackHeld:  p.Get("attackHeld").Bool(),
+			Swing:       sim.SwingPhase(p.Get("swing").Int()),
+			SwingTicks:  int16(p.Get("swingTicks").Int()),
+			SwingResult: sim.SwingResult(p.Get("swingResult").Int()),
+		}
+		// Guests get snapshots without trails; they never resolve a swing.
+		tr := p.Get("trail")
+		for j := range players[i].Trail {
+			players[i].Trail[j] = players[i].Pos
+			if !tr.IsUndefined() && 2*j+1 < tr.Length() {
+				players[i].Trail[j] = sim.Vec2{X: int32(tr.Index(2 * j).Int()), Y: int32(tr.Index(2*j + 1).Int())}
+			}
 		}
 	}
 	genList, noiseList, gateList := args[0].Get("gens"), args[0].Get("noise"), args[0].Get("gates")
@@ -95,6 +114,10 @@ func step(_ js.Value, args []js.Value) any {
 			Yaw:   uint16(in.Get("yaw").Int()),
 			Act:   in.Get("act").Bool(),
 			Skill: in.Get("skill").Bool(),
+
+			// Optional: only the host's killer input carries them.
+			Attack:    in.Get("attack").Truthy(),
+			ViewLagMs: viewLag(in.Get("viewLagMs")),
 		}
 	}
 	state = sim.Step(state, inputs)
@@ -121,6 +144,14 @@ func snapshot(js.Value, []js.Value) any {
 			"checkIn":     int(p.CheckIn),
 			"rng":         int(p.Rng),
 			"escaped":     p.Escaped,
+
+			"health":      int(p.Health),
+			"boost":       int(p.Boost),
+			"attackHeld":  p.AttackHeld,
+			"swing":       int(p.Swing),
+			"swingTicks":  int(p.SwingTicks),
+			"swingResult": int(p.SwingResult),
+			"trail":       trail(p),
 		}
 	}
 	gens := make([]any, len(state.Gens))
@@ -134,6 +165,28 @@ func snapshot(js.Value, []js.Value) any {
 		gates[i] = int(g.Progress)
 	}
 	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates}
+}
+
+func viewLag(v js.Value) uint16 {
+	if v.Type() != js.TypeNumber {
+		return 0
+	}
+	return uint16(min(max(v.Int(), 0), 0xffff))
+}
+
+// trail flattens a player's trail to [x0, y0, x1, y1, ...], indexed by tick % TrailLen.
+func trail(p sim.Player) []any {
+	out := make([]any, 0, 2*len(p.Trail))
+	for _, v := range p.Trail {
+		out = append(out, int(v.X), int(v.Y))
+	}
+	return out
+}
+
+// inReach(x, y, yaw, targetX, targetY) reports whether a swing from (x, y)
+// facing yaw would touch a survivor standing at the target right now. For the tools.
+func inReach(_ js.Value, a []js.Value) any {
+	return sim.InReach(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, uint16(a[2].Int()), sim.Vec2{X: int32(a[3].Int()), Y: int32(a[4].Int())})
 }
 
 // walls returns the layout as [{minX, minY, maxX, maxY}, ...] in micrometers.

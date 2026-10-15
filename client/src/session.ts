@@ -11,8 +11,8 @@ const M = 1_000_000; // micrometers per meter
 const KILLER_ID = 1;
 
 /** The sim's input for a player, from whatever moves they sent. */
-function toInput(id: number, f: { moveX: number; moveY: number; yaw: number; act: boolean; skill: boolean }): SimInput {
-  return { id, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill };
+function toInput(id: number, f: { moveX: number; moveY: number; yaw: number; act: boolean; skill: boolean; attack: boolean }): SimInput {
+  return { id, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack };
 }
 
 /** Each player draws skill checks from their own stream, so seed one per player from the match seed. */
@@ -63,9 +63,10 @@ export class LocalSession implements Session {
   }
 
   tick() {
+    const { act, skill, attack } = readActions();
     this.sim.step([
-      { id: KILLER_ID, ...readIntent(look.yaw, wasd), act: false, skill: false },
-      { id: 2, ...readMove(arrows), yaw: 0, ...readActions() },
+      { id: KILLER_ID, ...readIntent(look.yaw, wasd), act: false, skill: false, attack },
+      { id: 2, ...readMove(arrows), yaw: 0, act, skill },
     ]);
     this.prev = this.curr;
     this.curr = this.sim.state();
@@ -74,7 +75,7 @@ export class LocalSession implements Session {
   view(_now: number, alpha: number) {
     return {
       players: blend(this.prev, this.curr, alpha),
-      hud: [`tick ${this.curr.tick}`, "killer: WASD + mouse   survivor: arrow keys"],
+      hud: [`tick ${this.curr.tick}`, "killer: WASD + mouse, click to attack   survivor: arrow keys"],
       self: KILLER_ID,
       world: this.curr,
     };
@@ -86,6 +87,23 @@ interface Guest {
   queue: InputQueue;
 }
 
+/** One resolved swing, as the host saw it. For the tools. */
+export interface SwingLog {
+  tick: number;
+  hit: boolean;
+  viewLagMs: number;
+  killer: { x: number; y: number; yaw: number };
+  /** Survivors as the killer's screen last drew them before the swing landed. */
+  drawn: { id: number; x: number; y: number }[];
+  /** Survivors where the host had them on the tick it landed. */
+  now: { id: number; x: number; y: number }[];
+}
+
+/** Snapshots leave out position trails: only the host resolves swings. */
+function forGuests(s: SimState): SimState {
+  return { ...s, players: s.players.map(({ trail: _, ...p }) => p) };
+}
+
 /** The killer's tab: the only authority. Applies guest inputs and sends each guest snapshots. */
 export class HostSession implements Session {
   private sim: PaleSim;
@@ -93,6 +111,10 @@ export class HostSession implements Session {
   private seed: number;
   private prev: SimState;
   private curr: SimState;
+  /** The host tick the last drawn frame showed, between prev and curr. */
+  private drawnTick = 0;
+  private drawn: SimPlayer[] = [];
+  readonly swings: SwingLog[] = [];
 
   constructor(sim: PaleSim) {
     this.sim = sim;
@@ -138,21 +160,47 @@ export class HostSession implements Session {
   }
 
   tick() {
-    const inputs = [toInput(KILLER_ID, { ...readIntent(look.yaw, wasd, arrows), act: false, skill: false })];
+    // The killer is in this tab and sees the host's own state, drawn up to a
+    // couple of ticks behind the one being stepped. A swing landing this tick
+    // is judged against what that last frame showed.
+    const viewLagMs = Math.round(Math.max(0, this.curr.tick + 1 - this.drawnTick) * (1000 / this.sim.tickRate));
+    const { attack } = readActions();
+    const inputs: SimInput[] = [{ ...toInput(KILLER_ID, { ...readIntent(look.yaw, wasd, arrows), act: false, skill: false, attack }), viewLagMs }];
     for (const [id, g] of this.guests) inputs.push(toInput(id, g.queue.take()));
     this.sim.step(inputs);
     this.prev = this.curr;
     this.curr = this.sim.state();
+    this.logSwing(viewLagMs);
 
     const rate = net.snapshotRate / this.sim.tickRate;
     if (Math.floor(this.curr.tick * rate) === Math.floor((this.curr.tick - 1) * rate)) return;
-    for (const g of this.guests.values()) g.link.state.send({ t: "snap", ack: g.queue.ack, state: this.curr });
+    const snap = forGuests(this.curr);
+    for (const g of this.guests.values()) g.link.state.send({ t: "snap", ack: g.queue.ack, state: snap });
+  }
+
+  private logSwing(viewLagMs: number) {
+    const was = this.prev.players.find((p) => p.id === KILLER_ID);
+    const k = this.curr.players.find((p) => p.id === KILLER_ID);
+    if (!was || !k || was.swing !== this.sim.swing.windup || k.swing !== this.sim.swing.recover) return;
+    const pos = (p: SimPlayer) => ({ id: p.id, x: p.x, y: p.y });
+    const survivors = (ps: SimPlayer[]) => ps.filter((p) => p.role === this.sim.roles.survivor).map(pos);
+    this.swings.push({
+      tick: this.curr.tick,
+      hit: k.swingResult === this.sim.swing.hit,
+      viewLagMs,
+      killer: { x: k.x, y: k.y, yaw: k.yaw },
+      drawn: survivors(this.drawn),
+      now: survivors(this.curr.players),
+    });
+    if (this.swings.length > 200) this.swings.shift();
   }
 
   view(_now: number, alpha: number) {
-    const hud = [`hosting   tick ${this.curr.tick}   killer: WASD or arrows`];
+    const hud = [`hosting   tick ${this.curr.tick}   killer: WASD or arrows, click to attack`];
     for (const [id, g] of this.guests) hud.push(`guest ${id}: input queue ${g.queue.depth}, dropped ${g.queue.dropped}`);
-    return { players: blend(this.prev, this.curr, alpha), hud, self: KILLER_ID, world: this.curr };
+    this.drawnTick = this.prev.tick + (this.curr.tick - this.prev.tick) * alpha;
+    this.drawn = blend(this.prev, this.curr, alpha);
+    return { players: this.drawn, hud, self: KILLER_ID, world: this.curr };
   }
 
   stats() {
@@ -203,7 +251,7 @@ export class GuestSession implements Session {
     if (this.newest && this.newest.state.tick > this.reconciledTick) this.reconcile(this.newest);
     if (!this.curr) return;
 
-    const frame = { seq: ++this.seq, ...readIntent(look.yaw, wasd, arrows) };
+    const frame = { seq: ++this.seq, ...readIntent(look.yaw, wasd, arrows), ...readActions() };
     this.unacked.push(frame);
     if (this.unacked.length > net.maxUnackedInputs) this.unacked.shift();
     this.sim.step([toInput(this.selfId, frame)]);

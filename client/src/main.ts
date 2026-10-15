@@ -86,6 +86,23 @@ const check = document.querySelector<HTMLDivElement>("#check")!;
 const checkZone = document.querySelector<HTMLDivElement>("#check-zone")!;
 const checkNeedle = document.querySelector<HTMLDivElement>("#check-needle")!;
 const checkResult = document.querySelector<HTMLDivElement>("#check-result")!;
+const flash = document.querySelector<HTMLDivElement>("#flash")!;
+// Hits this tab's own survivor has taken, as seen here. Exposed for the tools/ drivers.
+const seen = { hits: 0 };
+(globalThis as { paleHitsSeen?: typeof seen }).paleHitsSeen = seen;
+let lastHealth: { id: number; health: number } | undefined;
+
+/** A red flash when this tab's survivor gets worse. The host decided it; this only shows it. */
+function showHit(me: SimPlayer | undefined) {
+  if (me && lastHealth?.id === me.id && me.health > lastHealth.health) {
+    seen.hits++;
+    flash.classList.add("on");
+    requestAnimationFrame(() => flash.classList.remove("on"));
+  }
+  lastHealth = me && { id: me.id, health: me.health };
+}
+
+const healthNames = ["healthy", "injured", "downed"];
 
 function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
   const { gens, gates } = world;
@@ -96,7 +113,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   heartbeat.update(me && killer && me.role !== sim.roles.killer ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
   lines = [...lines, `volume ${volume.value}%` + (heartbeat.current.bpm > 0 ? `   heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : "")];
   for (const p of players) {
-    lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}`);
+    lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${healthNames[p.health]}` : ""));
   }
   const done = gens.filter((g) => g >= sim.genTicks).length;
   lines.push(`generators ${done}/${gens.length} done   ` + gens.map((g) => `${Math.floor((100 * Math.min(g, sim.genTicks)) / sim.genTicks)}%`).join(" "));
@@ -104,6 +121,8 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   const powered = done >= sim.gensRequired;
   lines.push(powered ? "gates powered: " + gates.map((g) => (g >= sim.gateTicks ? "OPEN" : `${Math.floor((100 * g) / sim.gateTicks)}%`)).join(" ") : `gates need ${sim.gensRequired} generators`);
   if (mine && mine.role === sim.roles.killer) {
+    const s = sim.swing;
+    lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : "click to attack");
     // Where a missed skill check just went off, so the killer can find it even when it is out of view.
     world.noise.forEach((ticks, i) => {
       if (ticks <= 0) return;
@@ -117,9 +136,13 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   if (mine && mine.role === sim.roles.survivor) {
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
     const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
+    showHit(mine);
+    if (mine.health === sim.health.downed) lines.push("you are down: crawl away");
+    else if (mine.health === sim.health.injured) lines.push(mine.boost > 0 ? "you are hit: run" : "you are injured");
+    const able = mine.health !== sim.health.downed && !mine.repairing;
     if (mine.escaped) lines.push("you escaped");
-    else if (near && !mine.repairing) lines.push("hold E to repair");
-    else if (atGate && powered && !mine.repairing) lines.push("hold E to open the gate");
+    else if (near && able) lines.push("hold E to repair");
+    else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.repairing && !mine.checkActive) lines.push("working...");
   }
   hud.textContent = lines.join("\n");

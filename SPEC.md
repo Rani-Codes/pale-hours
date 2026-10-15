@@ -37,7 +37,9 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 | Lag compensation rewind cap | 200ms |
 
 - **Prediction:** each client simulates its own movement immediately and reconciles against host snapshots.
-- **Hits:** the host rewinds survivor positions to what the killer saw at the moment of the attack, then checks the hit.
+- **Hits:** the swing lands 0.2 s after the click and is judged on that tick against survivors where the killer's screen last drew them. Judging at the click instead would let a survivor be hit where they stood before the windup. The sim keeps each player's last 8 tick positions (`Player.Trail`) and the killer's input carries `ViewLagMs`; the swing rewinds survivors by it, capped at 200 ms.
+- **What "the killer saw" is (decided 2026-10-15).** The killer hosts, so the killer's tab draws the host's own state, not the 70 ms interpolation buffer guests use. It draws up to two ticks behind the tick being stepped, and the host measures that gap every tick: 33 to 50 ms in practice, whatever the network. That gap is the whole rewind today. The trail and the 200 ms cap are there for a dedicated server later, where the killer is a remote client and the lag adds their interpolation delay and one-way latency.
+- **What rewind cannot fix.** A survivor's own screen runs ahead of the host by their one-way latency plus the host's input buffer. A survivor who ducks behind a wall on their screen at the last moment can still be hit if the host had not yet received that movement. Rewinding favors the attacker's view by design; removing this would mean favoring the victim, which makes hits feel random to the killer. Log every such case in the Phase 4 playtest before changing it.
 - **Transport:** WebRTC data channels. Unreliable and unordered for inputs and snapshots, reliable for lobby and events.
 - **NAT traversal:** STUN first (`stun.cloudflare.com`). TURN fallback in Phase 4.
 - **Verification:** `tools/latency-matrix.mjs` runs host and guest tabs at 100ms and 200ms round trip with 5% loss, plus jitter and a 400ms stress profile. Latencies there are round trip.
@@ -79,7 +81,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] Exit gates (`GateSites` at the north and south edges; powered at 4 generators, 5 s to open by hand, a survivor within range of an open gate escapes and leaves play)
 - [ ] The noise beam is visible to every client in the snapshot today; strip noise for survivors in the host's snapshots when we add anti-cheat or fog of information
 - [ ] Generator tuning pass in a real playtest: 80 s of repair per generator, check gap 4 to 9 s, zone 7 ticks (about 0.23 s)
-- [ ] Killer attack with lag-compensated hits (use Opus)
+- [x] Killer attack with lag-compensated hits (left click; 0.2 s windup, 2.2 m 100° cone blocked by walls and generators, 0.6 s recovery on a hit and 1.0 s on a whiff; a hit survivor sprints for 2 s; downed survivors crawl at 0.7 m/s and cannot be hit; numbers in `sim/config.go`, logic in `sim/attack.go`)
 - [ ] Injured and downed states, carry, hook, rescue
 - [ ] Win and loss conditions
 

@@ -32,3 +32,4 @@ Each feature file starts with an H1 title and one paragraph describing the behav
 - [Room link](./room-link.md) covers hosting a room, joining by code, join progress, and the round-trip readout.
 - [Netplay](./netplay.md) covers guest prediction, host authority, and smooth remote players.
 - [Network simulation](./network-simulation.md) covers the bad-network URL query and the latency matrix.
+- [Killer attack](./attack.md) covers the swing, injured and downed, crawling, lag-compensated hits, and the survivor's hit flash.

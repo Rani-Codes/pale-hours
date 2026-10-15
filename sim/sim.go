@@ -21,9 +21,14 @@ type Vec2 struct{ X, Y int32 }
 type Input struct {
 	MoveX, MoveY int8
 	Yaw          uint16
-	// Act is held to repair. Skill is a skill check press; the sim only
-	// counts the tick it goes down, so holding it does nothing.
-	Act, Skill bool
+	// Act is held to repair. Skill is a skill check press and Attack the
+	// killer's swing; the sim only counts the tick each goes down, so
+	// holding one does nothing.
+	Act, Skill, Attack bool
+	// ViewLagMs is how far behind this tick the attacker's screen showed the
+	// other players. The host measures it; a swing rewinds survivors by it,
+	// up to RewindCapMs.
+	ViewLagMs uint16
 }
 
 type Player struct {
@@ -43,6 +48,19 @@ type Player struct {
 	CheckIn     int16  // ticks of repairing until the next check
 	Rng         uint32 // this player's skill check stream; seed it per player
 	Escaped     bool   // left through a gate; out of play
+
+	Health Health
+	Boost  int16 // ticks of sprint left after being hit
+
+	// The killer's attack.
+	AttackHeld  bool
+	Swing       SwingPhase
+	SwingTicks  int16 // ticks left in the current phase
+	SwingResult SwingResult
+
+	// Trail is where this player stood at the end of each recent tick,
+	// indexed by tick % TrailLen, so a swing can be checked in the past.
+	Trail [TrailLen]Vec2
 }
 
 type State struct {
@@ -68,15 +86,43 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			continue
 		}
 		in, ok := inputs[p.ID]
-		p.Pos = move(p.Pos, in, roleSpeed[p.Role])
+		p.Pos = move(p.Pos, in, speed(p))
+		p.Trail[next.Tick%TrailLen] = p.Pos
+		p.Boost = max(p.Boost-1, 0)
 		if ok {
 			p.Yaw = in.Yaw
 		}
+		if p.Health == Downed {
+			// Letting go of everything: an active skill check counts as a miss.
+			in.Act, in.Skill = false, false
+		}
 		stepRepair(&p, in, ok, next.Gens)
-		stepGate(&p, in, ok, next.Gates, s.Gates, powered)
+		if p.Health != Downed {
+			stepGate(&p, in, ok, next.Gates, s.Gates, powered)
+		}
+		stepSwing(&p, in, ok)
 		next.Players[i] = p
 	}
+	// Swings resolve once everyone has moved, against the same positions
+	// whatever order players are stored in.
+	for i := range next.Players {
+		if k := &next.Players[i]; k.Swing == SwingWindup && k.SwingTicks == 0 {
+			resolveSwing(k, next.Players, next.Tick, inputs[k.ID].ViewLagMs)
+		}
+	}
 	return next
+}
+
+func speed(p Player) int64 {
+	switch {
+	case p.Role == Killer && p.Swing == SwingRecover:
+		return KillerRecoverSpeed
+	case p.Health == Downed:
+		return CrawlSpeed
+	case p.Boost > 0:
+		return HitBoostSpeed
+	}
+	return roleSpeed[p.Role]
 }
 
 func move(pos Vec2, in Input, speed int64) Vec2 {
