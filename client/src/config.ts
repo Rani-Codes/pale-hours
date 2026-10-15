@@ -46,6 +46,7 @@ export const view = {
 
 // Sound. The heartbeat is what a survivor hears when the killer is near.
 export const audio = {
+  defaultVolume: 0.7, // master volume before the player changes it, 0 to 1
   heartbeat: {
     range: 32, // meters; silent beyond this
     minBpm: 55,

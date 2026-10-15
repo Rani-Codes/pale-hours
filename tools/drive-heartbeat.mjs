@@ -34,6 +34,16 @@ await guest.waitForFunction(() => globalThis.paleHeartbeat.current.bpm > 0, null
 
 const beat = (page) => page.evaluate(() => ({ ...paleHeartbeat.current, running: paleHeartbeat.running }));
 const far = await beat(guest);
+const level = () => guest.evaluate(() => ({ level: paleHeartbeat.level, slider: Number(document.querySelector("#volume").value) }));
+const v0 = await level();
+await guest.keyboard.press("BracketLeft");
+await guest.keyboard.press("BracketLeft");
+const v1 = await level();
+await guest.keyboard.press("BracketRight");
+const v2 = await level();
+await guest.fill("#volume", "0");
+const muted = await level();
+await guest.fill("#volume", String(Math.round(v0.slider)));
 await guest.screenshot({ path: `${prefix}-far.png` });
 
 await host.bringToFront();
@@ -46,6 +56,7 @@ const killer = await beat(host);
 await guest.screenshot({ path: `${prefix}-near.png` });
 await browser.close();
 
+console.log(`volume: start ${JSON.stringify(v0)}, [ [ ${JSON.stringify(v1)}, ] ${JSON.stringify(v2)}, slider 0 ${JSON.stringify(muted)}`);
 console.log(`far : ${JSON.stringify(far)}`);
 console.log(`near: ${JSON.stringify(near)}`);
 console.log(`killer: ${JSON.stringify(killer)}`);
@@ -56,6 +67,9 @@ const checks = {
   "faster when the killer is close": near.bpm > far.bpm + 20,
   "louder when the killer is close": near.gain > far.gain,
   "killer hears nothing": killer.bpm === 0,
+  "[ lowers the volume 10% each press": Math.abs(v1.slider - (v0.slider - 20)) < 0.01 && Math.abs(v1.level - v1.slider / 100) < 0.01,
+  "] raises it": v2.slider === v1.slider + 10,
+  "slider to 0 mutes": muted.level === 0,
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);

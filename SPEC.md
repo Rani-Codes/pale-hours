@@ -70,7 +70,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [ ] Randomized map layout per match: generate walls from a seed (host picks it, guests receive it in the match setup), so players can't memorize the map. Needs `Walls` to move from a package global into sim state, and a generator that guarantees spawns and loops stay valid, with tests.
 - [x] Killer first-person camera, survivor third-person camera (click the canvas for mouse look, M toggles an overhead map; facing is `Yaw` in sim input and state)
 - [x] Fog and darkness (tunables in `view.fog` and `view.light`; the viewer carries a dim lantern)
-- [x] Killer proximity audio (synthesized heartbeat in `client/src/heartbeat.ts`; silent beyond 32 m, speeds up and gets louder as the killer closes in, survivors only)
+- [x] Killer proximity audio (synthesized heartbeat in `client/src/heartbeat.ts`, soft lowpassed thud, master volume slider and [ ] keys; silent beyond 32 m, speeds up and gets louder as the killer closes in, survivors only)
 
 ### Phase 3: the game loop
 - [ ] Generators with skill checks, then exit gates

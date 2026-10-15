@@ -12,6 +12,8 @@
       #lobby { position: fixed; top: 12px; right: 12px; font: 13px ui-monospace, monospace; display: flex; gap: 6px; align-items: center; }
       #lobby input, #lobby button { font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 4px 8px; }
       #lobby input { width: 5em; text-transform: uppercase; }
+      #lobby label { display: flex; gap: 6px; align-items: center; margin-left: 10px; }
+      #volume { width: 80px; accent-color: #9a9aa3; }
       #netstatus { position: fixed; bottom: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; }
     </style>
     <script src="/wasm_exec.js"></script>
@@ -23,6 +25,7 @@
       <button id="host">Host</button>
       <input id="code" placeholder="CODE" maxlength="4" />
       <button id="join">Join</button>
+      <label>Vol <input id="volume" type="range" min="0" max="100" step="5" /></label>
     </div>
     <div id="netstatus">offline</div>
     <script type="module" src="/src/main.ts"></script>
