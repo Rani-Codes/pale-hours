@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func postJSON(t *testing.T, url, body string) (*http.Response, map[string]string) {
@@ -37,7 +38,7 @@ func nextEvent(t *testing.T, sc *bufio.Scanner) Message {
 }
 
 func TestServerRelaysBetweenPeers(t *testing.T) {
-	srv := httptest.NewServer(NewServer(NewHub(4, 4)))
+	srv := httptest.NewServer(NewServer(NewHub(4, 4, time.Minute)))
 	defer srv.Close()
 
 	_, created := postJSON(t, srv.URL+"/rooms", "")
@@ -73,7 +74,7 @@ func TestServerRelaysBetweenPeers(t *testing.T) {
 }
 
 func TestServerStatusCodes(t *testing.T) {
-	srv := httptest.NewServer(NewServer(NewHub(4, 4)))
+	srv := httptest.NewServer(NewServer(NewHub(4, 4, time.Minute)))
 	defer srv.Close()
 	if res, _ := postJSON(t, srv.URL+"/rooms/ZZZZ/join", ""); res.StatusCode != 404 {
 		t.Fatalf("join missing room: %d", res.StatusCode)

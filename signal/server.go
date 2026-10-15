@@ -29,7 +29,7 @@ func NewServer(h *Hub) http.Handler {
 
 	mux.HandleFunc("GET /rooms/{code}/peers/{id}/events", func(w http.ResponseWriter, r *http.Request) {
 		code, id := r.PathValue("code"), r.PathValue("id")
-		p, err := h.Peer(code, id)
+		p, err := h.Attach(code, id)
 		if err != nil {
 			httpError(w, err)
 			return

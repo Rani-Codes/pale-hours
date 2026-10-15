@@ -29,6 +29,6 @@ Preconditions:
 
 - Without `--disable-features=WebRtcHideLocalIpsWithMdns`, two automated tabs never connect.
 - On the user's real Chrome, macOS must allow Chrome under System Settings > Privacy & Security > Local Network.
-- The signaling server never removes a room whose host never opened its event stream. That leaks memory on a long-lived server but does not affect a run.
+- A peer that creates or joins a room but does not open its event stream within 30 s is removed. For a host, that closes the room. A driver that pauses between Host and connecting for longer than that will find the room gone.
 - The `delay` query applies only after the link opens, so it cannot slow joining.
 - A room holds at most 5 players.

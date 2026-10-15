@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"time"
 )
 
 var (
@@ -22,8 +23,9 @@ type Message struct {
 }
 
 type Peer struct {
-	ID  string
-	out chan Message
+	ID       string
+	out      chan Message
+	attached bool // its event stream has connected; guarded by Hub.mu
 }
 
 type room struct {
@@ -38,10 +40,21 @@ type Hub struct {
 	rooms    map[string]*room
 	codeLen  int
 	maxPeers int
+	// A peer only leaves when its event stream ends, so one that never opens
+	// a stream would hold its seat (or, for a host, its whole room) forever.
+	// Such a peer is removed after attachWithin.
+	attachWithin time.Duration
+	afterFunc    func(time.Duration, func())
 }
 
-func NewHub(codeLen, maxPeers int) *Hub {
-	return &Hub{rooms: map[string]*room{}, codeLen: codeLen, maxPeers: maxPeers}
+func NewHub(codeLen, maxPeers int, attachWithin time.Duration) *Hub {
+	return &Hub{
+		rooms:        map[string]*room{},
+		codeLen:      codeLen,
+		maxPeers:     maxPeers,
+		attachWithin: attachWithin,
+		afterFunc:    func(d time.Duration, f func()) { time.AfterFunc(d, f) },
+	}
 }
 
 // No 0/O, 1/I/L so codes survive being read aloud.
@@ -74,6 +87,7 @@ func (h *Hub) Create() (string, *Peer) {
 	}
 	host := newPeer()
 	h.rooms[code] = &room{host: host.ID, peers: map[string]*Peer{host.ID: host}}
+	h.expireUnlessAttached(code, host)
 	return code, host
 }
 
@@ -93,7 +107,18 @@ func (h *Hub) Join(code string) (*Peer, error) {
 		send(other, Message{Type: "peer-joined", From: p.ID})
 	}
 	r.peers[p.ID] = p
+	h.expireUnlessAttached(code, p)
 	return p, nil
+}
+
+func (h *Hub) expireUnlessAttached(code string, p *Peer) {
+	h.afterFunc(h.attachWithin, func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		if r, ok := h.rooms[code]; ok && r.peers[p.ID] == p && !p.attached {
+			h.leave(r, code, p.ID)
+		}
+	})
 }
 
 func (h *Hub) Relay(code, from, to string, data []byte) error {
@@ -114,10 +139,12 @@ func (h *Hub) Relay(code, from, to string, data []byte) error {
 func (h *Hub) Leave(code, id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	r, ok := h.rooms[code]
-	if !ok || r.peers[id] == nil {
-		return
+	if r, ok := h.rooms[code]; ok && r.peers[id] != nil {
+		h.leave(r, code, id)
 	}
+}
+
+func (h *Hub) leave(r *room, code, id string) {
 	delete(r.peers, id)
 	if id == r.host {
 		for _, p := range r.peers {
@@ -140,8 +167,8 @@ func send(p *Peer, m Message) {
 	}
 }
 
-// Peer looks up an existing peer so its event stream can attach.
-func (h *Hub) Peer(code, id string) (*Peer, error) {
+// Attach marks a peer's event stream as connected and returns the peer to stream to.
+func (h *Hub) Attach(code, id string) (*Peer, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	r, ok := h.rooms[code]
@@ -152,5 +179,6 @@ func (h *Hub) Peer(code, id string) (*Peer, error) {
 	if !ok {
 		return nil, ErrNoPeer
 	}
+	p.attached = true
 	return p, nil
 }
