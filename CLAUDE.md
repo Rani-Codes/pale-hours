@@ -23,6 +23,7 @@ Fill these in as they get created. Keep this section accurate.
 - Run client unit tests: `cd client && npm test` (Node's built-in runner, no extra deps)
 - Play: click the canvas for mouse look (WASD moves relative to where you face), M toggles the overhead map
 - Walk a guest into a wall and check host and guest agree: `cd tools && node drive-wall.mjs http://localhost:5173/ wall ["delay=100&loss=0.05"]` (needs signaling and dev servers; expects 0 corrections)
+- Check the survivor heartbeat tracks killer distance: `cd tools && node drive-heartbeat.mjs http://localhost:5173/ heartbeat` (needs signaling and dev servers; checks the audio context is running and the beat rate and gain, not the actual sound)
 - Simulate a bad network in any tab: add `?delay=100&jitter=20&loss=0.05` to the URL (one-way delay on everything the tab sends; jitter and loss only on the unreliable channel)
 - Drive host and guest over a simulated bad network in real Chrome: `cd tools && node drive-netplay.mjs http://localhost:5173/ netplay "delay=100&loss=0.05"` (needs signaling and dev servers; checks prediction, host agreement, and remote interpolation)
 - Verify in an isolated stack: `.claude/skills/verify/scripts/launch.sh`, then `doctor.sh`, drive, and `cleanup.sh` (see `.claude/skills/verify/SKILL.md`)

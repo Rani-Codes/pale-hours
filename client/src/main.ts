@@ -1,5 +1,7 @@
 import { initLobby } from "./lobby";
 import { GuestSession, HostSession, LocalSession, type Session } from "./session";
+import { audio } from "./config";
+import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer } from "./sim";
@@ -11,6 +13,10 @@ const hud = document.querySelector<HTMLDivElement>("#hud")!;
 const sim = await loadSim("/sim.wasm");
 const renderer = new Renderer(canvas, sim);
 initLook(canvas);
+const heartbeat = new Heartbeat(audio.heartbeat);
+// Exposed for the tools/ drivers.
+(globalThis as { paleHeartbeat?: Heartbeat }).paleHeartbeat = heartbeat;
+for (const type of ["pointerdown", "keydown"]) addEventListener(type, () => heartbeat.unlock());
 addEventListener("keydown", (e) => {
   if (e.code === "KeyM" && !(e.target instanceof HTMLInputElement)) renderer.showMap = !renderer.showMap;
 });
@@ -53,7 +59,11 @@ requestAnimationFrame(frame);
 
 function draw(players: SimPlayer[], lines: string[], self: number | undefined) {
   renderer.draw(players, self, look.yaw, look.pitch);
-  lines = [...lines, ""];
+  const me = players.find((p) => p.id === self);
+  const killer = players.find((p) => p.role === sim.roles.killer);
+  // Only survivors hear it. The killer does not hear his own heart.
+  heartbeat.update(me && killer && me.role !== sim.roles.killer ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
+  lines = [...lines, heartbeat.current.bpm > 0 ? `heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : ""];
   for (const p of players) {
     lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}`);
   }

@@ -44,6 +44,17 @@ export const view = {
   },
 };
 
+// Sound. The heartbeat is what a survivor hears when the killer is near.
+export const audio = {
+  heartbeat: {
+    range: 32, // meters; silent beyond this
+    minBpm: 55,
+    maxBpm: 160,
+    minGain: 0.08,
+    maxGain: 0.9,
+  },
+};
+
 // Simulated bad network for testing, applied to everything this tab sends:
 // ?delay=100&jitter=20&loss=0.05. Delay is one way, so round trip grows by twice it.
 // Loss and jitter apply only to the unreliable channel; the reliable one just gets the delay.
