@@ -44,6 +44,14 @@ const v2 = await level();
 await guest.fill("#volume", "0");
 const muted = await level();
 await guest.fill("#volume", String(Math.round(v0.slider)));
+// Real mouse presses at the very ends of the track, the way a player would drag it.
+const box = await guest.locator("#volume").boundingBox();
+const mid = box.y + box.height / 2;
+await guest.mouse.click(box.x + 1, mid);
+const dragLow = await guest.evaluate(() => ({ slider: Number(document.querySelector("#volume").value), gain: paleHeartbeat.master.gain.value }));
+await guest.mouse.click(box.x + box.width - 1, mid);
+const dragHigh = await guest.evaluate(() => ({ slider: Number(document.querySelector("#volume").value), gain: paleHeartbeat.master.gain.value }));
+await guest.fill("#volume", String(Math.round(v0.slider)));
 await guest.screenshot({ path: `${prefix}-far.png` });
 
 await host.bringToFront();
@@ -57,6 +65,7 @@ await guest.screenshot({ path: `${prefix}-near.png` });
 await browser.close();
 
 console.log(`volume: start ${JSON.stringify(v0)}, [ [ ${JSON.stringify(v1)}, ] ${JSON.stringify(v2)}, slider 0 ${JSON.stringify(muted)}`);
+console.log(`mouse at left end ${JSON.stringify(dragLow)}, right end ${JSON.stringify(dragHigh)}, track ${box.width}px`);
 console.log(`far : ${JSON.stringify(far)}`);
 console.log(`near: ${JSON.stringify(near)}`);
 console.log(`killer: ${JSON.stringify(killer)}`);
@@ -70,6 +79,8 @@ const checks = {
   "[ lowers the volume 10% each press": Math.abs(v1.slider - (v0.slider - 20)) < 0.01 && Math.abs(v1.level - v1.slider / 100) < 0.01,
   "] raises it": v2.slider === v1.slider + 10,
   "slider to 0 mutes": muted.level === 0,
+  "mouse at the left end reaches 0 and silence": dragLow.slider === 0 && dragLow.gain === 0,
+  "mouse at the right end reaches 100 at full gain": dragHigh.slider === 100 && dragHigh.gain === 1,
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);

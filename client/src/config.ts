@@ -51,8 +51,13 @@ export const audio = {
     range: 32, // meters; silent beyond this
     minBpm: 55,
     maxBpm: 160,
-    minGain: 0.08,
-    maxGain: 0.9,
+    minGain: 0.05,
+    maxGain: 0.5,
+    lubHz: 105, // mid-low and short: a muffled thud, not sub bass
+    dubHz: 88,
+    attack: 0.02,
+    decay: 0.1,
+    lowpassHz: 280,
   },
 };
 

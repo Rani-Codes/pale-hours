@@ -4,6 +4,12 @@ export interface HeartbeatConfig {
   maxBpm: number;
   minGain: number;
   maxGain: number;
+  /** Pitch of the first and second thump, Hz. Lower is more bass. */
+  lubHz: number;
+  dubHz: number;
+  attack: number; // seconds
+  decay: number; // seconds
+  lowpassHz: number; // rounds off the top of the thump
 }
 
 export interface Beat {
@@ -42,7 +48,8 @@ export class Heartbeat {
   /** Master volume, 0 to 1. Applies to every sound the game makes. */
   setVolume(v: number) {
     this.volume = Math.max(0, Math.min(1, v));
-    if (this.master) this.master.gain.value = this.volume;
+    // Loudness is perceived on a curve, so a straight gain makes the top half of a slider do almost nothing.
+    if (this.master) this.master.gain.value = this.volume ** 2;
   }
 
   /** The master volume in effect, 0 to 1. */
@@ -61,12 +68,13 @@ export class Heartbeat {
       this.ctx ??= new AudioContext();
       if (!this.master) {
         this.master = this.ctx.createGain();
-        this.master.gain.value = this.volume;
+        this.master.gain.value = this.volume ** 2;
         this.master.connect(this.ctx.destination);
-        // Round off everything above a low thud, so it is felt more than heard.
+        // Round off the harsh top end so it reads as muffled, like a heart through a wall.
         this.bus = this.ctx.createBiquadFilter();
         this.bus.type = "lowpass";
-        this.bus.frequency.value = 130;
+        this.bus.frequency.value = this.config.lowpassHz;
+        this.bus.Q.value = 0.5;
         this.bus.connect(this.master);
       }
       void this.ctx.resume();
@@ -88,8 +96,8 @@ export class Heartbeat {
     const now = ctx.currentTime;
     if (this.nextAt < now) this.nextAt = now + 0.05;
     while (this.nextAt < now + 0.15) {
-      this.thump(this.nextAt, gain * 0.7, 52);
-      this.thump(this.nextAt + 0.23, gain * 0.5, 44);
+      this.thump(this.nextAt, gain, this.config.lubHz);
+      this.thump(this.nextAt + 0.24, gain * 0.7, this.config.dubHz);
       this.nextAt += 60 / bpm;
     }
   }
@@ -98,13 +106,14 @@ export class Heartbeat {
     const ctx = this.ctx!;
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
-    // A soft rise and long fall with no pitch sweep, so there is no click.
+    // A short soft thud with no pitch sweep, so there is no click and no long bass tail.
+    osc.type = "triangle";
     osc.frequency.value = hz;
     env.gain.setValueAtTime(0, at);
-    env.gain.linearRampToValueAtTime(gain, at + 0.05);
-    env.gain.exponentialRampToValueAtTime(0.001, at + 0.32);
+    env.gain.linearRampToValueAtTime(gain, at + this.config.attack);
+    env.gain.exponentialRampToValueAtTime(0.001, at + this.config.attack + this.config.decay);
     osc.connect(env).connect(this.bus!);
     osc.start(at);
-    osc.stop(at + 0.35);
+    osc.stop(at + this.config.attack + this.config.decay + 0.05);
   }
 }
