@@ -16,6 +16,7 @@ func main() {
 		"tickRate":      sim.TickRate,
 		"mapHalfExtent": sim.MapHalfExtent,
 		"roles":         map[string]any{"survivor": int(sim.Survivor), "killer": int(sim.Killer)},
+		"walls":         walls(),
 		"load":          js.FuncOf(load),
 		"step":          js.FuncOf(step),
 		"state":         js.FuncOf(snapshot),
@@ -67,4 +68,13 @@ func snapshot(js.Value, []js.Value) any {
 		}
 	}
 	return map[string]any{"tick": int(state.Tick), "players": players}
+}
+
+// walls returns the layout as [{minX, minY, maxX, maxY}, ...] in micrometers.
+func walls() []any {
+	out := make([]any, len(sim.Walls))
+	for i, w := range sim.Walls {
+		out[i] = map[string]any{"minX": int(w.MinX), "minY": int(w.MinY), "maxX": int(w.MaxX), "maxY": int(w.MaxY)}
+	}
+	return out
 }

@@ -1,14 +1,14 @@
 import { initLobby } from "./lobby";
 import { GuestSession, HostSession, LocalSession, type Session } from "./session";
+import { Renderer } from "./render";
 import { loadSim, type SimPlayer } from "./sim";
 
 const m = 1_000_000; // micrometers per meter
 
 const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const hud = document.querySelector<HTMLDivElement>("#hud")!;
-const ctx = canvas.getContext("2d")!;
-
 const sim = await loadSim("/sim.wasm");
+const renderer = new Renderer(canvas, sim);
 let session: Session;
 // Exposed for the tools/ drivers.
 function use(s: Session) {
@@ -47,41 +47,10 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 function draw(players: SimPlayer[], lines: string[]) {
-  const dpr = devicePixelRatio;
-  const w = (canvas.width = innerWidth * dpr);
-  const h = (canvas.height = innerHeight * dpr);
-  const half = sim.mapHalfExtent;
-  const scale = (Math.min(w, h) * 0.9) / (2 * half);
-  const toScreen = (x: number, y: number) => [w / 2 + x * scale, h / 2 - y * scale] as const;
-
-  ctx.fillStyle = "#0b0b0d";
-  ctx.fillRect(0, 0, w, h);
-  const [left, top] = toScreen(-half, half);
-  ctx.fillStyle = "#16161a";
-  ctx.fillRect(left, top, 2 * half * scale, 2 * half * scale);
-
-  ctx.strokeStyle = "#202027";
-  ctx.lineWidth = dpr;
-  for (let g = -half; g <= half; g += 5 * m) {
-    const [gx] = toScreen(g, 0);
-    const [, gy] = toScreen(0, g);
-    ctx.beginPath();
-    ctx.moveTo(gx, top);
-    ctx.lineTo(gx, top + 2 * half * scale);
-    ctx.moveTo(left, gy);
-    ctx.lineTo(left + 2 * half * scale, gy);
-    ctx.stroke();
-  }
-
+  renderer.draw(players);
   lines = [...lines, ""];
   for (const p of players) {
-    const [sx, sy] = toScreen(p.x, p.y);
-    const killer = p.role === sim.roles.killer;
-    ctx.fillStyle = killer ? "#c0392b" : "#d8d4c8";
-    ctx.beginPath();
-    ctx.arc(sx, sy, (killer ? 0.5 : 0.4) * m * scale, 0, Math.PI * 2);
-    ctx.fill();
-    lines.push(`${killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}`);
+    lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}`);
   }
   hud.textContent = lines.join("\n");
 }

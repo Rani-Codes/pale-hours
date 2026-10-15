@@ -10,6 +10,8 @@ const (
 	SurvivorSpeed = 4_000_000 // per second
 	KillerSpeed   = 4_600_000 // per second
 
+	PlayerRadius = 400_000 // half-width of the square collision body
+
 	MaxAxis = 127 // full stick deflection on one Input axis
 )
 

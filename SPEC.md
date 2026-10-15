@@ -66,7 +66,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] Generate the project verification skill
 
 ### Phase 2: the scary part
-- [ ] Three.js gray-box map
+- [x] Three.js gray-box map (layout and wall collision live in `sim/map.go`; the client builds meshes from `paleSim.walls`)
 - [ ] Killer first-person camera, survivor third-person camera
 - [ ] Fog, darkness, killer proximity audio (a heartbeat that ramps up as the killer gets close)
 

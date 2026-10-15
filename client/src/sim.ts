@@ -16,9 +16,18 @@ export interface SimInput {
   moveY: number;
 }
 
+/** An axis-aligned wall in micrometers. */
+export interface Wall {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 export interface PaleSim {
   tickRate: number;
   mapHalfExtent: number;
+  walls: Wall[];
   roles: { survivor: number; killer: number };
   /** Replace the whole state, e.g. with a host snapshot. */
   load(state: SimState): void;

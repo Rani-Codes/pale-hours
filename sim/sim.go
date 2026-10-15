@@ -49,10 +49,23 @@ func move(pos Vec2, in Input, speed int64) Vec2 {
 		l := int64(math.Sqrt(float64(lenSq)))
 		dx, dy = dx*MaxAxis/l, dy*MaxAxis/l
 	}
-	return Vec2{
-		X: clamp(int64(pos.X) + dx*speed/(MaxAxis*TickRate)),
-		Y: clamp(int64(pos.Y) + dy*speed/(MaxAxis*TickRate)),
+	// Resolve each axis on its own so a player slides along a wall.
+	next := pos
+	next.X = clamp(int64(pos.X) + dx*speed/(MaxAxis*TickRate))
+	if w, ok := hitWall(next); ok {
+		next.X = w.MaxX + PlayerRadius
+		if dx > 0 {
+			next.X = w.MinX - PlayerRadius
+		}
 	}
+	next.Y = clamp(int64(pos.Y) + dy*speed/(MaxAxis*TickRate))
+	if w, ok := hitWall(next); ok {
+		next.Y = w.MaxY + PlayerRadius
+		if dy > 0 {
+			next.Y = w.MinY - PlayerRadius
+		}
+	}
+	return next
 }
 
 func clamp(v int64) int32 {
