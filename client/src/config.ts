@@ -32,6 +32,16 @@ export const view = {
   survivor: { fov: 82, distance: 3.6, height: 2.5, shoulder: 0.5 },
   near: 0.1,
   far: 200,
+  // Fog and darkness. Everything past fog.far is the fog colour, so the
+  // killer can only be seen up close and survivors cannot see him coming.
+  fog: { color: 0x07080a, near: 4, far: 26 },
+  light: {
+    ambient: 0.12, // what the dark leaves you
+    moon: 0.25, // faint directional light so shapes read
+    lantern: 14, // intensity of the light carried by the viewer
+    lanternRange: 22,
+    lanternColor: 0xcfd6e6,
+  },
 };
 
 // Simulated bad network for testing, applied to everything this tab sends:

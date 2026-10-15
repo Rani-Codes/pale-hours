@@ -3,12 +3,14 @@ import {
   BoxGeometry,
   CylinderGeometry,
   DirectionalLight,
+  Fog,
   Group,
   Mesh,
   MeshLambertMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
+  PointLight,
   Scene,
   WebGLRenderer,
 } from "three";
@@ -32,6 +34,10 @@ export class Renderer {
   private readonly bodies = new Map<number, Group>();
   /** Show the whole map from above instead of the player's own view. Toggle with M. */
   showMap = false;
+  private readonly ambient = new AmbientLight(0xffffff, 0.8);
+  private readonly sun = new DirectionalLight(0xffffff, 1.2);
+  /** A dim light that travels with the viewer, so nearby walls glow out of the dark. */
+  private readonly lantern = new PointLight(view.light.lanternColor, view.light.lantern, view.light.lanternRange, 1.5);
   private readonly killerMat = new MeshLambertMaterial({ color: 0xc0392b });
   private readonly survivorMat = new MeshLambertMaterial({ color: 0xd8d4c8 });
 
@@ -40,13 +46,11 @@ export class Renderer {
     private readonly sim: PaleSim,
   ) {
     this.gl = new WebGLRenderer({ canvas, antialias: false });
-    this.gl.setClearColor(0x0b0b0d);
+    this.gl.setClearColor(view.fog.color);
 
     const half = sim.mapHalfExtent / M;
-    this.scene.add(new AmbientLight(0xffffff, 0.8));
-    const sun = new DirectionalLight(0xffffff, 1.2);
-    sun.position.set(-20, 60, 30);
-    this.scene.add(sun);
+    this.scene.add(this.ambient, this.sun, this.lantern);
+    this.sun.position.set(-20, 60, 30);
 
     const floor = new Mesh(new PlaneGeometry(2 * half, 2 * half), new MeshLambertMaterial({ color: 0x1c1c21 }));
     floor.rotation.x = -Math.PI / 2;
@@ -93,7 +97,13 @@ export class Renderer {
     }
 
     const me = players.find((p) => p.id === self);
-    if (this.showMap || !me) {
+    const mapLook = this.showMap || !me;
+    this.ambient.intensity = mapLook ? 0.8 : view.light.ambient;
+    this.sun.intensity = mapLook ? 1.2 : view.light.moon;
+    this.lantern.visible = !mapLook;
+    this.scene.fog = mapLook ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
+    this.gl.setClearColor(mapLook ? 0x0b0b0d : view.fog.color);
+    if (mapLook || !me) {
       for (const body of this.bodies.values()) body.visible = true;
       this.gl.render(this.scene, this.overhead);
       return;
@@ -116,6 +126,7 @@ export class Renderer {
       // Behind the player, a little to the right so the body does not cover the crosshair.
       this.eye.position.set(x - fx * distance - fz * shoulder, height, z - fz * distance + fx * shoulder);
     }
+    this.lantern.position.copy(this.eye.position);
     this.eye.updateProjectionMatrix();
     this.gl.render(this.scene, this.eye);
   }
