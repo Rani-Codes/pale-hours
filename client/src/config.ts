@@ -1,6 +1,8 @@
 // Tunable client-side numbers. Sim tunables live in sim/config.go.
+const params = new URLSearchParams(globalThis.location?.search);
+
 export const net = {
-  signalUrl: "http://localhost:8787",
+  signalUrl: params.get("signal") ?? "http://localhost:8787", // ?signal= points a test instance at its own server
   stunServers: ["stun:stun.cloudflare.com:3478"],
   // Unreliable, unordered: a late input or snapshot is worthless, never retransmit.
   stateChannel: { ordered: false, maxRetransmits: 0 } as RTCDataChannelInit,
@@ -25,7 +27,6 @@ export const net = {
 // Simulated bad network for testing, applied to everything this tab sends:
 // ?delay=100&jitter=20&loss=0.05. Delay is one way, so round trip grows by twice it.
 // Loss and jitter apply only to the unreliable channel; the reliable one just gets the delay.
-const params = new URLSearchParams(globalThis.location?.search);
 export const lagSim = {
   delayMs: Number(params.get("delay") ?? 0),
   jitterMs: Number(params.get("jitter") ?? 0),

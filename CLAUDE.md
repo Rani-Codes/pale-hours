@@ -23,6 +23,7 @@ Fill these in as they get created. Keep this section accurate.
 - Run client unit tests: `cd client && npm test` (Node's built-in runner, no extra deps)
 - Simulate a bad network in any tab: add `?delay=100&jitter=20&loss=0.05` to the URL (one-way delay on everything the tab sends; jitter and loss only on the unreliable channel)
 - Drive host and guest over a simulated bad network in real Chrome: `cd tools && node drive-netplay.mjs http://localhost:5173/ netplay "delay=100&loss=0.05"` (needs signaling and dev servers; checks prediction, host agreement, and remote interpolation)
+- Verify in an isolated stack: `.claude/skills/verify/scripts/launch.sh`, then `doctor.sh`, drive, and `cleanup.sh` (see `.claude/skills/verify/SKILL.md`)
 - Run the latency matrix (every network profile, 3 runs each, one table): `cd tools && node latency-matrix.mjs [runs]` (reuses running signaling and dev servers, or starts and stops its own; exits nonzero on any failure)
 - Run signaling server: `cd signal && go run .` (http://localhost:8787, `-addr` to change)
 - Run signal tests: `cd signal && go test -race ./...`
@@ -47,7 +48,7 @@ Fill these in as they get created. Keep this section accurate.
 
 ## Verification
 
-Once Phase 1 is runnable, generate a project verification skill with `/pstack:create-verification-skill`. Until then, prove netcode work by running two browser tabs (host and client) against each other with added delay (100ms and 200ms) and packet loss (5%), and capturing what each tab shows.
+Use the project `verify` skill (`.claude/skills/verify/`). It launches an isolated stack on ports 5273 and 8887, never the user's 5173 and 8787, drives real Chrome tabs, and keeps evidence in `.verify/evidence/`. Its feature map is `.claude/skills/verify/features/`. Netcode changes are proven with host and guest tabs under 100ms and 200ms round trip with 5% loss (the latency matrix covers both). Keep the map current with `/pstack:maintain-verification-skill`.
 
 ## pstack
 

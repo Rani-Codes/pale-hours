@@ -1,17 +1,20 @@
-// Usage: node latency-matrix.mjs [runs per profile, default 3]
+// Usage: [PALE_APP_PORT=5173] [PALE_SIGNAL_PORT=8787] [PALE_EVIDENCE_DIR=dir] node latency-matrix.mjs [runs per profile, default 3]
 // Runs drive-netplay.mjs under every network profile and prints one table.
-// Reuses the signaling and dev servers if they are already up, otherwise
-// starts them and stops them when done. Exits nonzero if any run failed.
+// Reuses the signaling and dev servers if they are already up on those ports,
+// otherwise starts them and stops them when done. Exits nonzero if any run failed.
 import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const runs = Number(process.argv[2] ?? 3);
-const appUrl = "http://localhost:5173/";
-const signalUrl = "http://localhost:8787/";
+const appPort = process.env.PALE_APP_PORT ?? "5173";
+const signalPort = process.env.PALE_SIGNAL_PORT ?? "8787";
+const appBase = `http://localhost:${appPort}/`;
+const signalUrl = `http://localhost:${signalPort}`;
+const appUrl = `${appBase}?signal=${signalUrl}`;
 
 // Delay is added on each tab's sends, so round trip is twice the delay.
 const profiles = [
@@ -51,9 +54,10 @@ function drive(query, shots) {
 const range = (xs) => (xs.length ? `${Math.min(...xs)}-${Math.max(...xs)}` : "n/a");
 let allOk = true;
 try {
-  await ensure("signal", signalUrl, "go", ["run", "."], join(root, "signal"));
-  await ensure("client", appUrl, "npm", ["run", "dev"], join(root, "client"));
-  const shotDir = mkdtempSync(join(tmpdir(), "pale-latency-"));
+  await ensure("signal", signalUrl, "go", ["run", ".", "-addr", `localhost:${signalPort}`], join(root, "signal"));
+  await ensure("client", appBase, "npm", ["run", "dev", "--", "--port", appPort, "--strictPort"], join(root, "client"));
+  const shotDir = process.env.PALE_EVIDENCE_DIR ?? mkdtempSync(join(tmpdir(), "pale-latency-"));
+  mkdirSync(shotDir, { recursive: true });
   console.log(`screenshots: ${shotDir}\n`);
   console.log("profile                              pass  join ms    killer shown ms  corrections  starved frames  dropped inputs");
   for (const p of profiles) {

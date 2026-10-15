@@ -6,7 +6,8 @@
 import { chromium } from "playwright-core";
 
 const [url = "http://localhost:5173/", prefix = "netplay", lag = ""] = process.argv.slice(2);
-const target = lag ? `${url}?${lag}` : url;
+const target = new URL(url);
+for (const [k, v] of new URLSearchParams(lag)) target.searchParams.set(k, v);
 const delayMs = Number(new URLSearchParams(lag).get("delay") ?? 0);
 const jitterMs = Number(new URLSearchParams(lag).get("jitter") ?? 0);
 
@@ -18,7 +19,7 @@ const open = async (name) => {
   const page = await context.newPage();
   page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
   page.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
-  await page.goto(target);
+  await page.goto(target.href);
   await page.waitForFunction(() => globalThis.paleSession);
   return page;
 };
