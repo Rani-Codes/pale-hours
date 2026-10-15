@@ -49,8 +49,22 @@ type Player struct {
 	Rng         uint32 // this player's skill check stream; seed it per player
 	Escaped     bool   // left through a gate; out of play
 
-	Health Health
-	Boost  int16 // ticks of sprint left after being hit
+	Health  Health
+	Boost   int16 // ticks of shove left after being hit
+	Recover int16 // ticks spent downed and left alone; reaching DownedRecoverTicks stands them up
+
+	// Helping is the downed teammate this survivor is getting up, or 0.
+	// Their skill checks are help checks while it is set.
+	Helping PlayerID
+
+	// Carry and hook. Carrying is on the killer, the rest on the survivor.
+	ActHeld    bool // E was down last tick; the killer acts on presses
+	Carrying   PlayerID
+	Carried    bool
+	OnHook     uint8 // 0, or the index into HookSites plus one
+	HookUsed   int16 // ticks spent on hooks, ever; at HookTicks they are eliminated
+	Rescue     int16 // ticks a teammate has held E to unhook them, this hold
+	Eliminated bool  // died on a hook; out of play
 
 	// The killer's attack.
 	AttackHeld  bool
@@ -80,41 +94,87 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		next.Gens[i].Noise = max(next.Gens[i].Noise-1, 0)
 	}
 	powered := gensDone(s.Gens) >= GensRequired
+	var helped []PlayerID
+	var killerPresses []int
 	for i, p := range s.Players {
-		if p.Escaped {
+		if p.Escaped || p.Eliminated {
 			next.Players[i] = p
 			continue
 		}
 		in, ok := inputs[p.ID]
-		p.Pos = move(p.Pos, in, speed(p))
+		if !p.Carried && p.OnHook == 0 {
+			p.Pos = move(p.Pos, in, speed(p))
+		}
 		p.Trail[next.Tick%TrailLen] = p.Pos
 		p.Boost = max(p.Boost-1, 0)
+		actPress := ok && in.Act && !p.ActHeld
+		skillPress := ok && in.Skill && !p.SkillHeld
 		if ok {
 			p.Yaw = in.Yaw
+			p.ActHeld, p.SkillHeld = in.Act, in.Skill
 		}
 		if p.Health == Downed {
 			// Letting go of everything: an active skill check counts as a miss.
-			in.Act, in.Skill = false, false
+			in.Act, skillPress = false, false
 		}
-		stepRepair(&p, in, ok, next.Gens)
+		if id := stepHelp(&p, in, ok, skillPress, s.Players, next.Gens); id != 0 {
+			helped = append(helped, id)
+		}
+		if p.Helping == 0 {
+			stepRepair(&p, in, ok, skillPress, next.Gens)
+		} else {
+			p.Repairing = false
+		}
 		if p.Health != Downed {
 			stepGate(&p, in, ok, next.Gates, s.Gates, powered)
 		}
 		stepSwing(&p, in, ok)
+		stepDowned(&p)
+		if p.Role == Killer && actPress {
+			killerPresses = append(killerPresses, i)
+		}
 		next.Players[i] = p
 	}
-	// Swings resolve once everyone has moved, against the same positions
-	// whatever order players are stored in.
+	// Everything that reaches across players happens once everyone has
+	// moved, so it never depends on the order players are stored in.
 	for i := range next.Players {
 		if k := &next.Players[i]; k.Swing == SwingWindup && k.SwingTicks == 0 {
 			resolveSwing(k, next.Players, next.Tick, inputs[k.ID].ViewLagMs)
 		}
 	}
+	for _, id := range helped {
+		if v := find(next.Players, id); v != nil && v.Health == Downed && !v.Carried && v.OnHook == 0 {
+			v.Health, v.Recover = Injured, 0
+		}
+	}
+	for _, i := range killerPresses {
+		killerAct(&next.Players[i], next.Players)
+	}
+	stepRescue(next.Players, inputs)
+	for i := range next.Players {
+		if k := next.Players[i]; k.Carrying != 0 {
+			if v := find(next.Players, k.Carrying); v != nil {
+				v.Pos = k.Pos
+				v.Trail[next.Tick%TrailLen] = v.Pos
+			}
+		}
+	}
 	return next
+}
+
+func find(players []Player, id PlayerID) *Player {
+	for i := range players {
+		if players[i].ID == id {
+			return &players[i]
+		}
+	}
+	return nil
 }
 
 func speed(p Player) int64 {
 	switch {
+	case p.Role == Killer && p.Carrying != 0:
+		return KillerCarrySpeed
 	case p.Role == Killer && p.Swing == SwingRecover:
 		return KillerRecoverSpeed
 	case p.Health == Downed:

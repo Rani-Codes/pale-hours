@@ -42,7 +42,7 @@ func stepSwing(p *Player, in Input, hasInput bool) {
 	p.AttackHeld = in.Attack
 	switch p.Swing {
 	case SwingIdle:
-		if press {
+		if press && p.Carrying == 0 {
 			p.Swing, p.SwingTicks = SwingWindup, AttackWindupTicks
 		}
 	case SwingWindup:
@@ -59,7 +59,7 @@ func stepSwing(p *Player, in Input, hasInput bool) {
 func resolveSwing(k *Player, players []Player, now uint32, lagMs uint16) {
 	best, bestD := -1, math.Inf(1)
 	for i, p := range players {
-		if p.Role != Survivor || p.Escaped || p.Health == Downed {
+		if p.Role != Survivor || p.Escaped || p.Eliminated || p.Health == Downed {
 			continue
 		}
 		if d, ok := reach(k.Pos, k.Yaw, rewound(p, now, lagMs)); ok && d < bestD {

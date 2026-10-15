@@ -56,6 +56,17 @@ var GateSites = []Vec2{
 	{0, -28 * meter},
 }
 
+// HookSites are where the killer hangs survivors, spread through open
+// ground so one is always a short carry away. They do not block movement.
+var HookSites = []Vec2{
+	{-6 * meter, 10 * meter},
+	{6 * meter, -10 * meter},
+	{-16 * meter, 0},
+	{20 * meter, 0},
+	{-10 * meter, -24 * meter},
+	{10 * meter, 24 * meter},
+}
+
 func hWall(x0, x1, y int32) Box {
 	return Box{x0 * meter, y*meter - wallThick/2, x1 * meter, y*meter + wallThick/2}
 }

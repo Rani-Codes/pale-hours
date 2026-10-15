@@ -12,9 +12,11 @@ const held = new Set<string>();
 const bound = new Set([wasd, arrows].flatMap((b) => [b.up, b.down, b.left, b.right]).concat(["KeyE", "Space"]));
 let skillPress = false;
 let attackPress = false;
+let actTap = false;
 addEventListener("keydown", (e) => {
   if (bound.has(e.code) && !(e.target instanceof HTMLInputElement)) e.preventDefault();
   if (e.code === "Space" && !e.repeat) skillPress = true;
+  if (e.code === "KeyE" && !e.repeat) actTap = true;
   held.add(e.code);
 });
 addEventListener("keyup", (e) => held.delete(e.code));
@@ -35,8 +37,10 @@ const clamp = (v: number) => Math.max(-127, Math.min(127, v));
 export function readActions() {
   const skill = skillPress;
   const attack = attackPress;
-  skillPress = attackPress = false;
-  return { act: held.has("KeyE"), skill, attack };
+  // A tap shorter than a tick still counts as held for one.
+  const act = held.has("KeyE") || actTap;
+  skillPress = attackPress = actTap = false;
+  return { act, skill, attack };
 }
 
 /** Facing in radians to the sim's 1/65536 turns, 0 to 65535. */

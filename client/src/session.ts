@@ -164,8 +164,8 @@ export class HostSession implements Session {
     // couple of ticks behind the one being stepped. A swing landing this tick
     // is judged against what that last frame showed.
     const viewLagMs = Math.round(Math.max(0, this.curr.tick + 1 - this.drawnTick) * (1000 / this.sim.tickRate));
-    const { attack } = readActions();
-    const inputs: SimInput[] = [{ ...toInput(KILLER_ID, { ...readIntent(look.yaw, wasd, arrows), act: false, skill: false, attack }), viewLagMs }];
+    const { act, attack } = readActions();
+    const inputs: SimInput[] = [{ ...toInput(KILLER_ID, { ...readIntent(look.yaw, wasd, arrows), act, skill: false, attack }), viewLagMs }];
     for (const [id, g] of this.guests) inputs.push(toInput(id, g.queue.take()));
     this.sim.step(inputs);
     this.prev = this.curr;
@@ -285,8 +285,11 @@ export class GuestSession implements Session {
   }
 
   view(now: number, alpha: number) {
-    const others = this.remote.sample(now).filter((p) => p.id !== this.selfId);
-    const self = this.prev && this.curr ? blend(this.prev, this.curr, alpha).filter((p) => p.id === this.selfId) : [];
+    const remote = this.remote.sample(now);
+    const others = remote.filter((p) => p.id !== this.selfId);
+    let self = this.prev && this.curr ? blend(this.prev, this.curr, alpha).filter((p) => p.id === this.selfId) : [];
+    // Carried, the guest goes where the killer goes, so draw it on the same clock as the killer.
+    if (self[0]?.carried) self = remote.filter((p) => p.id === this.selfId);
     return {
       players: [...others, ...self],
       self: this.selfId,

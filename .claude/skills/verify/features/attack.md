@@ -1,6 +1,6 @@
 # Killer attack
 
-The killer left-clicks to swing. The killer's arm goes up for 0.2 s, then the host checks a forward cone from where the killer faces. A survivor in reach goes from healthy to injured (and sprints for a moment), or from injured to downed. A downed survivor lies low, crawls slowly, and cannot be hit again. The survivor's screen flashes red on every hit. The host decides every hit, judged against survivors where the killer's own screen last drew them.
+The killer left-clicks to swing. The killer's arm goes up for 0.2 s, then the host checks a forward cone from where the killer faces. A survivor in reach goes from healthy to injured (and is shoved forward about 2.2 m), or from injured to downed. A downed survivor lies low, crawls slowly, and cannot be hit again. The survivor's screen flashes red on every hit. The host decides every hit, judged against survivors where the killer's own screen last drew them.
 
 ## Sub-features
 
@@ -30,4 +30,4 @@ Preconditions:
 - Setup places players with `paleSim.load` on the host. Delete `trail` from a player you move, or the first swings rewind into their old spot.
 - The killer hosts, so the view lag is the host's render gap, about 33 to 50 ms whatever the network query. Network delay changes what the guest sees, not what the killer is judged on.
 - Clicking the canvas also asks for pointer lock. A background tab refuses it; `look.ts` swallows the refusal.
-- A hit gives the survivor a 2 s sprint, which shows up as one correction on the guest. Do not add a zero-corrections check to this driver.
+- A hit shoves the survivor forward, which shows up as one correction on the guest. Do not add a zero-corrections check to this driver.

@@ -48,10 +48,31 @@ const (
 	AttackHalfAngleDeg     = 50 // the cone is twice this wide
 	KillerRecoverSpeed     = 2_400_000
 
-	// A hit survivor sprints for a moment so the chase goes on.
-	HitBoostTicks = 2 * TickRate
-	HitBoostSpeed = 5_600_000
-	CrawlSpeed    = 700_000 // a downed survivor
+	// A hit shoves the survivor forward: a short burst that carries a
+	// running survivor HitBoostDistance.
+	HitBoostDistance = 2_200_000
+	HitBoostTicks    = 10
+	HitBoostSpeed    = HitBoostDistance * TickRate / HitBoostTicks
+	CrawlSpeed       = 700_000 // a downed survivor
+
+	// Downed. Left alone long enough, a survivor gets back up injured. A
+	// teammate holding E beside them gets a skill check almost at once; a
+	// good one stands them up injured.
+	DownedRecoverTicks = 60 * TickRate
+	ReviveRange        = 1_500_000
+	ReviveCheckDelay   = 6 // ticks of holding E before each help check
+
+	// Carry and hook. The killer presses E by a downed survivor to pick them
+	// up, and again to hang them on a hook in range or drop them elsewhere.
+	PickupRange      = 1_500_000
+	KillerCarrySpeed = 3_800_000
+	HookCount        = 6
+	HookRange        = 2_000_000
+	// Each survivor has this much hook time in total, across every hook;
+	// rescue does not refill it. When it runs out they are eliminated.
+	HookTicks   = 60 * TickRate
+	RescueRange = 1_500_000
+	RescueTicks = 1 * TickRate // a teammate holding E this long unhooks them
 
 	// Lag compensation: a swing is checked against survivors as the killer
 	// saw them, at most this far back. TrailLen ticks of positions are kept;

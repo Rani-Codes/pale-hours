@@ -17,9 +17,9 @@ func main() {
 		"mapHalfExtent": sim.MapHalfExtent,
 		"roles":         map[string]any{"survivor": int(sim.Survivor), "killer": int(sim.Killer)},
 		"walls":         walls(),
-		"genSites":      genSites(),
+		"genSites":      sites(sim.GenSites),
 		"genTicks":      sim.GeneratorTicks,
-		"gateSites":     gateSites(),
+		"gateSites":     sites(sim.GateSites),
 		"gateTicks":     sim.GateTicks,
 		"gateRange":     sim.GateRange,
 		"gensRequired":  sim.GensRequired,
@@ -30,6 +30,14 @@ func main() {
 		"health":        map[string]any{"healthy": int(sim.Healthy), "injured": int(sim.Injured), "downed": int(sim.Downed)},
 		"swing":         map[string]any{"idle": int(sim.SwingIdle), "windup": int(sim.SwingWindup), "recover": int(sim.SwingRecover), "hit": int(sim.SwingHit), "miss": int(sim.SwingMiss)},
 		"rewindCapMs":   sim.RewindCapMs,
+		"hookSites":     sites(sim.HookSites),
+		"hookTicks":     sim.HookTicks,
+		"hookRange":     sim.HookRange,
+		"rescueTicks":   sim.RescueTicks,
+		"rescueRange":   sim.RescueRange,
+		"reviveRange":   sim.ReviveRange,
+		"pickupRange":   sim.PickupRange,
+		"recoverTicks":  sim.DownedRecoverTicks,
 		"inReach":       js.FuncOf(inReach),
 		"load":          js.FuncOf(load),
 		"step":          js.FuncOf(step),
@@ -67,6 +75,16 @@ func load(_ js.Value, args []js.Value) any {
 			Swing:       sim.SwingPhase(p.Get("swing").Int()),
 			SwingTicks:  int16(p.Get("swingTicks").Int()),
 			SwingResult: sim.SwingResult(p.Get("swingResult").Int()),
+
+			Recover:    int16(p.Get("recover").Int()),
+			Helping:    sim.PlayerID(p.Get("helping").Int()),
+			ActHeld:    p.Get("actHeld").Bool(),
+			Carrying:   sim.PlayerID(p.Get("carrying").Int()),
+			Carried:    p.Get("carried").Bool(),
+			OnHook:     uint8(p.Get("onHook").Int()),
+			HookUsed:   int16(p.Get("hookUsed").Int()),
+			Rescue:     int16(p.Get("rescue").Int()),
+			Eliminated: p.Get("eliminated").Bool(),
 		}
 		// Guests get snapshots without trails; they never resolve a swing.
 		tr := p.Get("trail")
@@ -152,6 +170,16 @@ func snapshot(js.Value, []js.Value) any {
 			"swingTicks":  int(p.SwingTicks),
 			"swingResult": int(p.SwingResult),
 			"trail":       trail(p),
+
+			"recover":    int(p.Recover),
+			"helping":    int(p.Helping),
+			"actHeld":    p.ActHeld,
+			"carrying":   int(p.Carrying),
+			"carried":    p.Carried,
+			"onHook":     int(p.OnHook),
+			"hookUsed":   int(p.HookUsed),
+			"rescue":     int(p.Rescue),
+			"eliminated": p.Eliminated,
 		}
 	}
 	gens := make([]any, len(state.Gens))
@@ -198,19 +226,10 @@ func walls() []any {
 	return out
 }
 
-// genSites returns [{x, y}, ...] in micrometers, indexed like state().gens.
-func genSites() []any {
-	out := make([]any, len(sim.GenSites))
-	for i, g := range sim.GenSites {
-		out[i] = map[string]any{"x": int(g.X), "y": int(g.Y)}
-	}
-	return out
-}
-
-// gateSites returns [{x, y}, ...] in micrometers, indexed like state().gates.
-func gateSites() []any {
-	out := make([]any, len(sim.GateSites))
-	for i, g := range sim.GateSites {
+// sites returns [{x, y}, ...] in micrometers, indexed like the matching state() list.
+func sites(list []sim.Vec2) []any {
+	out := make([]any, len(list))
+	for i, g := range list {
 		out[i] = map[string]any{"x": int(g.X), "y": int(g.Y)}
 	}
 	return out

@@ -22,21 +22,17 @@ const (
 )
 
 // stepRepair advances one survivor's repair and skill check for this tick.
-// It reads in.Act and in.Skill, and updates p and gens in place. gens is the
-// next state's own slice, so the caller's state is never touched. Each
-// player draws from their own Rng, so one player's checks never depend on
-// who else is repairing and a guest can predict its own checks exactly.
-func stepRepair(p *Player, in Input, hasInput bool, gens []Generator) {
+// It reads in.Act and press (the skill key went down this tick), and
+// updates p and gens in place. gens is the next state's own slice, so the
+// caller's state is never touched. Each player draws from their own Rng, so
+// one player's checks never depend on who else is repairing and a guest can
+// predict its own checks exactly.
+func stepRepair(p *Player, in Input, hasInput, press bool, gens []Generator) {
 	gen := -1
 	if p.Role == Survivor && hasInput && in.Act {
 		gen = repairable(p.Pos, gens)
 	}
 	p.Repairing = gen >= 0
-
-	press := hasInput && in.Skill && !p.SkillHeld
-	if hasInput {
-		p.SkillHeld = in.Skill
-	}
 
 	if gen < 0 {
 		if p.CheckActive {
@@ -53,27 +49,43 @@ func stepRepair(p *Player, in Input, hasInput bool, gens []Generator) {
 		if p.CheckIn <= 0 {
 			p.CheckIn = int16(CheckMinGap + rand(&p.Rng)%(CheckMaxGap-CheckMinGap+1))
 		}
-		p.CheckIn--
-		if p.CheckIn > 0 {
-			return
-		}
-		p.CheckActive = true
-		p.CheckAge = 0
-		p.CheckZone = uint8(CheckZoneMin + rand(&p.Rng)%(CheckZoneMax-CheckZoneMin+1))
-		p.CheckResult = CheckNone
+		countdownCheck(p)
 		return
 	}
 
+	switch r := judgeCheck(p, press); r {
+	case CheckHit:
+		g.Progress = min(g.Progress+CheckBonus, GeneratorTicks)
+		endCheck(p, r)
+	case CheckMiss:
+		g.Progress = max(g.Progress-CheckPenalty, 0)
+		g.Noise = NoiseTicks
+		endCheck(p, r)
+	}
+}
+
+// countdownCheck counts down to the next check and starts it when due.
+func countdownCheck(p *Player) {
+	if p.CheckIn--; p.CheckIn > 0 {
+		return
+	}
+	p.CheckActive = true
+	p.CheckAge = 0
+	p.CheckZone = uint8(CheckZoneMin + rand(&p.Rng)%(CheckZoneMax-CheckZoneMin+1))
+	p.CheckResult = CheckNone
+}
+
+// judgeCheck advances an active check one tick: a hit for a press in the
+// zone, a miss for any other press or for running out, otherwise none yet.
+func judgeCheck(p *Player, press bool) CheckResult {
 	p.CheckAge++
 	switch {
 	case press && p.CheckAge >= int16(p.CheckZone) && p.CheckAge < int16(p.CheckZone)+CheckZoneLen:
-		g.Progress = min(g.Progress+CheckBonus, GeneratorTicks)
-		endCheck(p, CheckHit)
+		return CheckHit
 	case press || p.CheckAge >= CheckDuration:
-		g.Progress = max(g.Progress-CheckPenalty, 0)
-		g.Noise = NoiseTicks
-		endCheck(p, CheckMiss)
+		return CheckMiss
 	}
+	return CheckNone
 }
 
 // missCheck ends a check the player abandoned, charging the penalty to the

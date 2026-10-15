@@ -23,6 +23,8 @@ const M = 1_000_000; // micrometers per meter
 const WALL_HEIGHT = 3;
 const KILLER_HEIGHT = 1.9;
 const SURVIVOR_HEIGHT = 1.7;
+const HOOK_HEIGHT = 3.2;
+const gone = (p: SimPlayer | undefined) => !p || p.escaped || p.eliminated;
 
 /**
  * Draws the sim's world in Three.js. The sim's plane is (x, y); here that is
@@ -111,6 +113,16 @@ export class Renderer {
       this.scene.add(lintel);
     }
 
+    // Hooks: a pale post with an arm reaching out over the spot the survivor hangs.
+    const hookMat = new MeshLambertMaterial({ color: 0x9c968a });
+    for (const site of sim.hookSites) {
+      const post = new Mesh(new BoxGeometry(0.25, HOOK_HEIGHT, 0.25), hookMat);
+      post.position.set(site.x / M - 0.5, HOOK_HEIGHT / 2, -site.y / M);
+      const arm = new Mesh(new BoxGeometry(0.8, 0.15, 0.15), hookMat);
+      arm.position.set(site.x / M - 0.15, HOOK_HEIGHT - 0.1, -site.y / M);
+      this.scene.add(post, arm);
+    }
+
     this.overhead = new OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
     this.overhead.position.set(0, 100, 0);
     this.overhead.up.set(0, 0, -1);
@@ -140,7 +152,7 @@ export class Renderer {
         this.bodies.set(p.id, body);
         this.scene.add(body);
       }
-      body.visible = !p.escaped;
+      body.visible = !gone(p);
       body.position.set(p.x / M, 0, -p.y / M);
       body.rotation.y = (-p.yaw / 65536) * 2 * Math.PI;
       this.pose(body, p);
@@ -159,14 +171,18 @@ export class Renderer {
     this.scene.fog = mapLook ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
     this.gl.setClearColor(mapLook ? 0x0b0b0d : view.fog.color);
     if (mapLook || !me) {
-      for (const [id, body] of this.bodies) body.visible = !players.find((p) => p.id === id)?.escaped;
+      for (const [id, body] of this.bodies) body.visible = !gone(players.find((p) => p.id === id));
       this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
       this.gl.render(this.scene, this.overhead);
       return;
     }
     // Your own body stays out of your first-person view.
     const killer = me.role === this.sim.roles.killer;
-    for (const [id, body] of this.bodies) body.visible = !(killer && id === self) && !players.find((p) => p.id === id)?.escaped;
+    for (const [id, body] of this.bodies) {
+      const p = players.find((q) => q.id === id);
+      // The killer's own body, and whoever he carries, would sit inside his camera.
+      body.visible = !(killer && (id === self || p?.carried)) && !gone(p);
+    }
     this.beams.forEach((b, i) => (b.visible = killer && (noise[i] ?? 0) > 0));
 
     const x = me.x / M;
@@ -220,8 +236,11 @@ export class Renderer {
     }
     const torso = body.children[0] as Mesh;
     torso.material = p.health === this.sim.health.healthy ? this.survivorMat : this.injuredMat;
-    // Downed survivors lie low. A proper crawl animation comes with the art pass.
-    body.scale.y = p.health === this.sim.health.downed ? 0.3 : 1;
+    // Downed survivors lie low; carried ones lie across the killer's shoulder;
+    // hooked ones hang off the ground. Proper animation comes with the art pass.
+    const downed = p.health === this.sim.health.downed;
+    body.scale.y = downed && !p.onHook ? 0.3 : 1;
+    body.position.y = p.carried ? 1.5 : p.onHook ? 0.6 : 0;
   }
 
   private resize(): void {

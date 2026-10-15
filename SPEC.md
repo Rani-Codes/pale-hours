@@ -22,6 +22,10 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - 2 exit gates. They become powered when the generator goal is met. A gate takes a few seconds to open.
 - Health states: healthy, injured, downed. Two hits takes a survivor from healthy to downed.
 - Downed survivors can be picked up, carried, and placed on a hook. Teammates can rescue them. A hook timer eliminates the survivor when it runs out.
+- **Getting up (decided 2026-10-15).** A teammate holds E beside a downed survivor. A skill check appears after 0.2 s; a good one stands them up injured at once, a miss costs nothing but the time, and the next check follows 0.2 s later. Left alone for 60 s, a downed survivor stands up injured by themselves; being picked up resets that.
+- **Hooks (decided 2026-10-15).** Six hooks in open ground. The killer presses E by a downed survivor to pick them up (carrying slows him to 3.8 m/s and he cannot attack), then E again: within 2 m of a free hook he hangs them, anywhere else he drops them. A teammate holding E beside the hook for 1 s unhooks them injured. Each survivor has 60 s of hook time in total across all their hooks; rescue does not refill it, so a second hook is shorter. When it runs out they are eliminated. No wiggle-free from the killer's shoulder yet.
+- **Health bar.** A survivor sees two squares: two filled healthy, one injured, none when downed, carried or hooked. Getting up, by themselves or with help, and being unhooked both leave one.
+- **Hit shove.** A hit pushes the survivor forward: a 0.33 s burst that carries a running survivor 2.2 m. Only survivors get it.
 - **Killer attack:** left click. A short windup, then a forward cone hit resolved by the host with lag compensation. Two hits take a survivor from healthy to downed. A downed survivor cannot be hit again. They can crawl slowly, and they recover very slowly if left alone. The only way to eliminate a survivor is to pick them up and hang them on a hook.
 - Win condition: survivors escape through a gate, or the killer eliminates everyone.
 - Lobby with a shareable room code. The killer hosts.
@@ -82,7 +86,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [ ] The noise beam is visible to every client in the snapshot today; strip noise for survivors in the host's snapshots when we add anti-cheat or fog of information
 - [ ] Generator tuning pass in a real playtest: 80 s of repair per generator, check gap 4 to 9 s, zone 7 ticks (about 0.23 s)
 - [x] Killer attack with lag-compensated hits (left click; 0.2 s windup, 2.2 m 100° cone blocked by walls and generators, 0.6 s recovery on a hit and 1.0 s on a whiff; a hit survivor sprints for 2 s; downed survivors crawl at 0.7 m/s and cannot be hit; numbers in `sim/config.go`, logic in `sim/attack.go`)
-- [ ] Injured and downed states, carry, hook, rescue
+- [x] Injured and downed states, carry, hook, rescue (see the MVP scope notes above; logic in `sim/downed.go`, numbers in `sim/config.go`)
 - [ ] Win and loss conditions
 
 ### Phase 4: playable with friends
@@ -102,6 +106,8 @@ Not part of the MVP. Set this up once the game is playable by others.
 - Open questions: how reports get from Discord into issues (a bot, or by hand), what "production" means for a peer-hosted game (the hosted client build and signaling server), and how the owner signals approval (an issue label, a PR review, or a Discord reaction).
 
 ## Ideas under consideration
+
+- **Med kits (planned by the owner).** Kits placed around the map that a survivor picks up, carries, and uses on themselves or a teammate. Presumably healing one step (injured to healthy); open questions: how long a heal takes, whether it has a skill check, how many kits, whether one kit has several uses, and whether it can get a downed teammate up. Needs pickups as sim state and an inventory slot per survivor.
 
 - **Survivor dash.** One short burst of speed, usable once, then a 30 second cooldown. The cooldown shows on the HUD so the survivor knows when it is ready again. Purpose: let a survivor open a gap on the killer. Open questions: burst length and distance, whether it passes through windows or vaults, whether it makes noise, and how it interacts with the killer's attack range. Needs the cooldown in sim state and the dash as an input bit, so the host stays authoritative. Not scheduled.
 

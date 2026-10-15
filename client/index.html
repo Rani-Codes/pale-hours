@@ -18,6 +18,9 @@
       #check-zone { position: absolute; top: 0; bottom: 0; background: #d8d4c8; }
       #check-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #c0392b; }
       #check-result { position: fixed; left: 50%; top: 62%; transform: translate(-50%, 24px); font: 13px ui-monospace, monospace; color: #d8d4c8; }
+      #health { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; gap: 6px; }
+      #health .pip { width: 26px; height: 26px; border: 2px solid #d8d4c8; box-sizing: border-box; }
+      #health .pip.full { background: #c0392b; border-color: #c0392b; }
       #flash { position: fixed; inset: 0; background: #8a0d0d; opacity: 0; pointer-events: none; transition: opacity 0.6s ease-out; }
       #flash.on { opacity: 0.45; transition: none; }
       #netstatus { position: fixed; bottom: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; }
@@ -35,6 +38,7 @@
     </div>
     <div id="check"><div id="check-zone"></div><div id="check-needle"></div></div>
     <div id="check-result"></div>
+    <div id="health"><div class="pip"></div><div class="pip"></div></div>
     <div id="flash"></div>
     <div id="netstatus">offline</div>
     <script type="module" src="/src/main.ts"></script>

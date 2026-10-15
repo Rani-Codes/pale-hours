@@ -5,6 +5,7 @@ import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
+import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts";
 
 const m = 1_000_000; // micrometers per meter
 
@@ -102,7 +103,8 @@ function showHit(me: SimPlayer | undefined) {
   lastHealth = me && { id: me.id, health: me.health };
 }
 
-const healthNames = ["healthy", "injured", "downed"];
+const healthBar = document.querySelector<HTMLDivElement>("#health")!;
+const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
 function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
   const { gens, gates } = world;
@@ -113,7 +115,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   heartbeat.update(me && killer && me.role !== sim.roles.killer ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
   lines = [...lines, `volume ${volume.value}%` + (heartbeat.current.bpm > 0 ? `   heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : "")];
   for (const p of players) {
-    lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${healthNames[p.health]}` : ""));
+    lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${status(p, sim)}` : ""));
   }
   const done = gens.filter((g) => g >= sim.genTicks).length;
   lines.push(`generators ${done}/${gens.length} done   ` + gens.map((g) => `${Math.floor((100 * Math.min(g, sim.genTicks)) / sim.genTicks)}%`).join(" "));
@@ -122,7 +124,8 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   lines.push(powered ? "gates powered: " + gates.map((g) => (g >= sim.gateTicks ? "OPEN" : `${Math.floor((100 * g) / sim.gateTicks)}%`)).join(" ") : `gates need ${sim.gensRequired} generators`);
   if (mine && mine.role === sim.roles.killer) {
     const s = sim.swing;
-    lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : "click to attack");
+    lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : mine.carrying ? "" : "click to attack");
+    lines.push(...killerPrompts(mine, players, sim));
     // Where a missed skill check just went off, so the killer can find it even when it is out of view.
     world.noise.forEach((ticks, i) => {
       if (ticks <= 0) return;
@@ -137,14 +140,18 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
     const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
     showHit(mine);
-    if (mine.health === sim.health.downed) lines.push("you are down: crawl away");
-    else if (mine.health === sim.health.injured) lines.push(mine.boost > 0 ? "you are hit: run" : "you are injured");
-    const able = mine.health !== sim.health.downed && !mine.repairing;
-    if (mine.escaped) lines.push("you escaped");
-    else if (near && able) lines.push("hold E to repair");
+    const prompts = survivorPrompts(mine, players, sim);
+    const able = mine.health !== sim.health.downed && !mine.repairing && !mine.escaped && prompts.length === 0;
+    if (mine.health === sim.health.injured && mine.boost > 0) lines.push("you are hit: run");
+    lines.push(...prompts);
+    if (near && able) lines.push("hold E to repair");
     else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.repairing && !mine.checkActive) lines.push("working...");
   }
+  // Two squares: full health, one when injured, none when down.
+  healthBar.style.display = mine?.role === sim.roles.survivor ? "flex" : "none";
+  const filled = mine ? healthPips(mine, sim) : 0;
+  pips.forEach((pip, i) => pip.classList.toggle("full", i < filled));
   hud.textContent = lines.join("\n");
 
   // The skill check: a needle sweeps the bar, press Space while it is in the bright zone.
