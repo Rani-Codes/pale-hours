@@ -76,14 +76,19 @@ function frame(now: number) {
     carry -= tickMs;
   }
   session.flush?.();
-  const { players, hud: lines, self } = session.view(now, carry / tickMs);
-  draw(players, lines, self);
+  const { players, hud: lines, self, gens } = session.view(now, carry / tickMs);
+  draw(players, lines, self, gens);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-function draw(players: SimPlayer[], lines: string[], self: number | undefined) {
-  renderer.draw(players, self, look.yaw, look.pitch);
+const check = document.querySelector<HTMLDivElement>("#check")!;
+const checkZone = document.querySelector<HTMLDivElement>("#check-zone")!;
+const checkNeedle = document.querySelector<HTMLDivElement>("#check-needle")!;
+const checkResult = document.querySelector<HTMLDivElement>("#check-result")!;
+
+function draw(players: SimPlayer[], lines: string[], self: number | undefined, gens: number[]) {
+  renderer.draw(players, gens, self, look.yaw, look.pitch);
   const me = players.find((p) => p.id === self);
   const killer = players.find((p) => p.role === sim.roles.killer);
   // Only survivors hear it. The killer does not hear his own heart.
@@ -92,7 +97,26 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined) {
   for (const p of players) {
     lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}`);
   }
+  const done = gens.filter((g) => g >= sim.genTicks).length;
+  lines.push(`generators ${done}/${gens.length} done   ` + gens.map((g) => `${Math.floor((100 * Math.min(g, sim.genTicks)) / sim.genTicks)}%`).join(" "));
+  const mine = players.find((p) => p.id === self);
+  if (mine && mine.role === sim.roles.survivor) {
+    const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
+    if (near && !mine.repairing) lines.push("hold E to repair");
+    if (mine.repairing && !mine.checkActive) lines.push("repairing...");
+  }
   hud.textContent = lines.join("\n");
+
+  // The skill check: a needle sweeps the bar, press Space while it is in the bright zone.
+  check.style.display = mine?.checkActive ? "block" : "none";
+  if (mine?.checkActive) {
+    const span = sim.check.duration;
+    checkZone.style.left = `${(100 * mine.checkZone) / span}%`;
+    checkZone.style.width = `${(100 * sim.check.zoneLen) / span}%`;
+    checkNeedle.style.left = `${(100 * Math.min(mine.checkAge, span)) / span}%`;
+  }
+  // The last result lingers on screen until the next check begins.
+  checkResult.textContent = mine?.checkActive ? "" : mine?.checkResult === 1 ? "good" : mine?.checkResult === 2 ? "missed" : "";
 }
 
 function fmt(p: SimPlayer): string {

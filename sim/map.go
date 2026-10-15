@@ -39,6 +39,16 @@ var Walls = []Box{
 	hWall(18, 26, 8),
 }
 
+// GenSites are the generator positions. They block movement like walls.
+// Two are inside the buildings, the rest are in the open.
+var GenSites = []Vec2{
+	{-21 * meter, 17 * meter},
+	{21 * meter, -13 * meter},
+	{0, 5 * meter},
+	{-20 * meter, -20 * meter},
+	{20 * meter, 20 * meter},
+}
+
 func hWall(x0, x1, y int32) Box {
 	return Box{x0 * meter, y*meter - wallThick/2, x1 * meter, y*meter + wallThick/2}
 }
@@ -51,16 +61,26 @@ func block(x0, y0, x1, y1 int32) Box {
 	return Box{x0 * meter, y0 * meter, x1 * meter, y1 * meter}
 }
 
-// hitWall returns the wall whose radius-grown box contains the player's
-// centre. Touching a face does not count.
+// hitWall returns the obstacle whose radius-grown box contains the player's
+// centre: a wall, or a generator's body. Touching a face does not count.
 func hitWall(p Vec2) (Box, bool) {
 	for _, w := range Walls {
-		if p.X > w.MinX-PlayerRadius && p.X < w.MaxX+PlayerRadius &&
-			p.Y > w.MinY-PlayerRadius && p.Y < w.MaxY+PlayerRadius {
+		if inGrown(p, w) {
 			return w, true
 		}
 	}
+	for _, g := range GenSites {
+		b := Box{g.X - GeneratorHalf, g.Y - GeneratorHalf, g.X + GeneratorHalf, g.Y + GeneratorHalf}
+		if inGrown(p, b) {
+			return b, true
+		}
+	}
 	return Box{}, false
+}
+
+func inGrown(p Vec2, w Box) bool {
+	return p.X > w.MinX-PlayerRadius && p.X < w.MaxX+PlayerRadius &&
+		p.Y > w.MinY-PlayerRadius && p.Y < w.MaxY+PlayerRadius
 }
 
 func inWall(p Vec2) bool {

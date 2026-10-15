@@ -7,6 +7,10 @@ export interface InputFrame {
   moveY: number;
   /** Facing in 1/65536 turns. */
   yaw: number;
+  /** Holding the repair key. */
+  act: boolean;
+  /** Pressed the skill check key this tick. */
+  skill: boolean;
 }
 
 /** Guest to host: every input the host has not acknowledged yet, oldest first. */
@@ -43,19 +47,20 @@ export function parseInputs(m: unknown): InputFrame[] | undefined {
   const frames: InputFrame[] = [];
   for (const f of m.inputs) {
     if (isObj(f) && isInt(f.seq) && f.seq > 0 && isInt(f.moveX) && isInt(f.moveY) && isInt(f.yaw)) {
-      frames.push({ seq: f.seq, moveX: int8(f.moveX), moveY: int8(f.moveY), yaw: f.yaw & 0xffff });
+      frames.push({ seq: f.seq, moveX: int8(f.moveX), moveY: int8(f.moveY), yaw: f.yaw & 0xffff, act: f.act === true, skill: f.skill === true });
     }
   }
   return frames;
 }
 
 const isPlayer = (p: unknown): p is SimPlayer =>
-  isObj(p) && isInt(p.id) && isInt(p.role) && isInt(p.x) && isInt(p.y) && isInt(p.yaw);
+  isObj(p) && isInt(p.id) && isInt(p.role) && isInt(p.x) && isInt(p.y) && isInt(p.yaw) && isInt(p.rng) && isInt(p.checkAge);
 
 export function parseSnapshot(m: unknown): SnapshotMsg | undefined {
   if (!isObj(m) || m.t !== "snap" || !isInt(m.ack) || !isObj(m.state)) return undefined;
-  const { tick, players } = m.state;
+  const { tick, players, gens } = m.state;
   if (!isInt(tick) || !Array.isArray(players) || !players.every(isPlayer)) return undefined;
+  if (!Array.isArray(gens) || !gens.every(isInt)) return undefined;
   return m as unknown as SnapshotMsg;
 }
 

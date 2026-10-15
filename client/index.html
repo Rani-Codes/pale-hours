@@ -14,6 +14,10 @@
       #lobby input { width: 5em; text-transform: uppercase; }
       #lobby label { display: flex; gap: 6px; align-items: center; margin-left: 10px; }
       #lobby #volume { width: 110px; padding: 0; border: 0; background: none; margin: 0; accent-color: #9a9aa3; }
+      #check { position: fixed; left: 50%; top: 62%; width: 320px; margin-left: -160px; height: 16px; background: #16161a; border: 1px solid #2a2a33; display: none; }
+      #check-zone { position: absolute; top: 0; bottom: 0; background: #d8d4c8; }
+      #check-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #c0392b; }
+      #check-result { position: fixed; left: 50%; top: 62%; transform: translate(-50%, 24px); font: 13px ui-monospace, monospace; color: #d8d4c8; }
       #netstatus { position: fixed; bottom: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; }
     </style>
     <script src="/wasm_exec.js"></script>
@@ -27,6 +31,8 @@
       <button id="join">Join</button>
       <label>Vol <input id="volume" type="range" min="0" max="100" step="5" /></label>
     </div>
+    <div id="check"><div id="check-zone"></div><div id="check-needle"></div></div>
+    <div id="check-result"></div>
     <div id="netstatus">offline</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

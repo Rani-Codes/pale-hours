@@ -11,6 +11,8 @@ export interface Move {
   moveX: number;
   moveY: number;
   yaw: number;
+  act: boolean;
+  skill: boolean;
 }
 
 /**
@@ -50,7 +52,7 @@ export class InputQueue {
   push(frames: InputFrame[]) {
     for (const f of frames) {
       if (f.seq >= this.next && f.seq < this.next + 2 * this.limits.maxQueued) {
-        this.queued.set(f.seq, { moveX: f.moveX, moveY: f.moveY, yaw: f.yaw });
+        this.queued.set(f.seq, { moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill });
       }
     }
     while (this.queued.size > this.limits.maxQueued) this.dropOldest();
@@ -62,7 +64,7 @@ export class InputQueue {
     if (!this.queued.has(this.next)) {
       // The guest gave up on inputs it held too long, so they will never come.
       const oldest = this.oldest();
-      if (oldest === undefined) return { moveX: 0, moveY: 0, yaw: this.lastYaw };
+      if (oldest === undefined) return { moveX: 0, moveY: 0, yaw: this.lastYaw, act: false, skill: false };
       this.next = oldest;
     }
     const move = this.queued.get(this.next)!;

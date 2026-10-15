@@ -1,5 +1,3 @@
-import type { Move } from "./inputqueue";
-
 export interface Binding {
   up: string;
   down: string;
@@ -11,9 +9,11 @@ export const wasd: Binding = { up: "KeyW", down: "KeyS", left: "KeyA", right: "K
 export const arrows: Binding = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
 
 const held = new Set<string>();
-const bound = new Set([wasd, arrows].flatMap((b) => [b.up, b.down, b.left, b.right]));
+const bound = new Set([wasd, arrows].flatMap((b) => [b.up, b.down, b.left, b.right]).concat(["KeyE", "Space"]));
+let skillPress = false;
 addEventListener("keydown", (e) => {
   if (bound.has(e.code) && !(e.target instanceof HTMLInputElement)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) skillPress = true;
   held.add(e.code);
 });
 addEventListener("keyup", (e) => held.delete(e.code));
@@ -21,6 +21,16 @@ addEventListener("blur", () => held.clear());
 
 const axis = (negative: string, positive: string) => (held.has(positive) ? 127 : 0) - (held.has(negative) ? 127 : 0);
 const clamp = (v: number) => Math.max(-127, Math.min(127, v));
+
+/**
+ * Hold E to repair; press Space on a skill check. A press is reported for
+ * exactly one tick, however long the key is held.
+ */
+export function readActions() {
+  const skill = skillPress;
+  skillPress = false;
+  return { act: held.has("KeyE"), skill };
+}
 
 /** Facing in radians to the sim's 1/65536 turns, 0 to 65535. */
 export function yawUnits(radians: number): number {
@@ -39,11 +49,12 @@ export function readIntent(yawRadians: number, ...bindings: Binding[]) {
     moveX: clamp(Math.round(right * c + forward * s)),
     moveY: clamp(Math.round(forward * c - right * s)),
     yaw: yawUnits(yawRadians),
+    ...readActions(),
   };
 }
 
 /** The combined direction held on any of these bindings. */
-export function readMove(...bindings: Binding[]): Omit<Move, "yaw"> {
+export function readMove(...bindings: Binding[]): { moveX: number; moveY: number } {
   let moveX = 0;
   let moveY = 0;
   for (const b of bindings) {

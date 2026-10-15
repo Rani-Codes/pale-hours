@@ -73,7 +73,10 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] Killer proximity audio (synthesized heartbeat in `client/src/heartbeat.ts`, soft lowpassed thud, master volume slider and [ ] keys; silent beyond 32 m, speeds up and gets louder as the killer closes in, survivors only)
 
 ### Phase 3: the game loop
-- [ ] Generators with skill checks, then exit gates
+- [x] Generators with skill checks (5 sites in `sim/map.go`, repair and checks in `sim/generator.go`; hold E, press Space in the zone; a miss costs 3 s of progress)
+- [ ] A failed skill check makes noise the killer can perceive (needs a killer-side cue: sound direction or a brief aura; decide which)
+- [ ] Exit gates: powered once 4 generators are done, a few seconds to open
+- [ ] Generator tuning pass in a real playtest: 80 s of repair per generator, check gap 4 to 9 s, zone 7 ticks (about 0.23 s)
 - [ ] Killer attack with lag-compensated hits (use Opus)
 - [ ] Injured and downed states, carry, hook, rescue
 - [ ] Win and loss conditions

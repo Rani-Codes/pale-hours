@@ -14,6 +14,7 @@ import {
   Scene,
   WebGLRenderer,
 } from "three";
+import { Color } from "three";
 import { view } from "./config";
 import type { PaleSim, SimPlayer } from "./sim";
 
@@ -38,6 +39,9 @@ export class Renderer {
   private readonly sun = new DirectionalLight(0xffffff, 1.2);
   /** A dim light that travels with the viewer, so nearby walls glow out of the dark. */
   private readonly lantern = new PointLight(view.light.lanternColor, view.light.lantern, view.light.lanternRange, 1.5);
+  private readonly genMats: MeshLambertMaterial[] = [];
+  private readonly idle = new Color(0x6e3b2c);
+  private readonly done = new Color(0x3f8a52);
   private readonly killerMat = new MeshLambertMaterial({ color: 0xc0392b });
   private readonly survivorMat = new MeshLambertMaterial({ color: 0xd8d4c8 });
 
@@ -65,6 +69,16 @@ export class Renderer {
       this.scene.add(mesh);
     }
 
+    // Generators: a box that turns from rust to green as it is repaired.
+    const g = sim.generatorHalf / M;
+    for (const site of sim.genSites) {
+      const mat = new MeshLambertMaterial({ color: this.idle });
+      this.genMats.push(mat);
+      const box = new Mesh(new BoxGeometry(2 * g, 1.2, 2 * g), mat);
+      box.position.set(site.x / M, 0.6, -site.y / M);
+      this.scene.add(box);
+    }
+
     this.overhead = new OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
     this.overhead.position.set(0, 100, 0);
     this.overhead.up.set(0, 0, -1);
@@ -76,8 +90,9 @@ export class Renderer {
    * Draw one frame. self is this tab's player and yaw/pitch (radians) where
    * it looks, straight from the mouse so the view never waits on the network.
    */
-  draw(players: SimPlayer[], self: number | undefined, yaw: number, pitch: number): void {
+  draw(players: SimPlayer[], gens: number[], self: number | undefined, yaw: number, pitch: number): void {
     this.resize();
+    this.genMats.forEach((mat, i) => mat.color.copy(this.idle).lerp(this.done, Math.min(1, (gens[i] ?? 0) / this.sim.genTicks)));
     const live = new Set<number>();
     for (const p of players) {
       live.add(p.id);

@@ -1,14 +1,26 @@
 import { net, spawns } from "./config";
 import { InputQueue } from "./inputqueue";
 import { lerpYaw, SnapshotBuffer } from "./interp";
-import { arrows, readIntent, readMove, wasd } from "./keys";
+import { arrows, readActions, readIntent, readMove, wasd } from "./keys";
 import { look } from "./look";
 import type { Link } from "./net";
 import { parseInputs, parseSnapshot, parseWelcome, type InputFrame, type SnapshotMsg } from "./protocol";
-import type { PaleSim, SimPlayer, SimState } from "./sim";
+import { newPlayer, type PaleSim, type SimInput, type SimPlayer, type SimState } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
 const KILLER_ID = 1;
+
+/** The sim's input for a player, from whatever moves they sent. */
+function toInput(id: number, f: { moveX: number; moveY: number; yaw: number; act: boolean; skill: boolean }): SimInput {
+  return { id, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill };
+}
+
+/** Each player draws skill checks from their own stream, so seed one per player from the match seed. */
+function playerRng(seed: number, id: number): number {
+  return (seed ^ Math.imul(id, 0x9e3779b1)) >>> 0 || 1;
+}
+
+const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
 
 /**
  * One way of running the match in this tab. Each rendered frame, the page
@@ -17,7 +29,7 @@ const KILLER_ID = 1;
 export interface Session {
   tick(): void;
   flush?(): void;
-  view(now: number, alpha: number): { players: SimPlayer[]; hud: string[]; self?: number };
+  view(now: number, alpha: number): { players: SimPlayer[]; hud: string[]; self?: number; gens: number[] };
 }
 
 /** Players drawn part-way between the last two ticks. */
@@ -36,20 +48,22 @@ export class LocalSession implements Session {
 
   constructor(sim: PaleSim) {
     this.sim = sim;
+    const seed = randomSeed();
     sim.load({
       tick: 0,
       players: [
-        { id: KILLER_ID, role: sim.roles.killer, x: spawns.killer.x * M, y: spawns.killer.y * M, yaw: 0 },
-        { id: 2, role: sim.roles.survivor, x: spawns.survivors[0].x * M, y: spawns.survivors[0].y * M, yaw: 0 },
+        newPlayer(KILLER_ID, sim.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(seed, KILLER_ID)),
+        newPlayer(2, sim.roles.survivor, spawns.survivors[0].x * M, spawns.survivors[0].y * M, playerRng(seed, 2)),
       ],
+      gens: sim.genSites.map(() => 0),
     });
     this.prev = this.curr = sim.state();
   }
 
   tick() {
     this.sim.step([
-      { id: KILLER_ID, ...readIntent(look.yaw, wasd) },
-      { id: 2, ...readMove(arrows), yaw: 0 },
+      { id: KILLER_ID, ...readIntent(look.yaw, wasd), act: false, skill: false },
+      { id: 2, ...readMove(arrows), yaw: 0, ...readActions() },
     ]);
     this.prev = this.curr;
     this.curr = this.sim.state();
@@ -60,6 +74,7 @@ export class LocalSession implements Session {
       players: blend(this.prev, this.curr, alpha),
       hud: [`tick ${this.curr.tick}`, "killer: WASD + mouse   survivor: arrow keys"],
       self: KILLER_ID,
+      gens: this.curr.gens,
     };
   }
 }
@@ -73,14 +88,17 @@ interface Guest {
 export class HostSession implements Session {
   private sim: PaleSim;
   private guests = new Map<number, Guest>();
+  private seed: number;
   private prev: SimState;
   private curr: SimState;
 
   constructor(sim: PaleSim) {
     this.sim = sim;
+    this.seed = randomSeed();
     sim.load({
       tick: 0,
-      players: [{ id: KILLER_ID, role: sim.roles.killer, x: spawns.killer.x * M, y: spawns.killer.y * M, yaw: 0 }],
+      players: [newPlayer(KILLER_ID, sim.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(this.seed, KILLER_ID))],
+      gens: sim.genSites.map(() => 0),
     });
     this.prev = this.curr = sim.state();
   }
@@ -95,7 +113,7 @@ export class HostSession implements Session {
       maxQueued: net.maxQueuedInputs,
     });
     this.guests.set(id, { link, queue });
-    this.edit((s) => s.players.push({ id, role: this.sim.roles.survivor, x: spawns.survivors[slot].x * M, y: spawns.survivors[slot].y * M, yaw: 0 }));
+    this.edit((s) => s.players.push(newPlayer(id, this.sim.roles.survivor, spawns.survivors[slot].x * M, spawns.survivors[slot].y * M, playerRng(this.seed, id))));
 
     link.state.onMessage((m) => {
       const frames = parseInputs(m);
@@ -116,8 +134,8 @@ export class HostSession implements Session {
   }
 
   tick() {
-    const inputs = [{ id: KILLER_ID, ...readIntent(look.yaw, wasd, arrows) }];
-    for (const [id, g] of this.guests) inputs.push({ id, ...g.queue.take() });
+    const inputs = [toInput(KILLER_ID, { ...readIntent(look.yaw, wasd, arrows), act: false, skill: false })];
+    for (const [id, g] of this.guests) inputs.push(toInput(id, g.queue.take()));
     this.sim.step(inputs);
     this.prev = this.curr;
     this.curr = this.sim.state();
@@ -130,7 +148,7 @@ export class HostSession implements Session {
   view(_now: number, alpha: number) {
     const hud = [`hosting   tick ${this.curr.tick}   killer: WASD or arrows`];
     for (const [id, g] of this.guests) hud.push(`guest ${id}: input queue ${g.queue.depth}, dropped ${g.queue.dropped}`);
-    return { players: blend(this.prev, this.curr, alpha), hud, self: KILLER_ID };
+    return { players: blend(this.prev, this.curr, alpha), hud, self: KILLER_ID, gens: this.curr.gens };
   }
 
   stats() {
@@ -184,7 +202,7 @@ export class GuestSession implements Session {
     const frame = { seq: ++this.seq, ...readIntent(look.yaw, wasd, arrows) };
     this.unacked.push(frame);
     if (this.unacked.length > net.maxUnackedInputs) this.unacked.shift();
-    this.sim.step([{ id: this.selfId, moveX: frame.moveX, moveY: frame.moveY, yaw: frame.yaw }]);
+    this.sim.step([toInput(this.selfId, frame)]);
     this.prev = this.curr;
     this.curr = this.sim.state();
   }
@@ -199,7 +217,7 @@ export class GuestSession implements Session {
     const before = this.curr && this.self(this.curr);
     this.unacked = this.unacked.filter((f) => f.seq > snap.ack);
     this.sim.load(snap.state);
-    for (const f of this.unacked) this.sim.step([{ id: this.selfId!, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw }]);
+    for (const f of this.unacked) this.sim.step([toInput(this.selfId!, f)]);
     this.curr = this.sim.state();
     this.prev ??= this.curr;
 
@@ -220,6 +238,7 @@ export class GuestSession implements Session {
     return {
       players: [...others, ...self],
       self: this.selfId,
+      gens: this.curr?.gens ?? this.newest?.state.gens ?? [],
       hud: [
         this.selfId === undefined ? "joined, waiting for host" : `survivor ${this.selfId}   move: WASD or arrows`,
         `unacked inputs ${this.unacked.length}   corrections ${this.corrections} (last ${this.lastCorrectionM.toFixed(3)} m)`,
