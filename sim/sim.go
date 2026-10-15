@@ -16,13 +16,18 @@ const (
 type Vec2 struct{ X, Y int32 }
 
 // Input is one tick of a player's intent. MoveX and MoveY are a world-space
-// direction where MaxAxis on one axis means full speed.
-type Input struct{ MoveX, MoveY int8 }
+// direction where MaxAxis on one axis means full speed. Yaw is where the
+// player faces, in 1/65536 turns: 0 is +Y (north) and it grows clockwise.
+type Input struct {
+	MoveX, MoveY int8
+	Yaw          uint16
+}
 
 type Player struct {
 	ID   PlayerID
 	Role Role
 	Pos  Vec2
+	Yaw  uint16
 }
 
 type State struct {
@@ -35,7 +40,11 @@ type State struct {
 func Step(s State, inputs map[PlayerID]Input) State {
 	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players))}
 	for i, p := range s.Players {
-		p.Pos = move(p.Pos, inputs[p.ID], roleSpeed[p.Role])
+		in, ok := inputs[p.ID]
+		p.Pos = move(p.Pos, in, roleSpeed[p.Role])
+		if ok {
+			p.Yaw = in.Yaw
+		}
 		next.Players[i] = p
 	}
 	return next

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SnapshotBuffer } from "./interp.ts";
+import { lerpYaw, SnapshotBuffer } from "./interp.ts";
 
 const tickMs = 10;
-const snap = (tick: number, x: number) => ({ tick, players: [{ id: 2, role: 0, x, y: 0 }] });
+const snap = (tick: number, x: number) => ({ tick, players: [{ id: 2, role: 0, x, y: 0, yaw: 0 }] });
 const xAt = (b: SnapshotBuffer, now: number) => b.sample(now)[0]?.x;
 
 test("draws remote players the configured delay behind the host clock", () => {
@@ -55,4 +55,11 @@ test("never draws backwards when the clock estimate slips", () => {
 test("draws nothing before the first snapshot", () => {
   const b = new SnapshotBuffer(tickMs, 30, 1);
   assert.deepEqual(b.sample(0), []);
+});
+
+test("lerpYaw turns the short way across the wrap", () => {
+  assert.equal(lerpYaw(0, 16384, 0.5), 8192);
+  assert.equal(lerpYaw(65000, 536, 0.5), 0);
+  assert.equal(lerpYaw(536, 65000, 0.5), 0);
+  assert.equal(lerpYaw(100, 100, 0.7), 100);
 });

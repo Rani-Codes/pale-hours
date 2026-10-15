@@ -1,7 +1,8 @@
 import { net, spawns } from "./config";
 import { InputQueue } from "./inputqueue";
-import { SnapshotBuffer } from "./interp";
-import { arrows, readMove, wasd } from "./keys";
+import { lerpYaw, SnapshotBuffer } from "./interp";
+import { arrows, readIntent, readMove, wasd } from "./keys";
+import { look } from "./look";
 import type { Link } from "./net";
 import { parseInputs, parseSnapshot, parseWelcome, type InputFrame, type SnapshotMsg } from "./protocol";
 import type { PaleSim, SimPlayer, SimState } from "./sim";
@@ -16,14 +17,14 @@ const KILLER_ID = 1;
 export interface Session {
   tick(): void;
   flush?(): void;
-  view(now: number, alpha: number): { players: SimPlayer[]; hud: string[] };
+  view(now: number, alpha: number): { players: SimPlayer[]; hud: string[]; self?: number };
 }
 
 /** Players drawn part-way between the last two ticks. */
 function blend(prev: SimState, curr: SimState, alpha: number): SimPlayer[] {
   return curr.players.map((p) => {
     const a = prev.players.find((q) => q.id === p.id) ?? p;
-    return { ...p, x: a.x + (p.x - a.x) * alpha, y: a.y + (p.y - a.y) * alpha };
+    return { ...p, x: a.x + (p.x - a.x) * alpha, y: a.y + (p.y - a.y) * alpha, yaw: lerpYaw(a.yaw, p.yaw, alpha) };
   });
 }
 
@@ -38,8 +39,8 @@ export class LocalSession implements Session {
     sim.load({
       tick: 0,
       players: [
-        { id: KILLER_ID, role: sim.roles.killer, x: spawns.killer.x * M, y: spawns.killer.y * M },
-        { id: 2, role: sim.roles.survivor, x: spawns.survivors[0].x * M, y: spawns.survivors[0].y * M },
+        { id: KILLER_ID, role: sim.roles.killer, x: spawns.killer.x * M, y: spawns.killer.y * M, yaw: 0 },
+        { id: 2, role: sim.roles.survivor, x: spawns.survivors[0].x * M, y: spawns.survivors[0].y * M, yaw: 0 },
       ],
     });
     this.prev = this.curr = sim.state();
@@ -47,8 +48,8 @@ export class LocalSession implements Session {
 
   tick() {
     this.sim.step([
-      { id: KILLER_ID, ...readMove(wasd) },
-      { id: 2, ...readMove(arrows) },
+      { id: KILLER_ID, ...readIntent(look.yaw, wasd) },
+      { id: 2, ...readMove(arrows), yaw: 0 },
     ]);
     this.prev = this.curr;
     this.curr = this.sim.state();
@@ -57,7 +58,8 @@ export class LocalSession implements Session {
   view(_now: number, alpha: number) {
     return {
       players: blend(this.prev, this.curr, alpha),
-      hud: [`tick ${this.curr.tick}`, "killer: WASD   survivor: arrow keys"],
+      hud: [`tick ${this.curr.tick}`, "killer: WASD + mouse   survivor: arrow keys"],
+      self: KILLER_ID,
     };
   }
 }
@@ -78,7 +80,7 @@ export class HostSession implements Session {
     this.sim = sim;
     sim.load({
       tick: 0,
-      players: [{ id: KILLER_ID, role: sim.roles.killer, x: spawns.killer.x * M, y: spawns.killer.y * M }],
+      players: [{ id: KILLER_ID, role: sim.roles.killer, x: spawns.killer.x * M, y: spawns.killer.y * M, yaw: 0 }],
     });
     this.prev = this.curr = sim.state();
   }
@@ -93,7 +95,7 @@ export class HostSession implements Session {
       maxQueued: net.maxQueuedInputs,
     });
     this.guests.set(id, { link, queue });
-    this.edit((s) => s.players.push({ id, role: this.sim.roles.survivor, x: spawns.survivors[slot].x * M, y: spawns.survivors[slot].y * M }));
+    this.edit((s) => s.players.push({ id, role: this.sim.roles.survivor, x: spawns.survivors[slot].x * M, y: spawns.survivors[slot].y * M, yaw: 0 }));
 
     link.state.onMessage((m) => {
       const frames = parseInputs(m);
@@ -114,7 +116,7 @@ export class HostSession implements Session {
   }
 
   tick() {
-    const inputs = [{ id: KILLER_ID, ...readMove(wasd, arrows) }];
+    const inputs = [{ id: KILLER_ID, ...readIntent(look.yaw, wasd, arrows) }];
     for (const [id, g] of this.guests) inputs.push({ id, ...g.queue.take() });
     this.sim.step(inputs);
     this.prev = this.curr;
@@ -128,7 +130,7 @@ export class HostSession implements Session {
   view(_now: number, alpha: number) {
     const hud = [`hosting   tick ${this.curr.tick}   killer: WASD or arrows`];
     for (const [id, g] of this.guests) hud.push(`guest ${id}: input queue ${g.queue.depth}, dropped ${g.queue.dropped}`);
-    return { players: blend(this.prev, this.curr, alpha), hud };
+    return { players: blend(this.prev, this.curr, alpha), hud, self: KILLER_ID };
   }
 
   stats() {
@@ -179,10 +181,10 @@ export class GuestSession implements Session {
     if (this.newest && this.newest.state.tick > this.reconciledTick) this.reconcile(this.newest);
     if (!this.curr) return;
 
-    const frame = { seq: ++this.seq, ...readMove(wasd, arrows) };
+    const frame = { seq: ++this.seq, ...readIntent(look.yaw, wasd, arrows) };
     this.unacked.push(frame);
     if (this.unacked.length > net.maxUnackedInputs) this.unacked.shift();
-    this.sim.step([{ id: this.selfId, moveX: frame.moveX, moveY: frame.moveY }]);
+    this.sim.step([{ id: this.selfId, moveX: frame.moveX, moveY: frame.moveY, yaw: frame.yaw }]);
     this.prev = this.curr;
     this.curr = this.sim.state();
   }
@@ -197,7 +199,7 @@ export class GuestSession implements Session {
     const before = this.curr && this.self(this.curr);
     this.unacked = this.unacked.filter((f) => f.seq > snap.ack);
     this.sim.load(snap.state);
-    for (const f of this.unacked) this.sim.step([{ id: this.selfId!, moveX: f.moveX, moveY: f.moveY }]);
+    for (const f of this.unacked) this.sim.step([{ id: this.selfId!, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw }]);
     this.curr = this.sim.state();
     this.prev ??= this.curr;
 
@@ -217,6 +219,7 @@ export class GuestSession implements Session {
     const self = this.prev && this.curr ? blend(this.prev, this.curr, alpha).filter((p) => p.id === this.selfId) : [];
     return {
       players: [...others, ...self],
+      self: this.selfId,
       hud: [
         this.selfId === undefined ? "joined, waiting for host" : `survivor ${this.selfId}   move: WASD or arrows`,
         `unacked inputs ${this.unacked.length}   corrections ${this.corrections} (last ${this.lastCorrectionM.toFixed(3)} m)`,

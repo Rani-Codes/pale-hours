@@ -68,7 +68,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 ### Phase 2: the scary part
 - [x] Three.js gray-box map (layout and wall collision live in `sim/map.go`; the client builds meshes from `paleSim.walls`)
 - [ ] Randomized map layout per match: generate walls from a seed (host picks it, guests receive it in the match setup), so players can't memorize the map. Needs `Walls` to move from a package global into sim state, and a generator that guarantees spawns and loops stay valid, with tests.
-- [ ] Killer first-person camera, survivor third-person camera
+- [x] Killer first-person camera, survivor third-person camera (click the canvas for mouse look, M toggles an overhead map; facing is `Yaw` in sim input and state)
 - [ ] Fog, darkness, killer proximity audio (a heartbeat that ramps up as the killer gets close)
 
 ### Phase 3: the game loop

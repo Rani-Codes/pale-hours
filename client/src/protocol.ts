@@ -5,6 +5,8 @@ export interface InputFrame {
   seq: number;
   moveX: number;
   moveY: number;
+  /** Facing in 1/65536 turns. */
+  yaw: number;
 }
 
 /** Guest to host: every input the host has not acknowledged yet, oldest first. */
@@ -40,15 +42,15 @@ export function parseInputs(m: unknown): InputFrame[] | undefined {
   if (!isObj(m) || m.t !== "in" || !Array.isArray(m.inputs)) return undefined;
   const frames: InputFrame[] = [];
   for (const f of m.inputs) {
-    if (isObj(f) && isInt(f.seq) && f.seq > 0 && isInt(f.moveX) && isInt(f.moveY)) {
-      frames.push({ seq: f.seq, moveX: int8(f.moveX), moveY: int8(f.moveY) });
+    if (isObj(f) && isInt(f.seq) && f.seq > 0 && isInt(f.moveX) && isInt(f.moveY) && isInt(f.yaw)) {
+      frames.push({ seq: f.seq, moveX: int8(f.moveX), moveY: int8(f.moveY), yaw: f.yaw & 0xffff });
     }
   }
   return frames;
 }
 
 const isPlayer = (p: unknown): p is SimPlayer =>
-  isObj(p) && isInt(p.id) && isInt(p.role) && isInt(p.x) && isInt(p.y);
+  isObj(p) && isInt(p.id) && isInt(p.role) && isInt(p.x) && isInt(p.y) && isInt(p.yaw);
 
 export function parseSnapshot(m: unknown): SnapshotMsg | undefined {
   if (!isObj(m) || m.t !== "snap" || !isInt(m.ack) || !isObj(m.state)) return undefined;

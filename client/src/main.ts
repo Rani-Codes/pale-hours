@@ -1,5 +1,6 @@
 import { initLobby } from "./lobby";
 import { GuestSession, HostSession, LocalSession, type Session } from "./session";
+import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer } from "./sim";
 
@@ -9,6 +10,10 @@ const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const hud = document.querySelector<HTMLDivElement>("#hud")!;
 const sim = await loadSim("/sim.wasm");
 const renderer = new Renderer(canvas, sim);
+initLook(canvas);
+addEventListener("keydown", (e) => {
+  if (e.code === "KeyM" && !(e.target instanceof HTMLInputElement)) renderer.showMap = !renderer.showMap;
+});
 let session: Session;
 // Exposed for the tools/ drivers.
 function use(s: Session) {
@@ -40,14 +45,14 @@ function frame(now: number) {
     carry -= tickMs;
   }
   session.flush?.();
-  const { players, hud: lines } = session.view(now, carry / tickMs);
-  draw(players, lines);
+  const { players, hud: lines, self } = session.view(now, carry / tickMs);
+  draw(players, lines, self);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-function draw(players: SimPlayer[], lines: string[]) {
-  renderer.draw(players);
+function draw(players: SimPlayer[], lines: string[], self: number | undefined) {
+  renderer.draw(players, self, look.yaw, look.pitch);
   lines = [...lines, ""];
   for (const p of players) {
     lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}`);

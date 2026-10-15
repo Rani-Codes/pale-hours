@@ -24,7 +24,7 @@ func main() {
 	select {}
 }
 
-// load({tick, players: [{id, role, x, y}, ...]}) replaces the state, in the
+// load({tick, players: [{id, role, x, y, yaw}, ...]}) replaces the state, in the
 // same shape state() returns, so a guest can rewind to a host snapshot.
 func load(_ js.Value, args []js.Value) any {
 	list := args[0].Get("players")
@@ -35,13 +35,14 @@ func load(_ js.Value, args []js.Value) any {
 			ID:   sim.PlayerID(p.Get("id").Int()),
 			Role: sim.Role(p.Get("role").Int()),
 			Pos:  sim.Vec2{X: int32(p.Get("x").Int()), Y: int32(p.Get("y").Int())},
+			Yaw:  uint16(p.Get("yaw").Int()),
 		}
 	}
 	state = sim.State{Tick: uint32(args[0].Get("tick").Int()), Players: players}
 	return nil
 }
 
-// step([{id, moveX, moveY}, ...]) advances one tick.
+// step([{id, moveX, moveY, yaw}, ...]) advances one tick.
 func step(_ js.Value, args []js.Value) any {
 	list := args[0]
 	inputs := make(map[sim.PlayerID]sim.Input, list.Length())
@@ -50,13 +51,14 @@ func step(_ js.Value, args []js.Value) any {
 		inputs[sim.PlayerID(in.Get("id").Int())] = sim.Input{
 			MoveX: int8(in.Get("moveX").Int()),
 			MoveY: int8(in.Get("moveY").Int()),
+			Yaw:   uint16(in.Get("yaw").Int()),
 		}
 	}
 	state = sim.Step(state, inputs)
 	return nil
 }
 
-// state() returns {tick, players: [{id, role, x, y}, ...]}.
+// state() returns {tick, players: [{id, role, x, y, yaw}, ...]}.
 func snapshot(js.Value, []js.Value) any {
 	players := make([]any, len(state.Players))
 	for i, p := range state.Players {
@@ -65,6 +67,7 @@ func snapshot(js.Value, []js.Value) any {
 			"role": int(p.Role),
 			"x":    int(p.Pos.X),
 			"y":    int(p.Pos.Y),
+			"yaw":  int(p.Yaw),
 		}
 	}
 	return map[string]any{"tick": int(state.Tick), "players": players}

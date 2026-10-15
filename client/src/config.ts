@@ -24,6 +24,16 @@ export const net = {
   maxQueuedInputs: 60, // hard cap; anything beyond is dropped
 };
 
+// Camera and look. Angles in degrees, distances in meters.
+export const view = {
+  mouseSensitivity: 0.0022, // radians per pixel of mouse movement
+  maxPitch: 60,
+  killer: { fov: 62, eyeHeight: 1.65 }, // narrow on purpose: the killer sees less than survivors
+  survivor: { fov: 82, distance: 3.6, height: 2.5, shoulder: 0.5 },
+  near: 0.1,
+  far: 200,
+};
+
 // Simulated bad network for testing, applied to everything this tab sends:
 // ?delay=100&jitter=20&loss=0.05. Delay is one way, so round trip grows by twice it.
 // Loss and jitter apply only to the unreliable channel; the reliable one just gets the delay.

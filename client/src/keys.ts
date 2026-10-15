@@ -22,8 +22,28 @@ addEventListener("blur", () => held.clear());
 const axis = (negative: string, positive: string) => (held.has(positive) ? 127 : 0) - (held.has(negative) ? 127 : 0);
 const clamp = (v: number) => Math.max(-127, Math.min(127, v));
 
+/** Facing in radians to the sim's 1/65536 turns, 0 to 65535. */
+export function yawUnits(radians: number): number {
+  return Math.round((radians / (2 * Math.PI)) * 65536) & 0xffff;
+}
+
+/**
+ * Movement relative to where the player faces: W goes forward, D goes right.
+ * The sim only knows world directions, so the rotation happens here.
+ */
+export function readIntent(yawRadians: number, ...bindings: Binding[]) {
+  const { moveX: right, moveY: forward } = readMove(...bindings);
+  const s = Math.sin(yawRadians);
+  const c = Math.cos(yawRadians);
+  return {
+    moveX: clamp(Math.round(right * c + forward * s)),
+    moveY: clamp(Math.round(forward * c - right * s)),
+    yaw: yawUnits(yawRadians),
+  };
+}
+
 /** The combined direction held on any of these bindings. */
-export function readMove(...bindings: Binding[]): Move {
+export function readMove(...bindings: Binding[]): Omit<Move, "yaw"> {
   let moveX = 0;
   let moveY = 0;
   for (const b of bindings) {

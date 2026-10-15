@@ -1,5 +1,11 @@
 import type { SimPlayer, SimState } from "./sim";
 
+/** Interpolates a facing in 1/65536 turns the short way round. */
+export function lerpYaw(from: number, to: number, alpha: number): number {
+  const diff = ((((to - from) % 65536) + 98304) % 65536) - 32768;
+  return (((from + diff * alpha) % 65536) + 65536) % 65536;
+}
+
 /**
  * Guest side: snapshots of other players, drawn a fixed delay behind an
  * estimate of the host's clock so there is usually a later snapshot to
@@ -58,7 +64,7 @@ export class SnapshotBuffer {
     const alpha = (t - a.tick) / (b.tick - a.tick);
     return b.players.map((p) => {
       const from = a.players.find((q) => q.id === p.id) ?? p;
-      return { ...p, x: from.x + (p.x - from.x) * alpha, y: from.y + (p.y - from.y) * alpha };
+      return { ...p, x: from.x + (p.x - from.x) * alpha, y: from.y + (p.y - from.y) * alpha, yaw: lerpYaw(from.yaw, p.yaw, alpha) };
     });
   }
 }

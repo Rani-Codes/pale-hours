@@ -3,6 +3,8 @@ export interface SimPlayer {
   role: number;
   x: number;
   y: number;
+  /** Facing in 1/65536 turns: 0 is north, growing clockwise. */
+  yaw: number;
 }
 
 export interface SimState {
@@ -14,6 +16,7 @@ export interface SimInput {
   id: number;
   moveX: number;
   moveY: number;
+  yaw: number;
 }
 
 /** An axis-aligned wall in micrometers. */
