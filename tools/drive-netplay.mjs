@@ -101,12 +101,14 @@ const trace = guest.evaluate(
   (ms) =>
     new Promise((r) => {
       const ys = [];
+      const ts = [];
       const end = performance.now() + ms;
       const step = () => {
         const killer = paleSession.view(performance.now(), 0).players.find((p) => p.id === 1);
         ys.push(killer.y);
+        ts.push(performance.now());
         if (performance.now() < end) requestAnimationFrame(step);
-        else r(ys);
+        else r({ ys, ts });
       };
       requestAnimationFrame(step);
     }),
@@ -114,7 +116,7 @@ const trace = guest.evaluate(
 );
 await host.waitForTimeout(1000);
 await host.keyboard.up("KeyW");
-const ys = await trace;
+const { ys, ts } = await trace;
 metrics.killerShownMs = (await firstDrawn) - pressedAt;
 console.log(`killer keypress on host to motion drawn on guest: ${metrics.killerShownMs} ms`);
 const k1 = (await hostState()).players.find((p) => p.id === 1);
@@ -122,12 +124,24 @@ const drawn = ys.at(-1);
 check("guest draws the killer where the host has it once it stops", drawn === k1.y, `host y ${k1.y}, drawn y ${drawn}`);
 const backwards = ys.slice(1).filter((y, i) => y < ys[i]).length;
 check("drawn killer never moves backwards", backwards === 0, `${backwards} backward steps over ${ys.length} frames`);
-const killerPerFrame = 4.6e6 / 60;
-const biggest = Math.max(...ys.slice(1).map((y, i) => y - ys[i]));
+// A frame that arrives late legitimately shows more movement, so judge each
+// step against the real time since the previous frame (never less than one
+// 60 Hz frame), and report the worst frame gap so a slow browser is visible.
+const killerPerMs = 4.6e6 / 1000;
+let worst = { step: 0, allowed: 1, gapMs: 0 };
+let overshoot = 0;
+for (let i = 1; i < ys.length; i++) {
+  const gapMs = ts[i] - ts[i - 1];
+  const allowed = 2.5 * killerPerMs * Math.max(gapMs, 1000 / 60);
+  const step = ys[i] - ys[i - 1];
+  overshoot = Math.max(overshoot, step / allowed);
+  if (step / allowed >= worst.step / worst.allowed) worst = { step, allowed, gapMs };
+}
+const maxGap = Math.max(...ts.slice(1).map((t, i) => t - ts[i]));
 check(
-  "drawn killer never jumps more than two frames of movement",
-  biggest <= 2.5 * killerPerFrame,
-  `largest step ${fmtM(biggest)} (killer covers ${fmtM(killerPerFrame)} per 60 Hz frame)`,
+  "drawn killer never jumps more than two and a half frames of movement",
+  overshoot <= 1,
+  `worst step ${fmtM(worst.step)} over a ${worst.gapMs.toFixed(0)} ms frame (allowed ${fmtM(worst.allowed)}); longest frame gap ${maxGap.toFixed(0)} ms`,
 );
 // Only a lower bound: the key-up can reach the host tab late, which says nothing about netcode.
 check("killer moved for about one second", k1.y - k0.y > 3.9e6, fmtM(k1.y - k0.y));

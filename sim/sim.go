@@ -42,6 +42,7 @@ type Player struct {
 	CheckAge    int16  // ticks since the active check began
 	CheckIn     int16  // ticks of repairing until the next check
 	Rng         uint32 // this player's skill check stream; seed it per player
+	Escaped     bool   // left through a gate; out of play
 }
 
 type State struct {
@@ -49,19 +50,30 @@ type State struct {
 	Players []Player
 	// Gens runs parallel to GenSites.
 	Gens []Generator
+	// Gates runs parallel to GateSites.
+	Gates []Gate
 }
 
 // Step advances the state by one tick. A player with no entry in inputs
 // stands still. The input state is not modified.
 func Step(s State, inputs map[PlayerID]Input) State {
-	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players)), Gens: append([]Generator(nil), s.Gens...)}
+	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players)), Gens: append([]Generator(nil), s.Gens...), Gates: append([]Gate(nil), s.Gates...)}
+	for i := range next.Gens {
+		next.Gens[i].Noise = max(next.Gens[i].Noise-1, 0)
+	}
+	powered := gensDone(s.Gens) >= GensRequired
 	for i, p := range s.Players {
+		if p.Escaped {
+			next.Players[i] = p
+			continue
+		}
 		in, ok := inputs[p.ID]
 		p.Pos = move(p.Pos, in, roleSpeed[p.Role])
 		if ok {
 			p.Yaw = in.Yaw
 		}
 		stepRepair(&p, in, ok, next.Gens)
+		stepGate(&p, in, ok, next.Gates, s.Gates, powered)
 		next.Players[i] = p
 	}
 	return next

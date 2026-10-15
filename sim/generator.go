@@ -2,7 +2,12 @@ package sim
 
 // Generator is one repairable machine. Its site is fixed by the map, so the
 // state only carries how far along it is, in repair ticks.
-type Generator struct{ Progress int32 }
+type Generator struct {
+	Progress int32
+	// Noise counts down the ticks a missed skill check stays loud. The killer
+	// sees where it came from while it is above zero.
+	Noise int16
+}
 
 // Done reports whether the generator is fully repaired.
 func (g Generator) Done() bool { return g.Progress >= GeneratorTicks }
@@ -66,6 +71,7 @@ func stepRepair(p *Player, in Input, hasInput bool, gens []Generator) {
 		endCheck(p, CheckHit)
 	case press || p.CheckAge >= CheckDuration:
 		g.Progress = max(g.Progress-CheckPenalty, 0)
+		g.Noise = NoiseTicks
 		endCheck(p, CheckMiss)
 	}
 }
@@ -75,6 +81,7 @@ func stepRepair(p *Player, in Input, hasInput bool, gens []Generator) {
 func missCheck(p *Player, gens []Generator, gen int) {
 	if gen >= 0 {
 		gens[gen].Progress = max(gens[gen].Progress-CheckPenalty, 0)
+		gens[gen].Noise = NoiseTicks
 	}
 	endCheck(p, CheckMiss)
 }
@@ -128,4 +135,44 @@ func rand(state *uint32) int {
 	x ^= x << 5
 	*state = x
 	return int(x >> 1)
+}
+
+// Gate is one exit. It opens by hand once enough generators are done.
+type Gate struct{ Progress int32 }
+
+// Open reports whether survivors can walk out through the gate.
+func (g Gate) Open() bool { return g.Progress >= GateTicks }
+
+// gensDone counts finished generators.
+func gensDone(gens []Generator) int {
+	n := 0
+	for _, g := range gens {
+		if g.Done() {
+			n++
+		}
+	}
+	return n
+}
+
+// stepGate opens a powered gate for a survivor holding Act beside it. open
+// is the gates as the tick began, so who escapes never depends on the order
+// players are processed in.
+func stepGate(p *Player, in Input, hasInput bool, gates []Gate, open []Gate, powered bool) {
+	if p.Role != Survivor {
+		return
+	}
+	for i, site := range GateSites {
+		if i >= len(gates) || distSq(p.Pos, site) > int64(GateRange)*int64(GateRange) {
+			continue
+		}
+		if open[i].Open() {
+			p.Escaped = true
+			return
+		}
+		if powered && hasInput && in.Act {
+			gates[i].Progress = min(gates[i].Progress+1, GateTicks)
+			p.Repairing = true
+		}
+		return
+	}
 }

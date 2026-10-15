@@ -19,6 +19,11 @@ func main() {
 		"walls":         walls(),
 		"genSites":      genSites(),
 		"genTicks":      sim.GeneratorTicks,
+		"gateSites":     gateSites(),
+		"gateTicks":     sim.GateTicks,
+		"gateRange":     sim.GateRange,
+		"gensRequired":  sim.GensRequired,
+		"noiseTicks":    sim.NoiseTicks,
 		"repairRange":   sim.RepairRange,
 		"generatorHalf": sim.GeneratorHalf,
 		"check":         map[string]any{"duration": sim.CheckDuration, "zoneLen": sim.CheckZoneLen},
@@ -50,19 +55,30 @@ func load(_ js.Value, args []js.Value) any {
 			CheckAge:    int16(p.Get("checkAge").Int()),
 			CheckIn:     int16(p.Get("checkIn").Int()),
 			Rng:         uint32(p.Get("rng").Int()),
+			Escaped:     p.Get("escaped").Bool(),
 		}
 	}
-	genList := args[0].Get("gens")
+	genList, noiseList, gateList := args[0].Get("gens"), args[0].Get("noise"), args[0].Get("gates")
 	gens := make([]sim.Generator, len(sim.GenSites))
 	for i := range gens {
 		if i < genList.Length() {
 			gens[i].Progress = int32(genList.Index(i).Int())
+		}
+		if i < noiseList.Length() {
+			gens[i].Noise = int16(noiseList.Index(i).Int())
+		}
+	}
+	gates := make([]sim.Gate, len(sim.GateSites))
+	for i := range gates {
+		if i < gateList.Length() {
+			gates[i].Progress = int32(gateList.Index(i).Int())
 		}
 	}
 	state = sim.State{
 		Tick:    uint32(args[0].Get("tick").Int()),
 		Players: players,
 		Gens:    gens,
+		Gates:   gates,
 	}
 	return nil
 }
@@ -85,7 +101,7 @@ func step(_ js.Value, args []js.Value) any {
 	return nil
 }
 
-// state() returns {tick, players: [{id, role, x, y, yaw, ...repair fields}, ...], gens: [progress, ...]}.
+// state() returns {tick, players: [{id, role, x, y, yaw, ...repair fields}, ...], gens: [progress, ...], noise: [ticks, ...], gates: [progress, ...]}.
 func snapshot(js.Value, []js.Value) any {
 	players := make([]any, len(state.Players))
 	for i, p := range state.Players {
@@ -104,13 +120,20 @@ func snapshot(js.Value, []js.Value) any {
 			"checkAge":    int(p.CheckAge),
 			"checkIn":     int(p.CheckIn),
 			"rng":         int(p.Rng),
+			"escaped":     p.Escaped,
 		}
 	}
 	gens := make([]any, len(state.Gens))
+	noise := make([]any, len(state.Gens))
 	for i, g := range state.Gens {
 		gens[i] = int(g.Progress)
+		noise[i] = int(g.Noise)
 	}
-	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens}
+	gates := make([]any, len(state.Gates))
+	for i, g := range state.Gates {
+		gates[i] = int(g.Progress)
+	}
+	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates}
 }
 
 // walls returns the layout as [{minX, minY, maxX, maxY}, ...] in micrometers.
@@ -126,6 +149,15 @@ func walls() []any {
 func genSites() []any {
 	out := make([]any, len(sim.GenSites))
 	for i, g := range sim.GenSites {
+		out[i] = map[string]any{"x": int(g.X), "y": int(g.Y)}
+	}
+	return out
+}
+
+// gateSites returns [{x, y}, ...] in micrometers, indexed like state().gates.
+func gateSites() []any {
+	out := make([]any, len(sim.GateSites))
+	for i, g := range sim.GateSites {
 		out[i] = map[string]any{"x": int(g.X), "y": int(g.Y)}
 	}
 	return out

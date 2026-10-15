@@ -29,6 +29,14 @@ const (
 	CheckBonus    = 1 * TickRate // ticks of progress gained on a hit
 	CheckPenalty  = 3 * TickRate // ticks lost on a miss
 
+	// A missed skill check lights up its generator for the killer this long.
+	NoiseTicks = 2 * TickRate
+
+	GensRequired = 4 // generators that must be done to power the gates
+	GateCount    = 2
+	GateTicks    = 5 * TickRate // hand-opening time for one survivor
+	GateRange    = 2_500_000    // centre to centre, to open it or to walk out
+
 	MaxAxis = 127 // full stick deflection on one Input axis
 )
 

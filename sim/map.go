@@ -49,6 +49,13 @@ var GenSites = []Vec2{
 	{20 * meter, 20 * meter},
 }
 
+// GateSites are the exits, on the north and south edges. They are
+// doorways, not obstacles: players walk up to them and open them by hand.
+var GateSites = []Vec2{
+	{0, 28 * meter},
+	{0, -28 * meter},
+}
+
 func hWall(x0, x1, y int32) Box {
 	return Box{x0 * meter, y*meter - wallThick/2, x1 * meter, y*meter + wallThick/2}
 }

@@ -4,7 +4,7 @@ import { audio } from "./config";
 import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
-import { loadSim, type SimPlayer } from "./sim";
+import { loadSim, type SimPlayer, type World } from "./sim";
 
 const m = 1_000_000; // micrometers per meter
 
@@ -76,8 +76,8 @@ function frame(now: number) {
     carry -= tickMs;
   }
   session.flush?.();
-  const { players, hud: lines, self, gens } = session.view(now, carry / tickMs);
-  draw(players, lines, self, gens);
+  const { players, hud: lines, self, world } = session.view(now, carry / tickMs);
+  draw(players, lines, self, world);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -87,8 +87,9 @@ const checkZone = document.querySelector<HTMLDivElement>("#check-zone")!;
 const checkNeedle = document.querySelector<HTMLDivElement>("#check-needle")!;
 const checkResult = document.querySelector<HTMLDivElement>("#check-result")!;
 
-function draw(players: SimPlayer[], lines: string[], self: number | undefined, gens: number[]) {
-  renderer.draw(players, gens, self, look.yaw, look.pitch);
+function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
+  const { gens, gates } = world;
+  renderer.draw(players, world, self, look.yaw, look.pitch);
   const me = players.find((p) => p.id === self);
   const killer = players.find((p) => p.role === sim.roles.killer);
   // Only survivors hear it. The killer does not hear his own heart.
@@ -100,10 +101,26 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, g
   const done = gens.filter((g) => g >= sim.genTicks).length;
   lines.push(`generators ${done}/${gens.length} done   ` + gens.map((g) => `${Math.floor((100 * Math.min(g, sim.genTicks)) / sim.genTicks)}%`).join(" "));
   const mine = players.find((p) => p.id === self);
+  const powered = done >= sim.gensRequired;
+  lines.push(powered ? "gates powered: " + gates.map((g) => (g >= sim.gateTicks ? "OPEN" : `${Math.floor((100 * g) / sim.gateTicks)}%`)).join(" ") : `gates need ${sim.gensRequired} generators`);
+  if (mine && mine.role === sim.roles.killer) {
+    // Where a missed skill check just went off, so the killer can find it even when it is out of view.
+    world.noise.forEach((ticks, i) => {
+      if (ticks <= 0) return;
+      const dx = sim.genSites[i].x - mine.x;
+      const dy = sim.genSites[i].y - mine.y;
+      const ang = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360; // 0 is north, clockwise
+      const rel = Math.round((((ang - (mine.yaw / 65536) * 360 + 540) % 360) - 180));
+      lines.push(`NOISE generator ${i + 1}: ${(Math.hypot(dx, dy) / m).toFixed(0)} m, ${Math.abs(rel)}° ${rel < 0 ? "left" : "right"}`);
+    });
+  }
   if (mine && mine.role === sim.roles.survivor) {
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
-    if (near && !mine.repairing) lines.push("hold E to repair");
-    if (mine.repairing && !mine.checkActive) lines.push("repairing...");
+    const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
+    if (mine.escaped) lines.push("you escaped");
+    else if (near && !mine.repairing) lines.push("hold E to repair");
+    else if (atGate && powered && !mine.repairing) lines.push("hold E to open the gate");
+    else if (mine.repairing && !mine.checkActive) lines.push("working...");
   }
   hud.textContent = lines.join("\n");
 

@@ -68,6 +68,13 @@ await waitCheck();
 const beforeMiss = await gen(guest);
 await guest.waitForFunction(() => !paleSession.stats().predicted.checkActive, null, { timeout: 5000, polling: 10 });
 const miss = await me();
+const loud = await host.waitForFunction((i) => paleSim.state().noise[i] > 0, GEN, { timeout: 1500, polling: 10 }).then(() => true, () => false);
+const killerBeamShot = `${prefix}-killer-noise.png`;
+await host.keyboard.press("KeyM"); // overhead map, so the beam is in view wherever the killer faces
+await host.waitForTimeout(100);
+await host.screenshot({ path: killerBeamShot });
+await host.keyboard.press("KeyM");
+const hostHud = await host.textContent("#hud");
 const afterMiss = await gen(guest);
 await guest.keyboard.up("KeyE");
 await guest.waitForTimeout(1500); // let the host's last snapshot land
@@ -91,6 +98,8 @@ const checks = {
   "pressing in the zone is a hit": hit.checkResult === 1,
   "letting it time out is a miss": miss.checkResult === 2,
   "a miss costs progress": afterMiss < beforeMiss,
+  "a miss makes the generator loud on the host": loud,
+  "the killer HUD names the noise": /NOISE generator 3: \d+ m, \d+° (left|right)/.test(hostHud),
   "host and guest agree on progress": hostGen === guestGen,
   "host and guest agree on the last check": hostP.checkResult === guestP.checkResult && hostP.checkAge === guestP.checkAge,
   "no corrections": stats.corrections === 0,

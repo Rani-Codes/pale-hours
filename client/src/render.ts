@@ -6,6 +6,7 @@ import {
   Fog,
   Group,
   Mesh,
+  MeshBasicMaterial,
   MeshLambertMaterial,
   OrthographicCamera,
   PerspectiveCamera,
@@ -16,7 +17,7 @@ import {
 } from "three";
 import { Color } from "three";
 import { view } from "./config";
-import type { PaleSim, SimPlayer } from "./sim";
+import type { PaleSim, SimPlayer, World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
 const WALL_HEIGHT = 3;
@@ -40,6 +41,9 @@ export class Renderer {
   /** A dim light that travels with the viewer, so nearby walls glow out of the dark. */
   private readonly lantern = new PointLight(view.light.lanternColor, view.light.lantern, view.light.lanternRange, 1.5);
   private readonly genMats: MeshLambertMaterial[] = [];
+  private readonly beams: Mesh[] = [];
+  private readonly gateMats: MeshLambertMaterial[] = [];
+  private readonly powered = new Color(0xc9a13a);
   private readonly idle = new Color(0x6e3b2c);
   private readonly done = new Color(0x3f8a52);
   private readonly killerMat = new MeshLambertMaterial({ color: 0xc0392b });
@@ -79,6 +83,33 @@ export class Renderer {
       this.scene.add(box);
     }
 
+    // A missed skill check lights a beam over its generator. Only the killer
+    // sees it, through walls and fog, for a moment.
+    const beamMat = new MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.55, fog: false, depthTest: false });
+    for (const site of sim.genSites) {
+      const beam = new Mesh(new BoxGeometry(0.5, 60, 0.5), beamMat);
+      beam.position.set(site.x / M, 30, -site.y / M);
+      beam.renderOrder = 10;
+      beam.visible = false;
+      this.beams.push(beam);
+      this.scene.add(beam);
+    }
+
+    // Gates: two posts and a lintel that go rust, amber once powered, green once open.
+    const reach = sim.gateRange / M / 2;
+    for (const site of sim.gateSites) {
+      const mat = new MeshLambertMaterial({ color: this.idle });
+      this.gateMats.push(mat);
+      for (const dx of [-reach, reach]) {
+        const post = new Mesh(new BoxGeometry(0.5, 3.4, 0.5), mat);
+        post.position.set(site.x / M + dx, 1.7, -site.y / M);
+        this.scene.add(post);
+      }
+      const lintel = new Mesh(new BoxGeometry(2 * reach + 0.5, 0.5, 0.5), mat);
+      lintel.position.set(site.x / M, 3.45, -site.y / M);
+      this.scene.add(lintel);
+    }
+
     this.overhead = new OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
     this.overhead.position.set(0, 100, 0);
     this.overhead.up.set(0, 0, -1);
@@ -90,9 +121,15 @@ export class Renderer {
    * Draw one frame. self is this tab's player and yaw/pitch (radians) where
    * it looks, straight from the mouse so the view never waits on the network.
    */
-  draw(players: SimPlayer[], gens: number[], self: number | undefined, yaw: number, pitch: number): void {
+  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number): void {
     this.resize();
+    const { gens, noise, gates } = world;
     this.genMats.forEach((mat, i) => mat.color.copy(this.idle).lerp(this.done, Math.min(1, (gens[i] ?? 0) / this.sim.genTicks)));
+    const powered = gens.filter((g) => g >= this.sim.genTicks).length >= this.sim.gensRequired;
+    this.gateMats.forEach((mat, i) => {
+      const open = (gates[i] ?? 0) >= this.sim.gateTicks;
+      mat.color.copy(open ? this.done : powered ? this.powered : this.idle);
+    });
     const live = new Set<number>();
     for (const p of players) {
       live.add(p.id);
@@ -102,6 +139,7 @@ export class Renderer {
         this.bodies.set(p.id, body);
         this.scene.add(body);
       }
+      body.visible = !p.escaped;
       body.position.set(p.x / M, 0, -p.y / M);
       body.rotation.y = (-p.yaw / 65536) * 2 * Math.PI;
     }
@@ -119,13 +157,15 @@ export class Renderer {
     this.scene.fog = mapLook ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
     this.gl.setClearColor(mapLook ? 0x0b0b0d : view.fog.color);
     if (mapLook || !me) {
-      for (const body of this.bodies.values()) body.visible = true;
+      for (const [id, body] of this.bodies) body.visible = !players.find((p) => p.id === id)?.escaped;
+      this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
       this.gl.render(this.scene, this.overhead);
       return;
     }
     // Your own body stays out of your first-person view.
     const killer = me.role === this.sim.roles.killer;
-    for (const [id, body] of this.bodies) body.visible = !(killer && id === self);
+    for (const [id, body] of this.bodies) body.visible = !(killer && id === self) && !players.find((p) => p.id === id)?.escaped;
+    this.beams.forEach((b, i) => (b.visible = killer && (noise[i] ?? 0) > 0));
 
     const x = me.x / M;
     const z = -me.y / M;

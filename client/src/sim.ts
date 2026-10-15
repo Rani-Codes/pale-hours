@@ -15,6 +15,8 @@ export interface SimPlayer {
   checkIn: number;
   /** This player's skill check random stream. Seeded by the host when they join. */
   rng: number;
+  /** Left through a gate: out of play. */
+  escaped: boolean;
 }
 
 export interface SimState {
@@ -22,11 +24,18 @@ export interface SimState {
   players: SimPlayer[];
   /** Repair progress in ticks, one per generator site. */
   gens: number[];
+  /** Ticks each generator stays loud after a missed check. */
+  noise: number[];
+  /** Hand-opening progress in ticks, one per gate site. */
+  gates: number[];
 }
+
+/** The part of the state that is not a player. */
+export type World = Pick<SimState, "gens" | "noise" | "gates">;
 
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
-  return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng };
+  return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false };
 }
 
 export interface SimInput {
@@ -54,6 +63,13 @@ export interface PaleSim {
   genSites: { x: number; y: number }[];
   /** Repair ticks that finish a generator. */
   genTicks: number;
+  gateSites: { x: number; y: number }[];
+  /** Hand-opening ticks that open a gate. */
+  gateTicks: number;
+  gateRange: number;
+  /** Generators that must be done to power the gates. */
+  gensRequired: number;
+  noiseTicks: number;
   repairRange: number;
   generatorHalf: number;
   check: { duration: number; zoneLen: number };
