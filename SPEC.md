@@ -22,6 +22,7 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - 2 exit gates. They become powered when the generator goal is met. A gate takes a few seconds to open.
 - Health states: healthy, injured, downed. Two hits takes a survivor from healthy to downed.
 - Downed survivors can be picked up, carried, and placed on a hook. Teammates can rescue them. A hook timer eliminates the survivor when it runs out.
+- **Killer attack:** left click. A short windup, then a forward cone hit resolved by the host with lag compensation. Two hits take a survivor from healthy to downed. A downed survivor cannot be hit again. They can crawl slowly, and they recover very slowly if left alone. The only way to eliminate a survivor is to pick them up and hang them on a hook.
 - Win condition: survivors escape through a gate, or the killer eliminates everyone.
 - Lobby with a shareable room code. The killer hosts.
 
