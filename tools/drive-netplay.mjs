@@ -25,8 +25,10 @@ const open = async (name) => {
 const host = await open("host");
 const guest = await open("guest");
 const results = [];
+const metrics = { failed: [] };
 const check = (name, ok, detail) => {
   results.push(ok);
+  if (!ok) metrics.failed.push(name);
   console.log(`${ok ? "PASS" : "FAIL"} ${name}: ${detail}`);
 };
 
@@ -39,7 +41,8 @@ await guest.click("#join");
 await guest.waitForFunction(() => /connected/.test(document.querySelector("#netstatus").textContent), null, { timeout: 15000 });
 const linkedMs = Date.now() - joinStart;
 await guest.waitForFunction(() => paleSession.stats?.().predicted, null, { timeout: 15000 });
-console.log(`join: link open after ${linkedMs} ms, playing after ${Date.now() - joinStart} ms`);
+metrics.joinMs = Date.now() - joinStart;
+console.log(`join: link open after ${linkedMs} ms, playing after ${metrics.joinMs} ms`);
 await guest.waitForTimeout(1000);
 
 const settleMs = 2 * delayMs + jitterMs + 600;
@@ -111,7 +114,8 @@ const trace = guest.evaluate(
 await host.waitForTimeout(1000);
 await host.keyboard.up("KeyW");
 const ys = await trace;
-console.log(`killer keypress on host to motion drawn on guest: ${(await firstDrawn) - pressedAt} ms`);
+metrics.killerShownMs = (await firstDrawn) - pressedAt;
+console.log(`killer keypress on host to motion drawn on guest: ${metrics.killerShownMs} ms`);
 const k1 = (await hostState()).players.find((p) => p.id === 1);
 const drawn = ys.at(-1);
 check("guest draws the killer where the host has it once it stops", drawn === k1.y, `host y ${k1.y}, drawn y ${drawn}`);
@@ -132,6 +136,7 @@ const gs = await guestStats();
 const behind = hs.tick - gs.renderTick;
 console.log(`host tick ${hs.tick}, guest renders host tick ${gs.renderTick.toFixed(1)} (${behind.toFixed(1)} ticks behind), ${gs.starved} starved frames`);
 console.log(`host input queue ${JSON.stringify(hs.guests)}`);
+Object.assign(metrics, { corrections: gs.corrections, starved: gs.starved, dropped: hs.guests[0].dropped });
 console.log(`room ${code}  host: ${(await host.textContent("#netstatus")).replace(/\n/g, " | ")}`);
 console.log(`guest: ${(await guest.textContent("#netstatus")).replace(/\n/g, " | ")}`);
 
@@ -139,4 +144,5 @@ await host.screenshot({ path: `${prefix}-host.png` });
 await guest.screenshot({ path: `${prefix}-guest.png` });
 await browser.close();
 check("no page errors", errors.length === 0, errors.join(" | ") || "none");
+console.log(`METRICS ${JSON.stringify(metrics)}`);
 process.exit(results.every(Boolean) ? 0 : 1);

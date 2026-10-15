@@ -23,6 +23,7 @@ Fill these in as they get created. Keep this section accurate.
 - Run client unit tests: `cd client && npm test` (Node's built-in runner, no extra deps)
 - Simulate a bad network in any tab: add `?delay=100&jitter=20&loss=0.05` to the URL (one-way delay on everything the tab sends; jitter and loss only on the unreliable channel)
 - Drive host and guest over a simulated bad network in real Chrome: `cd tools && node drive-netplay.mjs http://localhost:5173/ netplay "delay=100&loss=0.05"` (needs signaling and dev servers; checks prediction, host agreement, and remote interpolation)
+- Run the latency matrix (every network profile, 3 runs each, one table): `cd tools && node latency-matrix.mjs [runs]` (reuses running signaling and dev servers, or starts and stops its own; exits nonzero on any failure)
 - Run signaling server: `cd signal && go run .` (http://localhost:8787, `-addr` to change)
 - Run signal tests: `cd signal && go test -race ./...`
 - Run sim tests: `cd sim && go test ./...`

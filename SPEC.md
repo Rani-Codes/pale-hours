@@ -39,6 +39,7 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - **Hits:** the host rewinds survivor positions to what the killer saw at the moment of the attack, then checks the hit.
 - **Transport:** WebRTC data channels. Unreliable and unordered for inputs and snapshots, reliable for lobby and events.
 - **NAT traversal:** STUN first (`stun.cloudflare.com`). TURN fallback in Phase 4.
+- **Verification:** `tools/latency-matrix.mjs` runs host and guest tabs at 100ms and 200ms round trip with 5% loss, plus jitter and a 400ms stress profile. Latencies there are round trip.
 - **Topology:** star. All survivors connect to the killer's browser.
 
 ## Architecture
@@ -61,7 +62,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] `/signal`: local room-code signaling server
 - [x] Two tabs connected over WebRTC data channels
 - [x] Client prediction and reconciliation for the local player, interpolation for the remote player (use Opus)
-- [ ] Latency test harness (delay plus loss), with movement verified at 100ms and 200ms
+- [x] Latency test harness (delay plus loss), with movement verified at 100ms and 200ms
 - [ ] Generate the project verification skill
 
 ### Phase 2: the scary part
