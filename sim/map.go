@@ -1,5 +1,7 @@
 package sim
 
+import "slices"
+
 // Box is an axis-aligned wall in micrometers.
 type Box struct{ MinX, MinY, MaxX, MaxY int32 }
 
@@ -66,12 +68,76 @@ var GenSites = []Vec2{
 	{20 * meter, 20 * meter},
 }
 
-// GateSites are the exits, on the north and south edges. They are
-// doorways, not obstacles: players walk up to them and open them by hand.
+// GateSites are the exits, set into the fence on the north and south
+// edges. A shut gate blocks its opening; behind it an exit lane runs
+// outward, and a survivor who walks ExitDepth down it escapes. A site on
+// the north half leads north, any other south.
 var GateSites = []Vec2{
-	{0, 28 * meter},
-	{0, -28 * meter},
+	{0, MapHalfExtent},
+	{0, -MapHalfExtent},
 }
+
+// Fences close the map's four edges, with a gap at each gate, and Lanes are
+// the walls of the exit lanes behind the gates. Both block movement like
+// Walls. They follow GateSites; call edges again after changing it.
+var Fences, Lanes = edges(GateSites)
+
+// outer is how far from the centre anything can ever be: the ends of the lanes.
+const outer = MapHalfExtent + ExitDepth + 2*meter
+
+func edges(gates []Vec2) (fences, lanes []Box) {
+	const e, t = MapHalfExtent, wallThick / 2
+	fences = []Box{{-e - t, -e - t, -e + t, e + t}, {e - t, -e - t, e + t, e + t}}
+	for _, dir := range []int32{1, -1} {
+		var gaps []Vec2
+		for _, g := range gates {
+			if outward(g) == dir {
+				gaps = append(gaps, g)
+			}
+		}
+		slices.SortFunc(gaps, func(a, b Vec2) int { return int(a.X - b.X) })
+		x := int32(-e - t)
+		for _, g := range gaps {
+			fences = append(fences, Box{x, dir*e - t, g.X - GateHalfWidth, dir*e + t})
+			x = g.X + GateHalfWidth
+			// Side walls the length of the lane plus a metre, and an end wall.
+			end := dir * (e + ExitDepth + meter)
+			y0, y1 := min(dir*e, end), max(dir*e, end)
+			lanes = append(lanes,
+				Box{g.X - GateHalfWidth - 2*t, y0, g.X - GateHalfWidth, y1},
+				Box{g.X + GateHalfWidth, y0, g.X + GateHalfWidth + 2*t, y1},
+				Box{g.X - GateHalfWidth - 2*t, min(end, end+dir*2*t), g.X + GateHalfWidth + 2*t, max(end, end+dir*2*t)},
+			)
+		}
+		fences = append(fences, Box{x, dir*e - t, e + t, dir*e + t})
+	}
+	return fences, lanes
+}
+
+// outward is the direction a gate's lane runs in Y: 1 north, -1 south.
+func outward(g Vec2) int32 {
+	if g.Y > 0 {
+		return 1
+	}
+	return -1
+}
+
+// gateLeaf is the box a shut gate fills: its opening, on the gate line.
+func gateLeaf(g Vec2) Box {
+	return Box{g.X - GateHalfWidth, g.Y - wallThick/2, g.X + GateHalfWidth, g.Y + wallThick/2}
+}
+
+// outThrough reports whether pos is ExitDepth or more down a gate's lane.
+func outThrough(pos Vec2) bool {
+	for _, g := range GateSites {
+		if abs(pos.X-g.X) <= GateHalfWidth && outward(g)*(pos.Y-g.Y) >= ExitDepth {
+			return true
+		}
+	}
+	return false
+}
+
+func abs(v int32) int32 { return max(v, -v) }
 
 // HookSites are where the killer hangs survivors, spread through open
 // ground so one is always a short carry away. They do not block movement.
@@ -97,9 +163,15 @@ func block(x0, y0, x1, y1 int32) Box {
 }
 
 // hitWall returns the obstacle whose radius-grown box contains the player's
-// centre: a wall, or a generator's body. Touching a face does not count.
-func hitWall(p Vec2) (Box, bool) {
-	for _, list := range [][]Box{Walls, Vaults} {
+// centre: a wall, a fence, a generator's body, or a gate i with shut[i] set.
+// Touching a face does not count.
+func hitWall(p Vec2, shut []bool) (Box, bool) {
+	for i, g := range GateSites {
+		if i < len(shut) && shut[i] && inGrown(p, gateLeaf(g)) {
+			return gateLeaf(g), true
+		}
+	}
+	for _, list := range [][]Box{Walls, Vaults, Fences, Lanes} {
 		for _, w := range list {
 			if inGrown(p, w) {
 				return w, true
@@ -121,6 +193,6 @@ func inGrown(p Vec2, w Box) bool {
 }
 
 func inWall(p Vec2) bool {
-	_, ok := hitWall(p)
+	_, ok := hitWall(p, nil)
 	return ok
 }

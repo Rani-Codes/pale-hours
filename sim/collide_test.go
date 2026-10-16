@@ -29,7 +29,7 @@ func TestStepCollision(t *testing.T) {
 		{"stops against the east face", Vec2{6_000_000 + PlayerRadius + 50_000, 0}, Input{MoveX: -127, MoveY: 0}, 1, Vec2{6_000_000 + PlayerRadius, 0}},
 		{"walks around the end", Vec2{face, 5_000_000 + PlayerRadius}, Input{MoveX: 127, MoveY: 0}, 1, Vec2{face + 133333, 5_000_000 + PlayerRadius}},
 		{"free space is untouched", Vec2{0, 0}, Input{MoveX: 127, MoveY: 0}, 1, Vec2{133333, 0}},
-		{"map edge still clamps", Vec2{29_950_000, 20_000_000}, Input{MoveX: 127, MoveY: 0}, 1, Vec2{30_000_000, 20_000_000}},
+		{"the fence holds at the map edge", Vec2{29_300_000, 20_000_000}, Input{MoveX: 127, MoveY: 0}, 1, Vec2{29_350_000, 20_000_000}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

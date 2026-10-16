@@ -47,7 +47,8 @@ type Player struct {
 	CheckAge    int16  // ticks since the active check began
 	CheckIn     int16  // ticks of repairing until the next check
 	Rng         uint32 // this player's skill check stream; seed it per player
-	Escaped     bool   // left through a gate; out of play
+	Escaped     bool   // walked out down an exit lane; out of play
+	Opening     uint8  // the gate they are opening, plus one, or 0
 
 	Health  Health
 	Boost   int16 // ticks of shove left after being hit
@@ -106,6 +107,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		next.Gens[i].Noise = max(next.Gens[i].Noise-1, 0)
 	}
 	powered := gensDone(s.Gens) >= GensRequired
+	shut := [...][]bool{Survivor: shutTo(Survivor, s.Gates), Killer: shutTo(Killer, s.Gates)}
 	var helped []PlayerID
 	var killerPresses []int
 	for i, p := range s.Players {
@@ -132,7 +134,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			stepVault(&p)
 			in, skillPress = Input{Yaw: in.Yaw}, false // over the wall, hands busy
 		case !p.Carried && p.OnHook == 0:
-			p.Pos = move(p.Pos, in, speed(p))
+			p.Pos = move(p.Pos, in, speed(p), shut[p.Role])
 		}
 		p.Trail[next.Tick%TrailLen] = p.Pos
 		p.Boost = max(p.Boost-1, 0)
@@ -144,19 +146,25 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			stepHookCheck(&p, skillPress)
 		case p.Health == Downed:
 			// Letting go of everything: an active skill check counts as a miss.
+			stepGate(&p, in, ok, false, next.Gens, next.Gates, powered)
 			stepRepair(&p, in, ok, false, next.Gens)
 		default:
 			if id := stepHelp(&p, in, ok, skillPress, s.Players, next.Gens); id != 0 {
 				helped = append(helped, id)
 			}
-			if p.Helping == 0 {
-				stepRepair(&p, in, ok, skillPress, next.Gens)
-			} else {
+			switch {
+			case p.Helping != 0:
+				p.Repairing, p.Opening = false, 0
+			default:
 				p.Repairing = false
+				stepGate(&p, in, ok, skillPress, next.Gens, next.Gates, powered)
+				if p.Opening == 0 && !p.Repairing {
+					stepRepair(&p, in, ok, skillPress, next.Gens)
+				}
 			}
 		}
-		if p.Health != Downed {
-			stepGate(&p, in, ok, next.Gates, s.Gates, powered)
+		if p.Role == Survivor && !p.Carried && p.OnHook == 0 && outThrough(p.Pos) {
+			p.Escaped, p.Opening, p.CheckActive, p.Repairing = true, 0, false, false
 		}
 		stepSwing(&p, in, ok)
 		stepDowned(&p)
@@ -241,7 +249,9 @@ func speed(p Player) int64 {
 	return roleSpeed[p.Role]
 }
 
-func move(pos Vec2, in Input, speed int64) Vec2 {
+// move walks pos along in at speed, stopped by walls and by each gate i
+// with shut[i] set.
+func move(pos Vec2, in Input, speed int64, shut []bool) Vec2 {
 	dx, dy := int64(in.MoveX), int64(in.MoveY)
 	// Clients can send any int8, including diagonals longer than full speed
 	// and -128, so cap the direction's length at MaxAxis.
@@ -252,14 +262,14 @@ func move(pos Vec2, in Input, speed int64) Vec2 {
 	// Resolve each axis on its own so a player slides along a wall.
 	next := pos
 	next.X = clamp(int64(pos.X) + dx*speed/(MaxAxis*TickRate))
-	if w, ok := hitWall(next); ok {
+	if w, ok := hitWall(next, shut); ok {
 		next.X = w.MaxX + PlayerRadius
 		if dx > 0 {
 			next.X = w.MinX - PlayerRadius
 		}
 	}
 	next.Y = clamp(int64(pos.Y) + dy*speed/(MaxAxis*TickRate))
-	if w, ok := hitWall(next); ok {
+	if w, ok := hitWall(next, shut); ok {
 		next.Y = w.MaxY + PlayerRadius
 		if dy > 0 {
 			next.Y = w.MinY - PlayerRadius
@@ -269,5 +279,5 @@ func move(pos Vec2, in Input, speed int64) Vec2 {
 }
 
 func clamp(v int64) int32 {
-	return int32(min(max(v, -MapHalfExtent), MapHalfExtent))
+	return int32(min(max(v, -outer), outer))
 }

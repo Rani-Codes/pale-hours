@@ -108,8 +108,16 @@ await host.keyboard.up("KeyA");
 const carriedAtHook = await on(host, idA);
 const killerAtHook = await on(host, 1);
 await host.keyboard.press("KeyE");
+const hungAt = Date.now();
 await settle();
 results.hooked = (await everywhere(idA)).map((p) => p.onHook);
+// The other survivor is shown where for 3 s; the hooked one and the killer are not.
+const alertHuds = { B: await b.textContent("#hud"), A: await a.textContent("#hud"), host: await host.textContent("#hud") };
+await b.evaluate((yaw) => (paleLook.yaw = yaw), Math.atan2(-8, -6)); // B stands 8 m east and 6 m north of the hook
+await b.waitForTimeout(100);
+await b.screenshot({ path: `${prefix}-B-hook-alert.png` });
+await b.waitForTimeout(Math.max(0, hungAt + 3700 - Date.now()));
+const alertAfter = await b.textContent("#hud");
 results.pipsHooked = await pips(a);
 const hookedHud = await a.textContent("#hud");
 await host.screenshot({ path: `${prefix}-host-hooked.png` });
@@ -224,6 +232,9 @@ const checks = {
   "the carried survivor rides with the killer": carriedAtHook.x === killerAtHook.x && carriedAtHook.y === killerAtHook.y,
   "the killer hangs A on the hook, on every tab": all(results.hooked, 3),
   "health bar shows 0 squares on the hook": results.pipsHooked === 0,
+  "B is shown where A was hooked": new RegExp(`TEAMMATE HOOKED: survivor ${idA}, \\d+ m`).test(alertHuds.B),
+  "neither A nor the killer gets the alert": !/TEAMMATE HOOKED/.test(alertHuds.A) && !/TEAMMATE HOOKED/.test(alertHuds.host),
+  "the alert is gone after 3 s": !/TEAMMATE HOOKED/.test(alertAfter),
   "A is told the hook time": /on the hook: \d+ s left/.test(hookedHud),
   "B unhooks A injured, on every tab": all(results.rescued, "0/1"),
   "rescue keeps the hook time used": results.hookUsedKept,

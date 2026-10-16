@@ -26,16 +26,28 @@ const (
 	CheckZoneMin  = 18
 	CheckZoneMax  = 33
 	CheckZoneLen  = 7
-	CheckBonus    = 1 * TickRate // ticks of progress gained on a hit
-	CheckPenalty  = 3 * TickRate // ticks lost on a miss
+	CheckBonus    = 2 * TickRate // ticks of progress gained on a hit, 2.5%
+	CheckPenalty  = 3 * TickRate // ticks lost on a miss, 3.75%
 
 	// A missed skill check lights up its generator for the killer this long.
 	NoiseTicks = 2 * TickRate
 
 	GensRequired = 4 // generators that must be done to power the gates
 	GateCount    = 2
-	GateTicks    = 5 * TickRate // hand-opening time for one survivor
-	GateRange    = 2_500_000    // centre to centre, to open it or to walk out
+	GateTicks    = 15 * TickRate / 2 // 7.5 s of hand-opening for one survivor
+	GateRange    = 2_500_000         // from the gate's centre, to open it
+	// The gate sits in the fence. Its opening is twice GateHalfWidth wide and
+	// leads into a walled exit lane; a survivor escapes once they are
+	// ExitDepth down it. The killer never gets past the gate line.
+	GateHalfWidth = 1_750_000
+	ExitDepth     = 4_000_000
+	// Opening a gate brings skill checks every GateCheckMinGap..GateCheckMaxGap
+	// ticks of holding E. A hit adds GateCheckBonus ticks, a miss takes
+	// GateCheckPenalty away.
+	GateCheckMinGap  = 2 * TickRate
+	GateCheckMaxGap  = 3 * TickRate
+	GateCheckBonus   = TickRate / 2
+	GateCheckPenalty = 3 * TickRate / 2
 
 	MaxAxis = 127 // full stick deflection on one Input axis
 

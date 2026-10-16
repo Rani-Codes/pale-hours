@@ -1,6 +1,6 @@
 # Downed, carry and hook
 
-A downed survivor lies on the ground. A teammate holding E beside them gets a skill check almost at once, and a good one stands them up injured. Left alone for 60 s they get up by themselves. The killer presses E to pick a downed survivor up, carries them slowly, and presses E by a hook to hang them, or elsewhere to drop them. A teammate holding E at the hook for a second frees them, injured. Each survivor has 60 s of hook time in total; when it runs out they are eliminated. Every survivor sees their health as two squares at the bottom of the screen.
+A downed survivor lies on the ground. A teammate holding E beside them gets a skill check almost at once, and a good one stands them up injured. Left alone for 60 s they get up by themselves. The killer presses E to pick a downed survivor up, carries them slowly, and presses E by a hook to hang them, or elsewhere to drop them. A teammate holding E at the hook for a second frees them, injured. Each survivor has 60 s of hook time in total; when it runs out they are eliminated. When someone is hung, the other survivors see where for 3 s. Every survivor sees their health as two squares at the bottom of the screen.
 
 ## Sub-features
 
@@ -8,6 +8,7 @@ A downed survivor lies on the ground. A teammate holding E beside them gets a sk
 - `hook-health-bar` shows 2, 1 or 0 filled squares (`#health .pip.full`) for healthy, injured, and downed, carried or hooked.
 - `hook-carry` picks a downed survivor up with E; they ride at the killer's position on every tab.
 - `hook-hang` hangs the carried survivor on a free hook in range with a second E.
+- `hook-alert` shows the other survivor `TEAMMATE HOOKED` with distance and bearing, and a red beam over the hook, for 3 s; the hooked survivor and the killer get nothing.
 - `hook-checks` gives a hooked survivor skill checks: a timeout costs exactly 5 s of hook time, a good press costs nothing, and the guest agrees.
 - `hook-break-free` lets a survivor carried until their get-up timer fills break free injured, and stuns the killer for 1 s (frozen, then moving).
 - `hook-rescue` unhooks a survivor injured after a teammate holds E for 1 s, keeping their hook time used.

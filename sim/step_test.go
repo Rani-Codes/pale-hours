@@ -19,8 +19,8 @@ func TestStepMovement(t *testing.T) {
 		{"diagonal is normalized", Survivor, Vec2{0, 0}, Input{MoveX: 127, MoveY: 127}, 1, Vec2{94488, 94488}},
 		{"out of range input is clamped", Survivor, Vec2{0, 0}, Input{MoveX: -128, MoveY: 0}, 1, Vec2{-133333, 0}},
 		{"one second covers four meters", Survivor, Vec2{0, 0}, Input{MoveX: 127, MoveY: 0}, 30, Vec2{3999990, 0}},
-		{"stops at east edge", Survivor, Vec2{29_950_000, 0}, Input{MoveX: 127, MoveY: 0}, 1, Vec2{30_000_000, 0}},
-		{"stops at south west corner", Killer, Vec2{-29_990_000, -29_990_000}, Input{MoveX: -127, MoveY: -127}, 1, Vec2{-30_000_000, -30_000_000}},
+		{"stops at the east fence", Survivor, Vec2{29_300_000, 0}, Input{MoveX: 127, MoveY: 0}, 1, Vec2{29_350_000, 0}},
+		{"stops in the south west corner", Killer, Vec2{-29_340_000, -29_340_000}, Input{MoveX: -127, MoveY: -127}, 1, Vec2{-29_350_000, -29_350_000}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

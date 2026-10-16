@@ -72,10 +72,10 @@ const { hookTicks, hook, gateTicks, gensRequired, genTicks } = await host.evalua
 }));
 
 // 1. Heartbeat beside the killer, then on the hook.
-await place({ 1: { x: hook.x + 1 * M, y: hook.y }, [idA]: { x: 1.5 * M, y: 24.5 * M }, [idB]: { x: hook.x + 1 * M, y: hook.y + 1.2 * M } });
+await place({ 1: { x: hook.x + 1 * M, y: hook.y }, [idA]: { x: 0.3 * M, y: 27 * M }, [idB]: { x: hook.x + 1 * M, y: hook.y + 1.2 * M } });
 await settle();
 const beatNear = await bpm(b);
-await place({ [idB]: { x: hook.x, y: hook.y, health: 2, onHook: 3, hookUsed: hookTicks - 150 } });
+await place({ [idB]: { x: hook.x, y: hook.y, health: 2, onHook: 3, hookUsed: hookTicks - 240 } });
 await settle();
 const beatHooked = await bpm(b);
 const hookedHud = await b.textContent("#hud");
@@ -85,7 +85,7 @@ const s0 = await host.evaluate(() => paleSim.state());
 await place({}, { gens: s0.gens.map((g, i) => (i < gensRequired ? genTicks : g)), gates: s0.gates.map((g, i) => (i === 0 ? gateTicks : g)) });
 await settle(500);
 await a.keyboard.down("KeyW");
-const escaped = await a.waitForFunction(() => paleSession.stats().predicted?.escaped, null, { timeout: 3000, polling: 10 }).then(() => true, () => false);
+const escaped = await a.waitForFunction(() => paleSession.stats().predicted?.escaped, null, { timeout: 4000, polling: 10 }).then(() => true, () => false);
 await a.keyboard.up("KeyW");
 await settle();
 const watchFirst = await a.evaluate(() => paleSpectate.id);

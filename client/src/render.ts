@@ -3,6 +3,7 @@ import {
   DirectionalLight,
   Fog,
   Mesh,
+  MeshBasicMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   PointLight,
@@ -14,6 +15,7 @@ import { dressing } from "./art/dressing";
 import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
+import type { HookAlert } from "./hookalert";
 import { floor, GateModel, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
@@ -55,6 +57,7 @@ export class Renderer {
   private readonly retro = new RetroPass(view.retro);
   private readonly gens: GeneratorModel[] = [];
   private readonly beams: Mesh[] = [];
+  private readonly hookBeams: Mesh[] = [];
   private readonly gates: GateModel[] = [];
   private lastFrame = performance.now();
 
@@ -70,7 +73,7 @@ export class Renderer {
     this.sun.position.set(-20, 60, 30);
 
     this.scene.add(floor(half), dressing(sim));
-    for (const w of sim.walls) {
+    for (const w of [...sim.walls, ...sim.lanes]) {
       const mesh = wall((w.maxX - w.minX) / M, WALL_HEIGHT, (w.maxY - w.minY) / M);
       mesh.position.set((w.minX + w.maxX) / 2 / M, 0, -(w.minY + w.maxY) / 2 / M);
       this.scene.add(mesh);
@@ -92,7 +95,7 @@ export class Renderer {
       this.scene.add(gen.object, beam);
     }
     for (const site of sim.gateSites) {
-      const gate = new GateModel(sim.gateRange / M);
+      const gate = new GateModel((2 * sim.gateHalfWidth) / M);
       gate.object.position.set(site.x / M, 0, -site.y / M);
       this.gates.push(gate);
       this.scene.add(gate.object);
@@ -100,7 +103,11 @@ export class Renderer {
     for (const site of sim.hookSites) {
       const hook = hookModel();
       hook.position.set(site.x / M, 0, -site.y / M);
-      this.scene.add(hook);
+      // Flagged for the other survivors for a moment when someone is hung here.
+      const beam = noiseBeam(view.hookAlert.color);
+      beam.position.set(site.x / M, beam.position.y, -site.y / M);
+      this.hookBeams.push(beam);
+      this.scene.add(hook, beam);
     }
 
     this.overhead = new OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
@@ -123,7 +130,7 @@ export class Renderer {
    * Draw one frame. self is this tab's player and yaw/pitch (radians) where
    * it looks, straight from the mouse so the view never waits on the network.
    */
-  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number): void {
+  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number, hooks: HookAlert[] = []): void {
     this.resize();
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
@@ -143,6 +150,11 @@ export class Renderer {
       this.actors.delete(id);
     }
 
+    this.hookBeams.forEach((b, i) => {
+      const alert = hooks.find((h) => h.hook === i);
+      b.visible = alert !== undefined;
+      (b.material as MeshBasicMaterial).opacity = 0.7 * (alert?.left ?? 0);
+    });
     const me = players.find((p) => p.id === self);
     const mapLook = this.showMap || !me;
     const lit = mapLook || view.reviewLight;

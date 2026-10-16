@@ -13,7 +13,7 @@ The match ends when every survivor has escaped or died. Every tab shows an end s
 
 ## How to get to it (user POV)
 
-- Host, two guests join. One walks out of an open gate; the other dies on a hook. The end screen appears on all three tabs; the host clicks Rematch.
+- Host, two guests join. One walks out down the lane behind an open gate; the other dies on a hook. The end screen appears on all three tabs; the host clicks Rematch.
 
 ## Driving it with Playwright
 
@@ -22,7 +22,7 @@ Preconditions:
 - Doctor passes. Three fresh tabs with the same network query.
 
 - **Full check.** Run `node drive-endgame.mjs "$APP" <dir>/endgame "delay=100&loss=0.05" | tee <dir>/endgame.log`. Each sub-feature appears as a `PASS` line after a JSON summary. Repeat with `delay=50&loss=0.05` and no query.
-- Setup uses `paleSim.load` on the host to power and open the north gate, hang a survivor with 5 s of hook time left, and place players. The walk out, Space, and the Rematch click are real.
+- Setup uses `paleSim.load` on the host to power and open the north gate, hang a survivor with 8 s of hook time left, and place players. The walk out, Space, and the Rematch click are real.
 
 ## Gotchas
 

@@ -15,8 +15,9 @@ import { mulberry, wood } from "./textures";
 import type { PaleSim } from "../sim";
 
 /**
- * Set dressing that nothing collides with: a broken fence along the map
- * edge with gaps at the exits, a ring of pines beyond it, and small rocks
+ * Set dressing: a weathered fence along the map edge with gaps at the exits
+ * (the sim's Fences are what actually stop players there), a ring of pines
+ * beyond it, and small rocks
  * and grass in open ground. Scattered from a fixed seed, so every player
  * sees the same field. Meters, in Three's frame (x east, -z north).
  */
@@ -43,19 +44,19 @@ export function dressing(sim: PaleSim): Group {
 
   // Keep scatter clear of everything players use or run along.
   const clear = (x: number, y: number, margin: number) =>
-    !sim.walls.some((w) => x > w.minX / M - margin && x < w.maxX / M + margin && y > w.minY / M - margin && y < w.maxY / M + margin) &&
+    ![...sim.walls, ...sim.lanes].some((w) => x > w.minX / M - margin && x < w.maxX / M + margin && y > w.minY / M - margin && y < w.maxY / M + margin) &&
     ![...sim.genSites, ...sim.gateSites, ...sim.hookSites].some((s) => Math.hypot(s.x / M - x, s.y / M - y) < margin + 2);
 
-  // The fence: leaning posts, two rails, a few gaps, and openings at the gates.
+  // The fence: leaning posts and two rails, open only at the gates. It is the sim's edge, so it never shows a gap players cannot use.
   const posts: Parameters<typeof instanced>[2] = [];
   const rails: Parameters<typeof instanced>[2] = [];
-  const edge = half + 0.4;
+  const edge = half; // on the sim's fence line, which is what stops players
+  const gap = sim.gateHalfWidth / M + 0.7; // the gate and its pillars
   for (let side = 0; side < 4; side++) {
     for (let a = -half; a < half; a += 2.5) {
       const along = a + 1.25;
       // North and south edges carry the gates; leave them open there.
-      if (side < 2 && Math.abs(along) < 4) continue;
-      if (rand() < 0.08) continue; // a missing section
+      if (side < 2 && sim.gateSites.some((s) => Math.abs(s.x / M - along) < gap)) continue;
       const [x, y] = side === 0 ? [along, edge] : side === 1 ? [along, -edge] : side === 2 ? [edge, along] : [-edge, along];
       const ry = side < 2 ? 0 : Math.PI / 2;
       posts.push({ x: x - (side < 2 ? 1.25 : 0), y: 0.7, z: -(y - (side < 2 ? 0 : 1.25)), s: 1, ry, rz: (rand() - 0.5) * 0.2 });
@@ -71,6 +72,8 @@ export function dressing(sim: PaleSim): Group {
     const x = (rand() * 2 - 1) * (half + 16);
     const y = (rand() * 2 - 1) * (half + 16);
     if (Math.max(Math.abs(x), Math.abs(y)) < half + 2.5) continue;
+    // Not in an exit lane or on top of its walls.
+    if (sim.gateSites.some((s) => Math.abs(x - s.x / M) < gap + 1.5 && Math.sign(y) === Math.sign(s.y) && Math.abs(y) < half + sim.exitDepth / M + 3)) continue;
     trees.push({ x, z: -y, s: 0.8 + rand() * 0.9, ry: rand() * Math.PI });
   }
   const bark = snapped(new MeshLambertMaterial({ color: 0x2a221c }));

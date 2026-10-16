@@ -38,6 +38,8 @@ export const view = {
   // The PS1 look: a low-res image stretched with hard pixels, banded color
   // with an ordered dither, and vertices snapped to the pixel grid.
   retro: { pixelHeight: 240, colorLevels: 24, dither: 1 },
+  // When a survivor is hung on a hook, the other survivors see a beam over it this long.
+  hookAlert: { showMs: 3000, color: 0xe03c3c },
   // ?light=review: full light and no fog, to judge models and animation. Never for play.
   reviewLight: params.get("light") === "review",
   light: {

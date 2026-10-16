@@ -166,25 +166,80 @@ func gensDone(gens []Generator) int {
 	return n
 }
 
-// stepGate opens a powered gate for a survivor holding Act beside it. open
-// is the gates as the tick began, so who escapes never depends on the order
-// players are processed in.
-func stepGate(p *Player, in Input, hasInput bool, gates []Gate, open []Gate, powered bool) {
-	if p.Role != Survivor {
-		return
+// stepGate lets a survivor holding E at a powered, shut gate open it, with
+// skill checks of its own on a shorter schedule. Letting go during a check
+// counts as a miss. Opening is set while they work a gate, so Step knows
+// not to treat them as repairing a generator.
+func stepGate(p *Player, in Input, hasInput, press bool, gens []Generator, gates []Gate, powered bool) {
+	var at uint8
+	if p.Role == Survivor && p.Health != Downed && hasInput && in.Act && powered {
+		at = gateNear(p.Pos, gates)
 	}
-	for i, site := range GateSites {
-		if i >= len(gates) || distSq(p.Pos, site) > int64(GateRange)*int64(GateRange) {
-			continue
+	if at != p.Opening {
+		if p.CheckActive && p.Opening != 0 {
+			gateMiss(p, &gates[p.Opening-1])
+		} else if p.CheckActive {
+			missCheck(p, gens, nearest(p.Pos)) // walking off a generator check, as anywhere else
 		}
-		if open[i].Open() {
-			p.Escaped = true
+		p.Opening, p.CheckIn = at, gateGap(p)
+		if at == 0 {
+			p.CheckIn = 0 // the next generator check draws its own gap
 			return
 		}
-		if powered && hasInput && in.Act {
-			gates[i].Progress = min(gates[i].Progress+1, GateTicks)
-			p.Repairing = true
-		}
+	}
+	if at == 0 {
 		return
 	}
+	g := &gates[at-1]
+	p.Repairing = true
+	g.Progress = min(g.Progress+1, GateTicks)
+	if g.Open() {
+		// Open under their hands: a check still showing just goes away.
+		p.CheckActive, p.CheckResult, p.Opening = false, CheckNone, 0
+		return
+	}
+	if !p.CheckActive {
+		countdownCheck(p)
+		return
+	}
+	switch r := judgeCheck(p, press); r {
+	case CheckHit:
+		g.Progress = min(g.Progress+GateCheckBonus, GateTicks)
+		endCheck(p, r)
+		p.CheckIn = gateGap(p)
+	case CheckMiss:
+		gateMiss(p, g)
+	}
+}
+
+func gateMiss(p *Player, g *Gate) {
+	if !g.Open() {
+		g.Progress = max(g.Progress-GateCheckPenalty, 0)
+	}
+	endCheck(p, CheckMiss)
+	p.CheckIn = gateGap(p)
+}
+
+func gateGap(p *Player) int16 {
+	return int16(GateCheckMinGap + rand(&p.Rng)%(GateCheckMaxGap-GateCheckMinGap+1))
+}
+
+// gateNear is the shut gate within GateRange of pos, plus one, or 0.
+func gateNear(pos Vec2, gates []Gate) uint8 {
+	for i, site := range GateSites {
+		if i < len(gates) && !gates[i].Open() && distSq(pos, site) <= int64(GateRange)*int64(GateRange) {
+			return uint8(i + 1)
+		}
+	}
+	return 0
+}
+
+// shutTo is which gates block a player of this role: every gate for the
+// killer, who never leaves the map, and the gates not yet open for survivors.
+func shutTo(role Role, gates []Gate) []bool {
+	shut := make([]bool, len(gates))
+	for i, g := range gates {
+		shut[i] = role == Killer || !g.Open()
+	}
+	return shut
 }

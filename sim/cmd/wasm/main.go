@@ -22,6 +22,11 @@ func main() {
 		"gateSites":        sites(sim.GateSites),
 		"gateTicks":        sim.GateTicks,
 		"gateRange":        sim.GateRange,
+		"gateHalfWidth":    sim.GateHalfWidth,
+		"exitDepth":        sim.ExitDepth,
+		"lanes":            boxes(sim.Lanes),
+		"checkBonus":       sim.CheckBonus,
+		"checkPenalty":     sim.CheckPenalty,
 		"gensRequired":     sim.GensRequired,
 		"noiseTicks":       sim.NoiseTicks,
 		"repairRange":      sim.RepairRange,
@@ -74,6 +79,7 @@ func load(_ js.Value, args []js.Value) any {
 			CheckIn:     int16(p.Get("checkIn").Int()),
 			Rng:         uint32(p.Get("rng").Int()),
 			Escaped:     p.Get("escaped").Bool(),
+			Opening:     uint8(p.Get("opening").Int()),
 
 			Health:      sim.Health(p.Get("health").Int()),
 			Boost:       int16(p.Get("boost").Int()),
@@ -173,6 +179,7 @@ func snapshot(js.Value, []js.Value) any {
 			"checkIn":     int(p.CheckIn),
 			"rng":         int(p.Rng),
 			"escaped":     p.Escaped,
+			"opening":     int(p.Opening),
 
 			"health":      int(p.Health),
 			"boost":       int(p.Boost),

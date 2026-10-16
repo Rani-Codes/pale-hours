@@ -1,12 +1,13 @@
 import { initLobby, renderRoom } from "./lobby";
 import { GuestSession, HostSession, IdleSession, type Session } from "./session";
-import { audio } from "./config";
+import { audio, view } from "./config";
 import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
 import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, results, spectateTarget } from "./endgame";
+import { HookAlerts } from "./hookalert";
 
 const m = 1_000_000; // micrometers per meter
 
@@ -14,6 +15,7 @@ const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const hud = document.querySelector<HTMLDivElement>("#hud")!;
 const sim = await loadSim("/sim.wasm");
 const renderer = new Renderer(canvas, sim);
+const hookAlerts = new HookAlerts(view.hookAlert.showMs, sim.roles);
 initLook(canvas);
 const heartbeat = new Heartbeat(audio.heartbeat);
 // Exposed for the tools/ drivers.
@@ -128,13 +130,16 @@ rematch.addEventListener("click", () => {
 const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
+let checkAtGen = false; // whether the current or last skill check was a generator's
+
 function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
   const { gens, gates } = world;
   const me = players.find((p) => p.id === self);
   const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
   spectate.id = watching?.id;
-  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0);
-  else renderer.draw(players, world, self, look.yaw, look.pitch);
+  const hooked = hookAlerts.update(players, self, performance.now());
+  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked);
+  else renderer.draw(players, world, self, look.yaw, look.pitch, hooked);
   const killer = players.find((p) => p.role === sim.roles.killer);
   // Only survivors hear it, and only while it can help them. The killer does not hear his own heart.
   const hears = me && killer && me.role !== sim.roles.killer && hearsHeartbeat(me) && !world.over;
@@ -154,17 +159,14 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     lines.push(...killerPrompts(mine, players, sim));
     // Where a missed skill check just went off, so the killer can find it even when it is out of view.
     world.noise.forEach((ticks, i) => {
-      if (ticks <= 0) return;
-      const dx = sim.genSites[i].x - mine.x;
-      const dy = sim.genSites[i].y - mine.y;
-      const ang = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360; // 0 is north, clockwise
-      const rel = Math.round((((ang - (mine.yaw / 65536) * 360 + 540) % 360) - 180));
-      lines.push(`NOISE generator ${i + 1}: ${(Math.hypot(dx, dy) / m).toFixed(0)} m, ${Math.abs(rel)}° ${rel < 0 ? "left" : "right"}`);
+      if (ticks > 0) lines.push(`NOISE generator ${i + 1}: ${bearing(mine, sim.genSites[i])}`);
     });
   }
   if (mine && mine.role === sim.roles.survivor) {
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
     const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
+    const byOpenGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange * 2 && gates[i] >= sim.gateTicks);
+    for (const h of hooked) lines.push(`TEAMMATE HOOKED: survivor ${h.id}, ${bearing(mine, sim.hookSites[h.hook])}`);
     showHit(mine);
     const prompts = survivorPrompts(mine, players, sim, sim.canVault(Math.round(mine.x), Math.round(mine.y)));
     const able = mine.health !== sim.health.downed && !mine.repairing && !mine.escaped && prompts.length === 0;
@@ -172,7 +174,9 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     lines.push(...prompts);
     if (near && able) lines.push("hold E to repair");
     else if (atGate && powered && able) lines.push("hold E to open the gate");
+    else if (mine.opening && !mine.checkActive) lines.push("opening the gate...");
     else if (mine.repairing && !mine.checkActive) lines.push("working...");
+    else if (byOpenGate && !mine.escaped) lines.push("the gate is open: walk out through it");
   }
   // Two squares: full health, one when injured, none when down.
   healthBar.style.display = mine?.role === sim.roles.survivor && !isOut(mine) ? "flex" : "none";
@@ -199,7 +203,20 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     checkNeedle.style.left = `${(100 * Math.min(mine.checkAge, span)) / span}%`;
   }
   // The last result lingers on screen until the next check begins.
-  checkResult.textContent = mine?.checkActive ? "" : mine?.checkResult === 1 ? "good" : mine?.checkResult === 2 ? "missed" : "";
+  // At a generator it says what the check did to the repair, even after letting go.
+  if (mine?.checkActive) checkAtGen = mine.repairing && !mine.opening && !mine.helping && !mine.onHook;
+  const atGen = checkAtGen;
+  const delta = (ticks: number) => (atGen ? ` ${ticks > 0 ? "+" : "-"}${((100 * Math.abs(ticks)) / sim.genTicks).toFixed(1)}%` : "");
+  checkResult.textContent = mine?.checkActive ? "" : mine?.checkResult === 1 ? "good" + delta(sim.checkBonus) : mine?.checkResult === 2 ? "missed" + delta(-sim.checkPenalty) : "";
+}
+
+/** How far and which way to turn from where p faces to reach a site. */
+function bearing(p: SimPlayer, site: { x: number; y: number }): string {
+  const dx = site.x - p.x;
+  const dy = site.y - p.y;
+  const ang = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360; // 0 is north, clockwise
+  const rel = Math.round(((ang - (p.yaw / 65536) * 360 + 540) % 360) - 180);
+  return `${(Math.hypot(dx, dy) / m).toFixed(0)} m, ${Math.abs(rel)}° ${rel < 0 ? "left" : "right"}`;
 }
 
 function fmt(p: SimPlayer): string {

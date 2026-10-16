@@ -15,8 +15,10 @@ export interface SimPlayer {
   checkIn: number;
   /** This player's skill check random stream. Seeded by the host when they join. */
   rng: number;
-  /** Left through a gate: out of play. */
+  /** Walked out down an exit lane: out of play. */
   escaped: boolean;
+  /** The gate they are opening, plus one, or 0. Their skill checks are gate checks while it is set. */
+  opening: number;
   /** 0 healthy, 1 injured, 2 downed (see PaleSim.health). */
   health: number;
   /** Ticks of sprint left after being hit. */
@@ -73,7 +75,7 @@ export type World = Pick<SimState, "gens" | "noise" | "gates" | "over">;
 
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
-  return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
+  return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, opening: 0, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
     recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, stun: 0,
     vaultTicks: 0, vaultFromX: 0, vaultFromY: 0, vaultToX: 0, vaultToY: 0 };
 }
@@ -110,7 +112,17 @@ export interface PaleSim {
   gateSites: { x: number; y: number }[];
   /** Hand-opening ticks that open a gate. */
   gateTicks: number;
+  /** From a gate's centre, to open it. */
   gateRange: number;
+  /** Half the width of a gate's opening, and of the exit lane behind it. */
+  gateHalfWidth: number;
+  /** How far down the lane past the gate line a survivor walks to escape. */
+  exitDepth: number;
+  /** The walls of the exit lanes behind the gates. */
+  lanes: Wall[];
+  /** Generator ticks a skill check hit adds and a miss takes away. */
+  checkBonus: number;
+  checkPenalty: number;
   /** Generators that must be done to power the gates. */
   gensRequired: number;
   noiseTicks: number;

@@ -121,9 +121,11 @@ func reach(pos Vec2, yaw uint16, target Vec2) (float64, bool) {
 // blocked reports whether the segment from a to b passes through the inside
 // of a wall or a generator. Grazing a face does not count.
 func blocked(a, b Vec2) bool {
-	for _, w := range Walls {
-		if crosses(a, b, w) {
-			return true
+	for _, list := range [][]Box{Walls, Fences, Lanes} {
+		for _, w := range list {
+			if crosses(a, b, w) {
+				return true
+			}
 		}
 	}
 	for _, g := range GenSites {

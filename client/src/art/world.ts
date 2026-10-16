@@ -222,9 +222,9 @@ export class GateModel {
   }
 }
 
-/** The tall beam over a generator whose skill check was just missed. Seen through walls and fog. */
-export function noiseBeam(): Mesh {
-  const beam = new Mesh(new BoxGeometry(0.5, 60, 0.5), new MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.55, fog: false, depthTest: false }));
+/** The tall beam over a generator whose skill check was just missed, or over a hook a teammate was just hung on. Seen through walls and fog. */
+export function noiseBeam(color = 0xffd27a): Mesh {
+  const beam = new Mesh(new BoxGeometry(0.5, 60, 0.5), new MeshBasicMaterial({ color, transparent: true, opacity: 0.55, fog: false, depthTest: false }));
   beam.position.y = 30;
   beam.renderOrder = 10;
   beam.visible = false;
