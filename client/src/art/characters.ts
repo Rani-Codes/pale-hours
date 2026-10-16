@@ -196,17 +196,17 @@ export class SurvivorModel {
       return;
     }
     if (state.crouching) {
-      // Low and tucked: knees bent, back bowed, arms in, a slow shuffle when moving.
+      // A stalking crouch: knees bent, hips low and back over the feet, torso pitched forward (a negative
+      // chest angle leans forward in this rig), head up, hands forward and ready.
       const shuffle = Math.min(1, speed / 1.6);
       const c = Math.sin(phase * 1.4);
-      // A deep squat with the feet on the ground: thighs about 65 degrees forward, shins folded back under them.
-      r.hips.position.y = 0.44;
-      r.chest.rotation.x = 0.55;
-      r.head.rotation.x = -0.35;
-      r.legL.set(1.15 + c * 0.1 * shuffle, -2.1);
-      r.legR.set(1.15 - c * 0.1 * shuffle, -2.1);
-      r.armL.set(0.5, 1.1);
-      r.armR.set(0.5, 1.1);
+      r.hips.position.y = 0.52;
+      r.chest.rotation.x = -0.7;
+      r.head.rotation.x = 0.5;
+      r.legL.set(1.05 + c * 0.12 * shuffle, -1.88);
+      r.legR.set(1.05 - c * 0.12 * shuffle, -1.88);
+      r.armL.set(0.2, 0.9);
+      r.armR.set(0.2, 0.9);
       return;
     }
     r.walk(phase, Math.min(1, speed / 4), state.injured ? 1 : 0);
