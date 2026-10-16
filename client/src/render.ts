@@ -140,10 +140,11 @@ export class Renderer {
 
     const me = players.find((p) => p.id === self);
     const mapLook = this.showMap || !me;
-    this.ambient.intensity = mapLook ? 0.8 : view.light.ambient;
-    this.sun.intensity = mapLook ? 1.2 : view.light.moon;
-    this.lantern.visible = !mapLook;
-    this.scene.fog = mapLook ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
+    const lit = mapLook || view.reviewLight;
+    this.ambient.intensity = lit ? 0.8 : view.light.ambient;
+    this.sun.intensity = lit ? 1.2 : view.light.moon;
+    this.lantern.visible = !lit;
+    this.scene.fog = lit ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
     this.gl.setClearColor(mapLook ? 0x0b0b0d : view.fog.color);
     if (mapLook || !me) {
       for (const [id, a] of this.actors) a.model.object.visible = !gone(players.find((p) => p.id === id));

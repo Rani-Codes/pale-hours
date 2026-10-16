@@ -50,7 +50,7 @@ export class Rig {
   readonly legR: Limb;
   readonly hipHeight: number;
 
-  constructor(s: { hip: number; torso: number; width: number; arm: number; limb: number; shirt: Material; pants: Material; skin: Material; head: Mesh }) {
+  constructor(s: { hip: number; torso: number; width: number; arm: number; limb: number; shirt: Material; pants: Material; skin: Material; head: Mesh; feet?: Material }) {
     this.hipHeight = s.hip;
     this.root.add(this.body);
     this.body.add(this.hips);
@@ -72,6 +72,7 @@ export class Rig {
     this.legL.pivot.position.x = -s.width / 4;
     this.legR.pivot.position.x = s.width / 4;
     this.hips.add(this.legL.pivot, this.legR.pivot);
+    for (const leg of [this.legL, this.legR]) leg.end.add(box(s.limb * 1.25, s.limb * 0.7, s.limb * 2.2, s.feet ?? s.pants, s.limb * 0.3, -s.limb * 0.5));
   }
 
   /** Back to standing straight. */
@@ -194,24 +195,54 @@ export interface SwingView {
   k: number;
 }
 
-/** The killer: tall, hunched, long coat, a pale mask, a cleaver in the right hand. */
+/**
+ * The killer: a head taller and broader than anyone, hunched under a heavy
+ * hood, a pale mask whose eye slits glow a dull red in the dark, a long
+ * coat torn into strips, a butcher's apron, a cleaver in the right hand.
+ */
 export class KillerModel {
   readonly rig: Rig;
+  private readonly strips: Mesh[] = [];
 
   constructor() {
-    const coat = mat(0x2a2422, true);
-    const mask = mat(0xd8d0bc);
-    const head = box(0.26, 0.32, 0.28, mask, 0.12);
-    for (const x of [-0.06, 0.06]) {
-      const slit = box(0.05, 0.03, 0.02, mat(0x050505), 0.05, -0.145);
+    const coat = mat(0x221c1a, true);
+    const hoodMat = mat(0x181414, true);
+    const mask = mat(0xcfc6b0);
+    const glow = snapped(new MeshLambertMaterial({ color: 0x300000, emissive: 0x9a1208 }));
+    const head = box(0.28, 0.34, 0.28, mask, 0.12);
+    for (const x of [-0.065, 0.065]) {
+      const slit = box(0.07, 0.025, 0.02, glow, 0.06, -0.145);
       slit.position.x = x;
+      slit.rotation.z = x > 0 ? 0.25 : -0.25; // slanted, angry
       head.add(slit);
     }
-    head.add(box(0.12, 0.02, 0.02, mat(0x050505), -0.06, -0.145));
-    this.rig = new Rig({ hip: 1.0, torso: 0.68, width: 0.56, arm: 0.86, limb: 0.15, shirt: coat, pants: mat(0x1c1a1a, true), skin: mat(0x6a5e56), head });
-    // The coat's skirt, hanging from the hips.
-    this.rig.hips.add(box(0.62, 0.62, 0.36, coat, -0.3));
-    this.rig.armR.end.add(cleaver());
+    head.add(box(0.02, 0.12, 0.02, mat(0x3a0c0a), -0.06, -0.145)); // a crack down the mask
+    // The hood sits over the head and juts forward, so the mask looks out of a shadow.
+    const hood = box(0.38, 0.42, 0.4, hoodMat, 0.16, 0.03);
+    const brim = box(0.4, 0.08, 0.12, hoodMat, 0.34, -0.2);
+    head.add(hood, brim);
+    this.rig = new Rig({ hip: 1.08, torso: 0.8, width: 0.66, arm: 0.98, limb: 0.17, shirt: coat, pants: mat(0x161414, true), skin: mat(0x2c2624), head, feet: mat(0x100e0e) });
+    // A hump of muscle and cloth across the shoulders, and the hood's drape down the back.
+    this.rig.chest.add(box(0.74, 0.26, 0.42, coat, 0.78, 0.04), box(0.5, 0.4, 0.08, hoodMat, 0.62, 0.22));
+    // A stained leather apron over the front.
+    const apron = box(0.5, 0.95, 0.03, mat(0x3a2a20), 0.2, -0.22);
+    apron.add(box(0.3, 0.3, 0.01, mat(0x4a0606), 0.1, -0.02), box(0.16, 0.22, 0.01, mat(0x4a0606), -0.3, -0.02));
+    this.rig.chest.add(apron);
+    // The coat's skirt, torn into strips that sway as he walks.
+    for (let i = 0; i < 6; i++) {
+      const len = 0.75 + ((i * 37) % 5) * 0.08;
+      const strip = box(0.13, len, 0.05, coat, -len / 2);
+      const hang = new Group();
+      const around = (i / 6) * Math.PI * 2;
+      hang.position.set(Math.sin(around) * 0.34, 0.05, Math.cos(around) * 0.22);
+      hang.rotation.y = -around;
+      hang.add(strip);
+      this.rig.hips.add(hang);
+      this.strips.push(strip);
+    }
+    const blade = cleaver();
+    blade.scale.setScalar(1.3);
+    this.rig.armR.end.add(blade);
   }
 
   get object() {
@@ -221,9 +252,11 @@ export class KillerModel {
   pose(state: { carrying: boolean; stunned: boolean }, swing: SwingView, speed: number, phase: number, t: number) {
     const r = this.rig;
     r.rest();
-    r.walk(phase, Math.min(1, speed / 4.6) * 0.8);
-    r.chest.rotation.x += 0.22; // always hunched
-    r.head.rotation.x = -0.15;
+    const stride = Math.min(1, speed / 4.6) * 0.8;
+    r.walk(phase, stride);
+    r.chest.rotation.x += 0.28; // always hunched
+    r.head.rotation.x = -0.2;
+    this.strips.forEach((s, i) => (s.parent!.rotation.x = 0.12 * stride * Math.sin(phase + i) + 0.04 * Math.sin(t * 2 + i)));
     if (state.carrying) r.armL.set(-2.7, -1.2, -0.2); // a hand on the survivor over his shoulder
     if (state.stunned) {
       r.chest.rotation.x = -0.35 + 0.1 * Math.sin(t * 14);
@@ -232,23 +265,19 @@ export class KillerModel {
       r.head.rotation.x = -0.5;
       return;
     }
+    // An overhand chop: the arm comes up in front to above the head with the
+    // cleaver cocked behind it, then comes down through the front.
     const ease = (k: number) => k * k * (3 - 2 * k);
-    switch (swing.stage) {
-      case "windup":
-        r.armR.set(-2.5 * ease(swing.k), -1.2 * ease(swing.k), 0.3);
-        r.chest.rotation.y = -0.4 * ease(swing.k);
-        break;
-      case "strike":
-        r.armR.set(-2.5 + 3.7 * ease(swing.k), -1.2 + 1.1 * swing.k, 0.3 - 0.5 * swing.k);
-        r.chest.rotation.y = -0.4 + 0.8 * swing.k;
-        r.chest.rotation.x += 0.25 * swing.k;
-        break;
-      case "recover":
-        r.armR.set(1.2 * (1 - ease(swing.k)), -0.1, -0.2 * (1 - swing.k));
-        r.chest.rotation.y = 0.4 * (1 - swing.k);
-        r.chest.rotation.x += 0.25 * (1 - swing.k);
-        break;
-    }
+    const up = { swing: 2.9, bend: 1.4, lean: -0.15, twist: -0.3 };
+    const down = { swing: 0.45, bend: 0.1, lean: 0.45, twist: 0.25 };
+    const at = (k: number, a: typeof up, b: typeof up) => ({ swing: a.swing + (b.swing - a.swing) * k, bend: a.bend + (b.bend - a.bend) * k, lean: a.lean + (b.lean - a.lean) * k, twist: a.twist + (b.twist - a.twist) * k });
+    const rest = { swing: r.armR.pivot.rotation.x, bend: r.armR.joint.rotation.x, lean: 0, twist: 0 };
+    const pose =
+      swing.stage === "windup" ? at(ease(swing.k), rest, up) : swing.stage === "strike" ? at(ease(swing.k), up, down) : swing.stage === "recover" ? at(ease(swing.k), down, rest) : undefined;
+    if (!pose) return;
+    r.armR.set(pose.swing, pose.bend, 0.2);
+    r.chest.rotation.x += pose.lean;
+    r.chest.rotation.y = pose.twist;
   }
 }
 

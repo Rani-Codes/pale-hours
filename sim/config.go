@@ -40,13 +40,13 @@ const (
 	MaxAxis = 127 // full stick deflection on one Input axis
 
 	// The killer's attack: a visible windup, one tick to resolve, then a
-	// recovery that is longer on a whiff so missing costs something.
+	// recovery before the next swing that is longer on a whiff, so missing
+	// costs something. He moves at full speed throughout.
 	AttackWindupTicks      = 6  // 0.2 s
 	AttackRecoverHitTicks  = 18 // 0.6 s
 	AttackRecoverMissTicks = 30 // 1.0 s
 	AttackRange            = 2_200_000
 	AttackHalfAngleDeg     = 50 // the cone is twice this wide
-	KillerRecoverSpeed     = 2_400_000
 
 	// A hit shoves the survivor forward: a short burst that carries a
 	// running survivor HitBoostDistance.

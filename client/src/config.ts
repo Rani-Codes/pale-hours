@@ -38,6 +38,8 @@ export const view = {
   // The PS1 look: a low-res image stretched with hard pixels, banded color
   // with an ordered dither, and vertices snapped to the pixel grid.
   retro: { pixelHeight: 240, colorLevels: 24, dither: 1 },
+  // ?light=review: full light and no fog, to judge models and animation. Never for play.
+  reviewLight: params.get("light") === "review",
   light: {
     ambient: 0.12, // what the dark leaves you
     moon: 0.25, // faint directional light so shapes read

@@ -44,10 +44,11 @@ const place = (changes) =>
 // B stands south of the spot looking north at it from a few meters; the killer faces B.
 const SPOT = { x: 6, y: -6 };
 const shot = (name) => b.screenshot({ path: `${prefix}-${name}.png` });
-await b.evaluate(() => (paleLook.yaw = 0));
+// B stands off the killer's left front and looks at him, so B's own body is not in the way.
+await b.evaluate(() => (paleLook.yaw = Math.atan2(1.6, 2.2) + 0.45));
 await host.evaluate(() => (paleLook.yaw = Math.PI)); // the killer faces south, toward B
 
-await place({ 1: { x: SPOT.x * M, y: SPOT.y * M }, [idA]: { x: (SPOT.x + 2.5) * M, y: (SPOT.y + 3) * M }, [idB]: { x: SPOT.x * M, y: (SPOT.y - 2.4) * M } });
+await place({ 1: { x: SPOT.x * M, y: SPOT.y * M }, [idA]: { x: (SPOT.x + 2.5) * M, y: (SPOT.y + 3) * M }, [idB]: { x: (SPOT.x - 1.6) * M, y: (SPOT.y - 2.2) * M } });
 await b.waitForTimeout(1500);
 await shot("idle");
 // B draws the killer through its interpolation delay, so wait for B's own view of each phase.

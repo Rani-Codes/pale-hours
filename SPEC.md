@@ -88,7 +88,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] Exit gates (`GateSites` at the north and south edges; powered at 4 generators, 5 s to open by hand, a survivor within range of an open gate escapes and leaves play)
 - [ ] The noise beam is visible to every client in the snapshot today; strip noise for survivors in the host's snapshots when we add anti-cheat or fog of information
 - [ ] Generator tuning pass in a real playtest: 80 s of repair per generator, check gap 4 to 9 s, zone 7 ticks (about 0.23 s)
-- [x] Killer attack with lag-compensated hits (left click; 0.2 s windup, 2.2 m 100° cone blocked by walls and generators, 0.6 s recovery on a hit and 1.0 s on a whiff; a hit survivor sprints for 2 s; downed survivors crawl at 0.7 m/s and cannot be hit; numbers in `sim/config.go`, logic in `sim/attack.go`)
+- [x] Killer attack with lag-compensated hits (left click; 0.2 s windup, 2.2 m 100° cone blocked by walls and generators, 0.6 s recovery on a hit and 1.0 s on a whiff, at full speed (no slowdown after a swing, decided 2026-10-15); a hit survivor sprints for 2 s; downed survivors crawl at 0.7 m/s and cannot be hit; numbers in `sim/config.go`, logic in `sim/attack.go`)
 - [x] Injured and downed states, carry, hook, rescue (see the MVP scope notes above; logic in `sim/downed.go`, numbers in `sim/config.go`)
 - [x] Win and loss conditions (match end, per-player end screen, spectating, rematch; `matchOver` in `sim/sim.go`, screens in `client/src/endgame.ts`)
 

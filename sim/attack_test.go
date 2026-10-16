@@ -308,12 +308,16 @@ func TestHitGivesBoost(t *testing.T) {
 	}
 }
 
-func TestKillerSlowsInRecovery(t *testing.T) {
+// Swinging costs the killer time before the next swing, never speed.
+func TestKillerKeepsSpeedInRecovery(t *testing.T) {
 	withMap(t, nil, nil)
 	s := swing(State{Players: []Player{killerAt(Vec2{}, 16384)}}, 0)
 	x := s.Players[0].Pos.X
 	s = Step(s, map[PlayerID]Input{1: {MoveY: MaxAxis, Yaw: 16384}})
-	if got, want := s.Players[0].Pos.Y, int32(KillerRecoverSpeed/TickRate); got != want {
+	if s.Players[0].Swing != SwingRecover {
+		t.Fatal("not recovering")
+	}
+	if got, want := s.Players[0].Pos.Y, int32(KillerSpeed/TickRate); got != want {
 		t.Errorf("recovering killer moved %d, want %d", got, want)
 	}
 	if s.Players[0].Pos.X != x {

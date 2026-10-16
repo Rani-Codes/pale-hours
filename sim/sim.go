@@ -222,8 +222,6 @@ func speed(p Player) int64 {
 		return 0
 	case p.Role == Killer && p.Carrying != 0:
 		return KillerCarrySpeed
-	case p.Role == Killer && p.Swing == SwingRecover:
-		return KillerRecoverSpeed
 	case p.Health == Downed:
 		return CrawlSpeed
 	case p.Boost > 0:
