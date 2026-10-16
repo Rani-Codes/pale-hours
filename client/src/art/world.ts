@@ -163,11 +163,13 @@ export class GeneratorFlash {
   private readonly ring: Mesh;
   private startedAt = -Infinity;
   private readonly showMs: number;
+  private readonly opacity: number;
   private readonly ringMs: number;
   private readonly ringRadius: number;
 
-  constructor(c: { showMs: number; color: number; columnRadius: number; ringRadius: number; ringMs: number }) {
+  constructor(c: { showMs: number; color: number; opacity: number; columnRadius: number; ringRadius: number; ringMs: number }) {
     this.showMs = c.showMs;
+    this.opacity = c.opacity;
     this.ringMs = c.ringMs;
     this.ringRadius = c.ringRadius;
     const glow = () => new MeshBasicMaterial({ color: c.color, transparent: true, fog: false, depthTest: false, side: DoubleSide });
@@ -189,10 +191,10 @@ export class GeneratorFlash {
     this.object.visible = t >= 0 && t < this.showMs;
     if (!this.object.visible) return;
     // The column flares, holds, then fades; the ring races outward and thins.
-    (this.column.material as MeshBasicMaterial).opacity = 0.85 * Math.min(1, (1 - t / this.showMs) * 1.6) * (0.85 + 0.15 * Math.sin(t / 45));
+    (this.column.material as MeshBasicMaterial).opacity = this.opacity * Math.min(1, (1 - t / this.showMs) * 1.6) * (0.85 + 0.15 * Math.sin(t / 45));
     const r = Math.min(1, t / this.ringMs);
     this.ring.scale.set(1 + (this.ringRadius - 1) * (1 - (1 - r) ** 2), 1, 1 + (this.ringRadius - 1) * (1 - (1 - r) ** 2));
-    (this.ring.material as MeshBasicMaterial).opacity = 0.9 * (1 - r) ** 1.5;
+    (this.ring.material as MeshBasicMaterial).opacity = this.opacity * (1 - r) ** 1.5;
   }
 }
 

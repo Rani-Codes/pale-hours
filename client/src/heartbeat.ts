@@ -14,10 +14,12 @@ export interface HeartbeatConfig {
 
 export interface GeneratorDoneConfig {
   gain: number;
-  thudHz: number;
-  bellHz: number[];
-  sweepMs: number;
-  ringSec: number;
+  chugs: number;
+  firstChugMs: number;
+  chugSpeedup: number;
+  idleHz: number;
+  rattleHz: number;
+  idleSec: number;
 }
 
 export interface Beat {
@@ -56,29 +58,73 @@ export class Heartbeat {
     this.done = done;
   }
 
-  /** A generator finished: a rising whine, a heavy hit, then a bright chord ringing out. Heard at full strength wherever you are. */
+  /** A generator finished: an engine cranks over, catches with a clank, and runs on in a rattling idle. Heard at full strength wherever you are. */
   generatorDone() {
     const { ctx, master } = this;
     if (!ctx || !master || ctx.state !== "running") return;
     const d = this.done;
+    const out = ctx.createGain();
+    out.gain.value = d.gain;
+    const dull = ctx.createBiquadFilter(); // keeps it a heavy machine, not a buzz
+    dull.type = "lowpass";
+    dull.frequency.value = 320;
+    dull.connect(out).connect(master);
+
     const t0 = ctx.currentTime + 0.02;
-    const hit = t0 + d.sweepMs / 1000;
-    const tone = (type: OscillatorType, from: number, to: number, start: number, end: number, peak: number, atk: number) => {
+    let at = t0;
+    let gap = d.firstChugMs / 1000;
+    for (let k = 0; k < d.chugs; k++) {
       const osc = ctx.createOscillator();
       const env = ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(from, start);
-      if (to !== from) osc.frequency.exponentialRampToValueAtTime(to, end);
-      env.gain.setValueAtTime(0, start);
-      env.gain.linearRampToValueAtTime(peak, start + atk);
-      env.gain.exponentialRampToValueAtTime(0.001, end);
-      osc.connect(env).connect(master);
-      osc.start(start);
-      osc.stop(end + 0.05);
-    };
-    tone("sawtooth", 90, 520, t0, hit, d.gain * 0.25, d.sweepMs / 1000 - 0.05);
-    tone("triangle", d.thudHz * 1.6, d.thudHz, hit, hit + 0.9, d.gain, 0.01);
-    for (const hz of d.bellHz) tone("sine", hz, hz, hit, hit + d.ringSec, (d.gain * 0.5) / d.bellHz.length, 0.01);
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(34 + k * 4, at);
+      osc.frequency.linearRampToValueAtTime(52 + k * 4, at + 0.12);
+      env.gain.setValueAtTime(0, at);
+      env.gain.linearRampToValueAtTime(0.7, at + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.001, at + 0.16);
+      osc.connect(env).connect(dull);
+      osc.start(at);
+      osc.stop(at + 0.2);
+      at += gap;
+      gap *= d.chugSpeedup;
+    }
+
+    // It catches: a metal clank, then the idle, shuddering and dying away.
+    const noise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.12), ctx.sampleRate);
+    const data = noise.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const clank = ctx.createBufferSource();
+    const ring = ctx.createBiquadFilter();
+    const clankEnv = ctx.createGain();
+    clank.buffer = noise;
+    ring.type = "bandpass";
+    ring.frequency.value = 1100;
+    ring.Q.value = 6;
+    clankEnv.gain.setValueAtTime(0.5, at);
+    clankEnv.gain.exponentialRampToValueAtTime(0.001, at + 0.12);
+    clank.connect(ring).connect(clankEnv).connect(out);
+    clank.start(at);
+
+    const idle = ctx.createOscillator();
+    const level = ctx.createGain();
+    const shudder = ctx.createOscillator();
+    const depth = ctx.createGain();
+    idle.type = "sawtooth";
+    idle.frequency.setValueAtTime(d.idleHz * 1.5, at);
+    idle.frequency.exponentialRampToValueAtTime(d.idleHz, at + 0.35);
+    level.gain.setValueAtTime(0.0, at);
+    level.gain.linearRampToValueAtTime(0.5, at + 0.04);
+    level.gain.setValueAtTime(0.5, at + d.idleSec * 0.55);
+    level.gain.exponentialRampToValueAtTime(0.001, at + d.idleSec);
+    shudder.type = "square";
+    shudder.frequency.value = d.rattleHz;
+    depth.gain.value = 0.22; // the idle's level swings by this much, 15 times a second
+    shudder.connect(depth).connect(level.gain);
+    idle.connect(level).connect(dull);
+    idle.start(at);
+    shudder.start(at);
+    idle.stop(at + d.idleSec + 0.05);
+    shudder.stop(at + d.idleSec + 0.05);
   }
 
   /** Master volume, 0 to 1. Applies to every sound the game makes. */
