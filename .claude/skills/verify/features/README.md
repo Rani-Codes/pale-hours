@@ -35,4 +35,5 @@ Each feature file starts with an H1 title and one paragraph describing the behav
 - [Downed, carry and hook](./hook.md) covers getting a teammate up, the health bar, carrying, hooking, rescue, hook death and getting up alone.
 - [Match end](./endgame.md) covers the match ending, each player's end screen, spectating, the silent heartbeat, and Rematch.
 - [Look](./look.md) covers the PS1 render, the modeled world, and character animation, proven by screenshots.
+- [Vaults](./vault.md) covers survivors vaulting windows, walking into them, and the killer being stopped by them.
 - [Killer attack](./attack.md) covers the swing, injured and downed, crawling, lag-compensated hits, and the survivor's hit flash.

@@ -72,6 +72,34 @@ export function wall(w: number, h: number, d: number): Group {
   return g;
 }
 
+/**
+ * A window to vault through: brick to waist height with a worn sill, a
+ * wooden frame, and brick again above. Only the waist-high part is solid in
+ * the sim; the opening is what survivors go through.
+ */
+export function vaultModel(w: number, h: number, d: number): Group {
+  const g = new Group();
+  const sill = 1.0;
+  const top = 2.4;
+  const lower = new Mesh(worldBox(w, sill, d, 1.5), wallMat());
+  lower.position.y = sill / 2;
+  const ledge = new Mesh(worldBox(w + 0.06, 0.08, d + 0.16, 1), lambert(wood(), 0x8a7a6a));
+  ledge.position.y = sill + 0.04;
+  const upper = new Mesh(worldBox(w, h - top, d, 1.5), wallMat());
+  upper.position.y = (h + top) / 2;
+  const cap = new Mesh(worldBox(w + 0.08, 0.14, d + 0.08, 1), capMat());
+  cap.position.y = h + 0.07;
+  g.add(lower, ledge, upper, cap);
+  // Frame posts at both ends of the opening, along its long side.
+  const along = w > d;
+  for (const s of [-1, 1]) {
+    const post = new Mesh(worldBox(along ? 0.12 : d + 0.04, top - sill, along ? d + 0.04 : 0.12, 1), lambert(wood(), 0x6a5a4a));
+    post.position.set(along ? (s * (w - 0.12)) / 2 : 0, (sill + top) / 2, along ? 0 : (s * (d - 0.12)) / 2);
+    g.add(post);
+  }
+  return g;
+}
+
 /** A generator: a rusted engine on a skid, pistons that pump while it is worked on, a lamp that lights when done. */
 export class GeneratorModel {
   readonly object = new Group();

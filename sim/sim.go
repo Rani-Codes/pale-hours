@@ -67,6 +67,10 @@ type Player struct {
 	Eliminated bool  // died on a hook; out of play
 	Stun       int16 // ticks the killer is stunned: no moving, swinging or E
 
+	// A vault in progress: ticks left, and the straight line it follows.
+	VaultTicks         int16
+	VaultFrom, VaultTo Vec2
+
 	// The killer's attack.
 	AttackHeld  bool
 	Swing       SwingPhase
@@ -114,17 +118,24 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			p.Stun--
 			in = Input{Yaw: in.Yaw} // he can still look around
 		}
-		if !p.Carried && p.OnHook == 0 {
-			p.Pos = move(p.Pos, in, speed(p))
-		}
-		p.Trail[next.Tick%TrailLen] = p.Pos
-		p.Boost = max(p.Boost-1, 0)
 		actPress := ok && in.Act && !p.ActHeld
 		skillPress := ok && in.Skill && !p.SkillHeld
 		if ok {
 			p.Yaw = in.Yaw
 			p.ActHeld, p.SkillHeld = in.Act, in.Skill
 		}
+		if p.VaultTicks == 0 && skillPress && startVault(&p) {
+			skillPress = false
+		}
+		switch {
+		case p.VaultTicks > 0:
+			stepVault(&p)
+			in, skillPress = Input{Yaw: in.Yaw}, false // over the wall, hands busy
+		case !p.Carried && p.OnHook == 0:
+			p.Pos = move(p.Pos, in, speed(p))
+		}
+		p.Trail[next.Tick%TrailLen] = p.Pos
+		p.Boost = max(p.Boost-1, 0)
 		if p.Health == Downed {
 			in.Act = false
 		}

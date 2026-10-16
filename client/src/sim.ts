@@ -45,6 +45,12 @@ export interface SimPlayer {
   eliminated: boolean;
   /** Ticks the killer is stunned. */
   stun: number;
+  /** A vault in progress: ticks left, and the line it follows in micrometers. */
+  vaultTicks: number;
+  vaultFromX: number;
+  vaultFromY: number;
+  vaultToX: number;
+  vaultToY: number;
   /** Recent positions [x0, y0, x1, y1, ...] by tick % trail length, for lag compensation. Host only: snapshots leave it out. */
   trail?: number[];
 }
@@ -68,7 +74,8 @@ export type World = Pick<SimState, "gens" | "noise" | "gates" | "over">;
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
   return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
-    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, stun: 0 };
+    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, stun: 0,
+    vaultTicks: 0, vaultFromX: 0, vaultFromY: 0, vaultToX: 0, vaultToY: 0 };
 }
 
 export interface SimInput {
@@ -116,6 +123,11 @@ export interface PaleSim {
   rewindCapMs: number;
   attack: { windupTicks: number; recoverHitTicks: number; recoverMissTicks: number };
   stunTicks: number;
+  /** Waist-high walls survivors can vault and the killer cannot. */
+  vaults: Wall[];
+  vaultTicks: number;
+  /** Whether a survivor standing at (x, y) could vault right now. */
+  canVault(x: number, y: number): boolean;
   hookSites: { x: number; y: number }[];
   hookTicks: number;
   hookRange: number;

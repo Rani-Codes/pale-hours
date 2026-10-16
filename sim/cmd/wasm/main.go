@@ -16,7 +16,7 @@ func main() {
 		"tickRate":         sim.TickRate,
 		"mapHalfExtent":    sim.MapHalfExtent,
 		"roles":            map[string]any{"survivor": int(sim.Survivor), "killer": int(sim.Killer)},
-		"walls":            walls(),
+		"walls":            boxes(sim.Walls),
 		"genSites":         sites(sim.GenSites),
 		"genTicks":         sim.GeneratorTicks,
 		"gateSites":        sites(sim.GateSites),
@@ -32,6 +32,9 @@ func main() {
 		"rewindCapMs":      sim.RewindCapMs,
 		"attack":           map[string]any{"windupTicks": sim.AttackWindupTicks, "recoverHitTicks": sim.AttackRecoverHitTicks, "recoverMissTicks": sim.AttackRecoverMissTicks},
 		"stunTicks":        sim.StunTicks,
+		"vaults":           boxes(sim.Vaults),
+		"vaultTicks":       sim.VaultTicks,
+		"canVault":         js.FuncOf(canVault),
 		"hookSites":        sites(sim.HookSites),
 		"hookTicks":        sim.HookTicks,
 		"hookRange":        sim.HookRange,
@@ -89,6 +92,9 @@ func load(_ js.Value, args []js.Value) any {
 			Rescue:     int16(p.Get("rescue").Int()),
 			Eliminated: p.Get("eliminated").Bool(),
 			Stun:       int16(p.Get("stun").Int()),
+			VaultTicks: int16(p.Get("vaultTicks").Int()),
+			VaultFrom:  sim.Vec2{X: int32(p.Get("vaultFromX").Int()), Y: int32(p.Get("vaultFromY").Int())},
+			VaultTo:    sim.Vec2{X: int32(p.Get("vaultToX").Int()), Y: int32(p.Get("vaultToY").Int())},
 		}
 		// Guests get snapshots without trails; they never resolve a swing.
 		tr := p.Get("trail")
@@ -186,6 +192,11 @@ func snapshot(js.Value, []js.Value) any {
 			"rescue":     int(p.Rescue),
 			"eliminated": p.Eliminated,
 			"stun":       int(p.Stun),
+			"vaultTicks": int(p.VaultTicks),
+			"vaultFromX": int(p.VaultFrom.X),
+			"vaultFromY": int(p.VaultFrom.Y),
+			"vaultToX":   int(p.VaultTo.X),
+			"vaultToY":   int(p.VaultTo.Y),
 		}
 	}
 	gens := make([]any, len(state.Gens))
@@ -223,10 +234,15 @@ func inReach(_ js.Value, a []js.Value) any {
 	return sim.InReach(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, uint16(a[2].Int()), sim.Vec2{X: int32(a[3].Int()), Y: int32(a[4].Int())})
 }
 
-// walls returns the layout as [{minX, minY, maxX, maxY}, ...] in micrometers.
-func walls() []any {
-	out := make([]any, len(sim.Walls))
-	for i, w := range sim.Walls {
+// canVault(x, y) reports whether a survivor standing there could vault now.
+func canVault(_ js.Value, a []js.Value) any {
+	return sim.CanVault(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())})
+}
+
+// boxes returns [{minX, minY, maxX, maxY}, ...] in micrometers.
+func boxes(list []sim.Box) []any {
+	out := make([]any, len(list))
+	for i, w := range list {
 		out[i] = map[string]any{"minX": int(w.MinX), "minY": int(w.MinY), "maxX": int(w.MaxX), "maxY": int(w.MaxY)}
 	}
 	return out

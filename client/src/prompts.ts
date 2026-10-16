@@ -26,7 +26,7 @@ export function status(p: SimPlayer, rules: Rules): string {
 const hookLeft = (p: SimPlayer, rules: Rules) => Math.ceil((rules.hookTicks - p.hookUsed) / rules.tickRate);
 
 /** What a survivor is going through and what they can do about it. */
-export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules): string[] {
+export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules, canVault = false): string[] {
   if (me.escaped) return ["you escaped"];
   if (me.eliminated) return ["you died on the hook"];
   if (me.onHook) {
@@ -48,6 +48,7 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
   if (hooked) return [hooked.rescue ? `unhooking ${pct(hooked.rescue, rules.rescueTicks)}` : "hold E to unhook them"];
   const downed = teammates.find((p) => p.health === rules.health.downed && !p.carried && !p.onHook && !p.eliminated && !p.escaped && dist(p, me) <= rules.reviveRange);
   if (downed) return ["hold E to help them up"];
+  if (canVault && !me.checkActive && !me.vaultTicks) return ["Space to vault"];
   return lines;
 }
 

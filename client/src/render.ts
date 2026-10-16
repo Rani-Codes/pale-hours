@@ -14,7 +14,7 @@ import { dressing } from "./art/dressing";
 import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
-import { floor, GateModel, GeneratorModel, hookModel, noiseBeam, wall } from "./art/world";
+import { floor, GateModel, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
@@ -73,6 +73,11 @@ export class Renderer {
     for (const w of sim.walls) {
       const mesh = wall((w.maxX - w.minX) / M, WALL_HEIGHT, (w.maxY - w.minY) / M);
       mesh.position.set((w.minX + w.maxX) / 2 / M, 0, -(w.minY + w.maxY) / 2 / M);
+      this.scene.add(mesh);
+    }
+    for (const v of sim.vaults) {
+      const mesh = vaultModel((v.maxX - v.minX) / M, WALL_HEIGHT, (v.maxY - v.minY) / M);
+      mesh.position.set((v.minX + v.maxX) / 2 / M, 0, -(v.minY + v.maxY) / 2 / M);
       this.scene.add(mesh);
     }
     for (const site of sim.genSites) {
@@ -214,9 +219,10 @@ export class Renderer {
       root.rotation.y = 0;
     } else {
       root.position.set(p.x / M, 0, -p.y / M);
-      // Carried, they lie over the killer's shoulder facing his back.
+      // Carried, they lie over the killer's shoulder facing his back; vaulting, they face where they are going.
       const carrier = p.carried ? players.find((k) => k.carrying === p.id) : undefined;
-      root.rotation.y = carrier ? (-carrier.yaw / 65536) * 2 * Math.PI + Math.PI : yaw;
+      const vaultYaw = -Math.atan2(p.vaultToX - p.vaultFromX, p.vaultToY - p.vaultFromY);
+      root.rotation.y = carrier ? (-carrier.yaw / 65536) * 2 * Math.PI + Math.PI : p.vaultTicks > 0 ? vaultYaw : yaw;
     }
     const t = now / 1000;
     if (a.model instanceof KillerModel) {
@@ -224,7 +230,14 @@ export class Renderer {
     } else {
       const h = this.sim.health;
       a.model.pose(
-        { injured: p.health === h.injured, downed: p.health === h.downed, carried: p.carried, hooked: p.onHook !== 0, working: p.repairing || p.helping !== 0 },
+        {
+          injured: p.health === h.injured,
+          downed: p.health === h.downed,
+          carried: p.carried,
+          hooked: p.onHook !== 0,
+          working: p.repairing || p.helping !== 0,
+          vault: p.vaultTicks > 0 ? 1 - p.vaultTicks / this.sim.vaultTicks : undefined,
+        },
         a.speed,
         a.phase,
         t,

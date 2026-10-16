@@ -163,7 +163,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
     const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
     showHit(mine);
-    const prompts = survivorPrompts(mine, players, sim);
+    const prompts = survivorPrompts(mine, players, sim, sim.canVault(Math.round(mine.x), Math.round(mine.y)));
     const able = mine.health !== sim.health.downed && !mine.repairing && !mine.escaped && prompts.length === 0;
     if (mine.health === sim.health.injured && mine.boost > 0) lines.push("you are hit: run");
     lines.push(...prompts);

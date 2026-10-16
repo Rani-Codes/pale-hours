@@ -13,15 +13,16 @@ const (
 // and survivors east of (10, 0) m, all in open ground. Collision lives here,
 // not in the client, because the host decides where players end up.
 var Walls = []Box{
-	// Building A, north west. Doorways at the north and south, a window gap
-	// in the west wall, and a pillar in the middle to circle.
+	// Building A, north west. Doorways at the north and south, a window
+	// (see Vaults) in the west wall, and a pillar in the middle to circle.
 	hWall(-24, -19, 20), hWall(-17, -12, 20),
 	hWall(-24, -16, 8), hWall(-14, -12, 8),
 	vWall(-24, 8, 12), vWall(-24, 14, 20),
 	vWall(-12, 8, 20),
 	block(-19, 13, -17, 15),
 
-	// Building B, south east, mirrored but with its openings shifted.
+	// Building B, south east, mirrored but with its openings shifted; its
+	// window is in the east wall.
 	hWall(12, 16, -10), hWall(18, 24, -10),
 	hWall(12, 19, -22), hWall(21, 24, -22),
 	vWall(12, -22, -10),
@@ -37,6 +38,22 @@ var Walls = []Box{
 	block(6, 16, 9, 19),
 	hWall(-26, -18, -8),
 	hWall(18, 26, 8),
+
+	// Window loops in the open: a wall either side of a vault, to run around
+	// while the killer chases, and to cut through where he cannot.
+	hWall(-16, -14, -14), hWall(-12, -10, -14),
+	vWall(12, 11, 13), vWall(12, 15, 17),
+	vWall(-4, 2, 4), vWall(-4, 6, 8),
+}
+
+// Vaults are waist-high walls: they block walking like Walls, a survivor
+// beside one can vault over it, and the killer's swing reaches across.
+var Vaults = []Box{
+	vWall(-24, 12, 14),  // building A's west window
+	vWall(24, -17, -15), // building B's east window
+	hWall(-14, -12, -14),
+	vWall(12, 13, 15),
+	vWall(-4, 4, 6),
 }
 
 // GenSites are the generator positions. They block movement like walls.
@@ -82,9 +99,11 @@ func block(x0, y0, x1, y1 int32) Box {
 // hitWall returns the obstacle whose radius-grown box contains the player's
 // centre: a wall, or a generator's body. Touching a face does not count.
 func hitWall(p Vec2) (Box, bool) {
-	for _, w := range Walls {
-		if inGrown(p, w) {
-			return w, true
+	for _, list := range [][]Box{Walls, Vaults} {
+		for _, w := range list {
+			if inGrown(p, w) {
+				return w, true
+			}
 		}
 	}
 	for _, g := range GenSites {

@@ -134,10 +134,22 @@ export class SurvivorModel {
    * Pose for this frame. speed in m/s from how far they moved, t in seconds.
    * state carries what the sim says about them.
    */
-  pose(state: { injured: boolean; downed: boolean; carried: boolean; hooked: boolean; working: boolean }, speed: number, phase: number, t: number) {
+  pose(state: { injured: boolean; downed: boolean; carried: boolean; hooked: boolean; working: boolean; vault?: number }, speed: number, phase: number, t: number) {
     const r = this.rig;
     r.rest();
     this.blood.visible = state.injured || state.downed;
+    if (state.vault !== undefined) {
+      // A hurdle: a hand planted on the sill, knees tucked, the body arcing over.
+      const k = state.vault;
+      const arc = Math.sin(k * Math.PI);
+      r.body.position.y = arc * 0.75;
+      r.chest.rotation.x = 0.5 * arc;
+      r.armL.set(1.4 - k * 0.8, 0.2);
+      r.armR.set(0.8 + arc * 0.6, 0.3);
+      r.legL.set(1.3 * arc, -1.6 * arc);
+      r.legR.set(1.0 * arc, -1.8 * arc);
+      return;
+    }
     if (state.hooked) {
       // Hanging from the hook through the shoulder: one arm up gripping it, the rest limp, a slow sway.
       r.body.position.y = 0.95;

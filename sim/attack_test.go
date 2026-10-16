@@ -7,9 +7,9 @@ const m = meter
 // An empty map, or one with only the given obstacles, so tests control everything.
 func withMap(t *testing.T, walls []Box, gens []Vec2) {
 	t.Helper()
-	oldW, oldG := Walls, GenSites
-	Walls, GenSites = walls, gens
-	t.Cleanup(func() { Walls, GenSites = oldW, oldG })
+	oldW, oldG, oldV := Walls, GenSites, Vaults
+	Walls, GenSites, Vaults = walls, gens, nil
+	t.Cleanup(func() { Walls, GenSites, Vaults = oldW, oldG, oldV })
 }
 
 // settled is a player who has stood at pos long enough to fill their trail.

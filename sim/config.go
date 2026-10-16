@@ -80,6 +80,13 @@ const (
 	// miss costs this much hook time.
 	HookCheckPenalty = 5 * TickRate
 
+	// Vaults: a survivor beside one presses Space to go over it in
+	// VaultTicks; the killer has to go around. VaultReach is how far from
+	// the face they can start, VaultClear how far past it they land.
+	VaultTicks = 18 // 0.6 s
+	VaultReach = 600_000
+	VaultClear = 50_000
+
 	// Lag compensation: a swing is checked against survivors as the killer
 	// saw them, at most this far back. TrailLen ticks of positions are kept;
 	// it must be a power of two and cover the cap plus two ticks.
