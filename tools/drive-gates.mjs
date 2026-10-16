@@ -4,6 +4,7 @@
 // that is real keys. The guest checks a closed-and-unpowered gate does
 // nothing first, then opens a powered gate by hand and walks out.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "gates", query = ""] = process.argv.slice(2);
 const withQuery = (u) => (query ? u + (u.includes("?") ? "&" : "?") + query : u);
@@ -29,6 +30,7 @@ const linked = () => /rtt reliable/.test(document.querySelector("#netstatus").te
 await host.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
+await startMatch(host, [guest]);
 await guest.bringToFront();
 
 const me = () => guest.evaluate(() => paleSession.stats().predicted);

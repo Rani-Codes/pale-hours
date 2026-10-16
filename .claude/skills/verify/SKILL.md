@@ -52,7 +52,8 @@ Each prints `PASS` / `FAIL` lines and exits nonzero on failure. Stable handles f
 - `globalThis.paleSim.state()` is the sim state in this tab. On the host it is authoritative. On a guest it is the guest's prediction.
 - `globalThis.paleSession.stats()` exists for host and guest sessions. The host reports `{tick, guests: [{id, ack, depth, dropped}]}`. The guest reports `{selfId, seq, unacked, corrections, predicted, renderTick, starved, newestTick}`.
 - `paleSession.view(performance.now(), 0).players` is what the tab would draw this frame.
-- Keys: the killer moves with WASD on the host. Offline, the survivor uses the arrow keys. A guest moves with WASD or the arrow keys.
+- Lobby: there is no offline mode. The room creator hosts; each tab picks `#pick-killer` or `#pick-survivor`; the host clicks `#start`. `tools/lib/lobby.mjs` (`startMatch(host, guests, {killer})`) does this with real clicks; every match driver uses it. `paleSession.room()` is the lobby as the tab sees it.
+- Keys: every player moves with WASD or the arrow keys, relative to where they face.
 
 To simulate a bad network, add `delay` (ms, one way, on everything this tab sends), `jitter` (ms, unreliable channel only) and `loss` (0 to 1, unreliable channel only) to the URL. Apply them to both tabs. A round trip is about twice `delay`.
 

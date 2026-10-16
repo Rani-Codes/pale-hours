@@ -28,7 +28,7 @@ Each feature file starts with an H1 title and one paragraph describing the behav
 
 ## Features
 
-- [Local movement](./local-movement.md) covers the offline page with both players in one tab.
+- [Lobby](./lobby.md) covers creating and joining a room, role picks, Start, late joiners, and a guest playing killer.
 - [Room link](./room-link.md) covers hosting a room, joining by code, join progress, and the round-trip readout.
 - [Netplay](./netplay.md) covers guest prediction, host authority, and smooth remote players.
 - [Network simulation](./network-simulation.md) covers the bad-network URL query and the latency matrix.

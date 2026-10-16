@@ -4,6 +4,7 @@
 // exactly where the host puts it, and that the guest draws the host's killer
 // smoothly, behind but converging on the host's position.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "netplay", lag = ""] = process.argv.slice(2);
 const target = new URL(url);
@@ -41,6 +42,7 @@ const joinStart = Date.now();
 await guest.click("#join");
 await guest.waitForFunction(() => /connected/.test(document.querySelector("#netstatus").textContent), null, { timeout: 15000 });
 const linkedMs = Date.now() - joinStart;
+await startMatch(host, [guest]); // joinMs below includes picking roles and Start
 await guest.waitForFunction(() => paleSession.stats?.().predicted, null, { timeout: 15000 });
 metrics.joinMs = Date.now() - joinStart;
 console.log(`join: link open after ${linkedMs} ms, playing after ${metrics.joinMs} ms`);

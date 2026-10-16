@@ -4,6 +4,7 @@
 // turned with paleLook. Players are placed through paleSim.load on the host.
 // Swings and pickups are real clicks and keys.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "killer"] = process.argv.slice(2);
 const browser = await chromium.launch({ channel: "chrome", args: ["--disable-features=WebRtcHideLocalIpsWithMdns"] });
@@ -33,6 +34,7 @@ const join = async (name) => {
 const a = await join("A");
 const b = await join("B");
 const [idA, idB] = [await a.evaluate(() => paleSession.stats().selfId), await b.evaluate(() => paleSession.stats().selfId)];
+await startMatch(host, [a, b]);
 await host.waitForFunction(() => paleSim.state().tick > 30);
 const M = 1e6;
 const place = (changes) =>
@@ -88,6 +90,10 @@ await a.keyboard.up("KeyW");
 await host.keyboard.press("KeyE");
 await b.waitForTimeout(700);
 await shot("carry");
+await host.keyboard.down("KeyW"); // and carrying on the move
+await b.waitForTimeout(500);
+await shot("carry-walk");
+await host.keyboard.up("KeyW");
 await host.keyboard.press("KeyE"); // drop
 await b.waitForTimeout(300);
 

@@ -7,7 +7,7 @@ Working title: Pale Hours.
 1. **Horror through asymmetry.** The killer sees in first person with a narrow field of view. Survivors use a third-person camera and can see around corners. Fog and sound do the rest.
 2. **Skill-based.** Chases and hits must feel fair. Outcomes come from player decisions, not lag.
 3. **Low latency.** UDP-style transport, client prediction, and lag-compensated hits.
-4. **$0 hosting.** Peer to peer. The killer's browser hosts the match.
+4. **$0 hosting.** Peer to peer. The room creator's browser hosts the match.
 
 ## Look
 
@@ -32,7 +32,7 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - **Match end (decided 2026-10-15).** The match ends when every survivor has escaped or died; downed, carried and hooked survivors are still in play. Outcomes are per player: each survivor sees "You escaped" or "You died", the killer sees how many he killed ("You killed 2 of 4", "You killed them all", "They all escaped"). There is no team winner. A finished match is frozen; the host gets a Rematch button that respawns everyone still connected.
 - **Spectating.** Once a survivor escapes or dies, their camera follows someone still in play, survivors first, then the killer. Space or a click switches. Their health bar hides.
 - **Heartbeat.** Silent while the survivor is carried, hooked, escaped or dead, and once the match is over: it only plays when hearing it can change what they do.
-- Lobby with a shareable room code. The killer hosts.
+- Lobby with a shareable room code (decided 2026-10-15). There is no offline mode. The room creator hosts and is the authority whatever role they play. Each player picks Killer or Survivor (one killer, up to four survivors); the creator's Start appears once there are two or more players, all picked, with one killer and at least one survivor. Joining after Start is refused with a reason. Rematch keeps the roles.
 
 ## Netcode
 
@@ -46,12 +46,12 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 
 - **Prediction:** each client simulates its own movement immediately and reconciles against host snapshots.
 - **Hits:** the swing lands 0.2 s after the click and is judged on that tick against survivors where the killer's screen last drew them. Judging at the click instead would let a survivor be hit where they stood before the windup. The sim keeps each player's last 8 tick positions (`Player.Trail`) and the killer's input carries `ViewLagMs`; the swing rewinds survivors by it, capped at 200 ms.
-- **What "the killer saw" is (decided 2026-10-15).** The killer hosts, so the killer's tab draws the host's own state, not the 70 ms interpolation buffer guests use. It draws up to two ticks behind the tick being stepped, and the host measures that gap every tick: 33 to 50 ms in practice, whatever the network. That gap is the whole rewind today. The trail and the 200 ms cap are there for a dedicated server later, where the killer is a remote client and the lag adds their interpolation delay and one-way latency.
+- **What "the killer saw" is (decided 2026-10-15).** When the host is the killer, his tab draws the host's own state, not the interpolation buffer guests use. It draws up to two ticks behind the tick being stepped, and the host measures that gap every tick: 33 to 50 ms in practice, whatever the network. When a guest is the killer, every input frame carries `seen`, the host tick his screen was drawing everyone else at, and the host rewinds by (tick being stepped minus seen). That covers his interpolation delay, one-way latency and input queueing. Measured: about 100 ms on a clean link, 220 ms at 100 ms round trip, 330 ms at 200 ms. The sim caps it at 200 ms, so a guest killer beyond roughly 100 ms round trip is judged against survivors slightly ahead of what he saw (up to 0.5 m at 200 ms round trip). The cap stops a laggy or lying killer hitting survivors far in the past; raising it trades survivor fairness for killer fairness. `seen` is a client claim, trusted only up to that cap.
 - **What rewind cannot fix.** A survivor's own screen runs ahead of the host by their one-way latency plus the host's input buffer. A survivor who ducks behind a wall on their screen at the last moment can still be hit if the host had not yet received that movement. Rewinding favors the attacker's view by design; removing this would mean favoring the victim, which makes hits feel random to the killer. Log every such case in the Phase 4 playtest before changing it.
 - **Transport:** WebRTC data channels. Unreliable and unordered for inputs and snapshots, reliable for lobby and events.
 - **NAT traversal:** STUN first (`stun.cloudflare.com`). TURN fallback in Phase 4.
 - **Verification:** `tools/latency-matrix.mjs` runs host and guest tabs at 100ms and 200ms round trip with 5% loss, plus jitter and a 400ms stress profile. Latencies there are round trip.
-- **Topology:** star. All survivors connect to the killer's browser.
+- **Topology:** star. Every guest connects to the room creator's browser.
 
 ## Architecture
 
@@ -94,7 +94,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] Win and loss conditions (match end, per-player end screen, spectating, rematch; `matchOver` in `sim/sim.go`, screens in `client/src/endgame.ts`)
 
 ### Phase 4: playable with friends
-- [ ] Lobby with room codes, 5 players
+- [x] Lobby with room codes, 5 players: role picks, Start at two or more, any role on any tab, guest killers lag-compensated from `seen` (see Netcode)
 - [ ] TURN fallback
 - [x] Low-poly art pass, all built in code (`client/src/art/`): PS1 look (240-row render, banded color with ordered dither, vertex snapping; `view.retro`), painted textures, brick walls, generators, gallows hooks, portcullis gates, animated survivor and killer models with a first-person cleaver, fence, treeline, rocks and grass. Done 2026-10-15, before the lobby, at the owner's request.
 - [ ] Sound pass (footsteps, swing and hit, generator hum, hook, gates); the heartbeat is still the synthesized placeholder

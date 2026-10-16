@@ -1,10 +1,11 @@
 // Usage: node drive-look.mjs <url> <shot-prefix> [spot ...]
-// Art review: the offline page in real Chrome, the killer placed at named
+// Art review: a two-tab match in real Chrome, the killer (host) placed at named
 // spots (facing north, the default look) through paleSim.load, one
 // screenshot per spot. Survivor 2 stands where the spot puts them.
 // Prints the frame rate over two seconds; headless Chrome may render on the
 // CPU, so treat it as a floor, not what a player gets.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "look", ...only] = process.argv.slice(2);
 const M = 1e6;
@@ -20,13 +21,25 @@ const spots = {
   edge: [[14, 25], [16, 27]],
   open: [[-4, -6], [-2, 2]],
 };
-const browser = await chromium.launch({ channel: "chrome" });
-const page = await browser.newPage({ viewport: { width: 960, height: 600 } });
+const browser = await chromium.launch({ channel: "chrome", args: ["--disable-features=WebRtcHideLocalIpsWithMdns"] });
+const context = await browser.newContext({ viewport: { width: 960, height: 600 } });
 const errors = [];
-page.on("pageerror", (e) => errors.push(e.message));
-page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-await page.goto(url);
-await page.waitForFunction(() => globalThis.paleSim?.state().tick > 30);
+const open = async () => {
+  const p = await context.newPage();
+  p.on("pageerror", (e) => errors.push(e.message));
+  p.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+  await p.goto(url);
+  await p.waitForFunction(() => globalThis.paleSim);
+  return p;
+};
+// A match needs two players: the host is the killer and takes the shots, a guest is survivor 2.
+const page = await open();
+await page.click("#host");
+await page.waitForFunction(() => /room [A-Z0-9]{4}/.test(document.querySelector("#netstatus").textContent));
+const guest = await open();
+await guest.fill("#code", (await page.textContent("#netstatus")).match(/room ([A-Z0-9]{4})/)[1]);
+await guest.click("#join");
+await startMatch(page, [guest]);
 
 for (const [name, [k, s, extra = {}]] of Object.entries(spots)) {
   if (only.length && !only.includes(name)) continue;

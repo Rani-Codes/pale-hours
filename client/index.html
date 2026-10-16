@@ -10,10 +10,17 @@
       canvas { display: block; width: 100vw; height: 100vh; }
       #hud { position: fixed; top: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; pointer-events: none; }
       #lobby { position: fixed; top: 12px; right: 12px; font: 13px ui-monospace, monospace; display: flex; gap: 6px; align-items: center; }
-      #lobby input, #lobby button { font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 4px 8px; }
-      #lobby input { width: 5em; text-transform: uppercase; }
-      #lobby label { display: flex; gap: 6px; align-items: center; margin-left: 10px; }
+      #lobby label { display: flex; gap: 6px; align-items: center; }
       #lobby #volume { width: 110px; padding: 0; border: 0; background: none; margin: 0; accent-color: #9a9aa3; }
+      #room { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 340px; padding: 22px 26px; background: rgba(8, 8, 10, 0.88); border: 1px solid #2a2a33; font: 13px/1.6 ui-monospace, monospace; color: #9a9aa3; display: flex; flex-direction: column; gap: 12px; }
+      #room h1 { margin: 0; font-size: 26px; font-weight: normal; letter-spacing: 0.12em; color: #d8d4c8; }
+      #room input, #room button { font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 5px 10px; }
+      #room button:disabled { opacity: 0.4; }
+      #room button.chosen { border-color: #c0392b; color: #fff; }
+      #room input { width: 5em; text-transform: uppercase; }
+      #room .row { display: flex; gap: 8px; align-items: center; }
+      #room-seats { white-space: pre; color: #d8d4c8; }
+      #room[hidden], #room [hidden] { display: none; }
       #check { position: fixed; left: 50%; top: 62%; width: 320px; margin-left: -160px; height: 16px; background: #16161a; border: 1px solid #2a2a33; display: none; }
       #check-zone { position: absolute; top: 0; bottom: 0; background: #d8d4c8; }
       #check-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #c0392b; }
@@ -35,10 +42,24 @@
     <canvas id="view"></canvas>
     <div id="hud">loading sim…</div>
     <div id="lobby">
-      <button id="host">Host</button>
-      <input id="code" placeholder="CODE" maxlength="4" />
-      <button id="join">Join</button>
       <label>Vol <input id="volume" type="range" min="0" max="100" step="5" /></label>
+    </div>
+    <div id="room">
+      <h1>PALE HOURS</h1>
+      <div class="row" id="room-entry">
+        <button id="host">Create room</button>
+        <span>or</span>
+        <input id="code" placeholder="CODE" maxlength="4" />
+        <button id="join">Join</button>
+      </div>
+      <div id="room-code" hidden></div>
+      <div id="room-seats" hidden></div>
+      <div class="row" id="room-picks" hidden>
+        <button id="pick-killer">Play killer</button>
+        <button id="pick-survivor">Play survivor</button>
+      </div>
+      <button id="start" hidden>Start</button>
+      <div id="room-status"></div>
     </div>
     <div id="check"><div id="check-zone"></div><div id="check-needle"></div></div>
     <div id="check-result"></div>

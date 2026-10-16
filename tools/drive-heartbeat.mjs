@@ -3,6 +3,7 @@
 // must be audible at spawn range, speed up and get louder as the killer walks
 // toward it, and the killer must hear nothing.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "heartbeat", query = ""] = process.argv.slice(2);
 const withQuery = (u) => (query ? u + (u.includes("?") ? "&" : "?") + query : u);
@@ -30,6 +31,7 @@ await guest.click("#join"); // a real click, which also unlocks audio
 const linked = () => /rtt reliable/.test(document.querySelector("#netstatus").textContent);
 await host.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(linked, null, { timeout: 15000 });
+await startMatch(host, [guest]);
 await guest.waitForFunction(() => globalThis.paleHeartbeat.current.bpm > 0, null, { timeout: 5000 });
 
 const beat = (page) => page.evaluate(() => ({ ...paleHeartbeat.current, running: paleHeartbeat.running }));

@@ -4,6 +4,7 @@
 // exactly on where it stops, the stop must be the wall face, and the guest
 // must have needed no reconciliation corrections.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "wall", query = ""] = process.argv.slice(2);
 const withQuery = (u) => (query ? u + (u.includes("?") ? "&" : "?") + query : u);
@@ -32,6 +33,7 @@ await guest.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
 
 const selfId = await guest.evaluate(() => paleSession.stats().selfId);
+await startMatch(host, [guest]);
 await guest.bringToFront();
 await guest.keyboard.down("KeyD");
 await guest.waitForTimeout(1000);

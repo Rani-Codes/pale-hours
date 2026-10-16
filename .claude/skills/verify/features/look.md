@@ -8,11 +8,11 @@ The game renders at 240 rows and stretches that over the window with hard pixels
 - `look-world` shows walls, generators, hooks, gates and dressing at the fixed spots in `drive-look.mjs`.
 - `look-survivor` poses survivors for walking, limping injured, kneeling at work, crawling downed, carried and hooked.
 - `look-killer` poses the killer idle, walking, winding up, striking, carrying, and shows the first-person cleaver swing.
-- `look-perf` keeps 60 frames per second in headless Chrome on the offline page.
+- `look-perf` keeps 60 frames per second in headless Chrome in a two-tab match.
 
 ## How to get to it (user POV)
 
-- Open the page. The offline view is the killer in first person; host and join from another tab to see survivors in third person.
+- Start a match. The killer sees in first person, survivors in third person. `&light=review` in the URL lights everything and drops the fog, for judging models.
 
 ## Driving it with Playwright
 

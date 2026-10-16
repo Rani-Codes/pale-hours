@@ -8,6 +8,7 @@
 //   3. The killer cannot walk through it, and Space does nothing for him.
 //   4. The killer's swing still reaches a survivor across it.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "vault", query = ""] = process.argv.slice(2);
 const withQuery = (u) => (query ? u + (u.includes("?") ? "&" : "?") + query : u);
@@ -33,6 +34,7 @@ await guest.click("#join");
 await guest.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
 const id = await guest.evaluate(() => paleSession.stats().selfId);
+await startMatch(host, [guest]);
 await host.waitForFunction(() => paleSim.state().tick > 30);
 
 const M = 1e6;

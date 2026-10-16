@@ -1,14 +1,15 @@
 import { net, spawns } from "./config";
-import { InputQueue } from "./inputqueue";
+import { InputQueue, type Move } from "./inputqueue";
 import { lerpYaw, SnapshotBuffer } from "./interp";
-import { arrows, readActions, readIntent, readMove, wasd } from "./keys";
+import { arrows, readActions, readIntent, wasd } from "./keys";
 import { look } from "./look";
 import type { Link } from "./net";
-import { parseInputs, parseSnapshot, parseWelcome, type InputFrame, type SnapshotMsg } from "./protocol";
+import { parseInputs, parseLobby, parsePick, parseRefused, parseSnapshot, type InputFrame, type SnapshotMsg } from "./protocol";
+import { lineup, MAX_PLAYERS, pick, startProblem, type Role, type Seat } from "./room";
 import { newPlayer, type PaleSim, type SimInput, type SimPlayer, type SimState, type World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
-const KILLER_ID = 1;
+const HOST_ID = 1; // the room creator; guests take 2 to 5
 
 /** The sim's input for a player, from whatever moves they sent. */
 function toInput(id: number, f: { moveX: number; moveY: number; yaw: number; act: boolean; skill: boolean; attack: boolean }): SimInput {
@@ -22,14 +23,27 @@ function playerRng(seed: number, id: number): number {
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
 
+/** What the lobby panel shows. */
+export interface RoomView {
+  you: number;
+  seats: Seat[];
+  started: boolean;
+  isHost: boolean;
+  /** Why Start is not offered yet; undefined when it is. */
+  problem?: string;
+  refused?: string;
+}
+
 /**
- * One way of running the match in this tab. Each rendered frame, the page
- * loop calls tick() for every sim tick due, then flush(), then view().
+ * One way of running this tab. Each rendered frame, the page loop calls
+ * tick() for every sim tick due, then flush(), then view().
  */
 export interface Session {
   tick(): void;
   flush?(): void;
   view(now: number, alpha: number): { players: SimPlayer[]; hud: string[]; self?: number; world: World };
+  room?(): RoomView;
+  pick?(role: Role): void;
 }
 
 /** Players drawn part-way between the last two ticks. */
@@ -40,45 +54,17 @@ function blend(prev: SimState, curr: SimState, alpha: number): SimPlayer[] {
   });
 }
 
-/** Offline: both players in this tab, killer on WASD and survivor on the arrow keys. */
-export class LocalSession implements Session {
-  private sim: PaleSim;
-  private prev: SimState;
-  private curr: SimState;
+const emptyWorld = (sim: PaleSim): World => ({ gens: sim.genSites.map(() => 0), noise: sim.genSites.map(() => 0), gates: sim.gateSites.map(() => 0), over: false });
 
+/** Not in a room yet: nothing runs, the map is shown from above behind the lobby panel. */
+export class IdleSession implements Session {
+  private world: World;
   constructor(sim: PaleSim) {
-    this.sim = sim;
-    const seed = randomSeed();
-    sim.load({
-      tick: 0,
-      players: [
-        newPlayer(KILLER_ID, sim.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(seed, KILLER_ID)),
-        newPlayer(2, sim.roles.survivor, spawns.survivors[0].x * M, spawns.survivors[0].y * M, playerRng(seed, 2)),
-      ],
-      gens: sim.genSites.map(() => 0),
-      noise: sim.genSites.map(() => 0),
-      gates: sim.gateSites.map(() => 0),
-    });
-    this.prev = this.curr = sim.state();
+    this.world = emptyWorld(sim);
   }
-
-  tick() {
-    const { act, skill, attack } = readActions();
-    this.sim.step([
-      { id: KILLER_ID, ...readIntent(look.yaw, wasd), act: false, skill: false, attack },
-      { id: 2, ...readMove(arrows), yaw: 0, act, skill },
-    ]);
-    this.prev = this.curr;
-    this.curr = this.sim.state();
-  }
-
-  view(_now: number, alpha: number) {
-    return {
-      players: blend(this.prev, this.curr, alpha),
-      hud: [`tick ${this.curr.tick}`, "killer: WASD + mouse, click to attack   survivor: arrow keys"],
-      self: KILLER_ID,
-      world: this.curr,
-    };
+  tick() {}
+  view() {
+    return { players: [], hud: [], world: this.world };
   }
 }
 
@@ -104,11 +90,18 @@ function forGuests(s: SimState): SimState {
   return { ...s, players: s.players.map(({ trail: _, ...p }) => p) };
 }
 
-/** The killer's tab: the only authority. Applies guest inputs and sends each guest snapshots. */
+/**
+ * The room creator's tab: the only authority. Runs the lobby, then the
+ * match, whichever role its own player picked. Applies guest inputs and
+ * sends each guest snapshots.
+ */
 export class HostSession implements Session {
   private sim: PaleSim;
   private guests = new Map<number, Guest>();
-  private seed: number;
+  private seats: Seat[] = [{ id: HOST_ID }];
+  private started = false;
+  private killerId = 0;
+  private seed = 0;
   private prev: SimState;
   private curr: SimState;
   /** The host tick the last drawn frame showed, between prev and curr. */
@@ -118,54 +111,86 @@ export class HostSession implements Session {
 
   constructor(sim: PaleSim) {
     this.sim = sim;
-    this.seed = randomSeed();
-    sim.load({
-      tick: 0,
-      players: [newPlayer(KILLER_ID, sim.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(this.seed, KILLER_ID))],
-      gens: sim.genSites.map(() => 0),
-      noise: sim.genSites.map(() => 0),
-      gates: sim.gateSites.map(() => 0),
-    });
+    sim.load({ tick: 0, players: [], ...emptyWorld(sim) });
     this.prev = this.curr = sim.state();
   }
 
   addGuest(link: Link) {
-    const slot = spawns.survivors.findIndex((_, i) => !this.guests.has(i + 2));
-    if (slot < 0) return link.close();
-    const id = slot + 2;
+    const refuse = (reason: string) => {
+      link.events.send({ t: "refused", reason });
+      setTimeout(() => link.close(), 500); // let the reason arrive first
+    };
+    if (this.started) return refuse("the match has already started");
+    const id = [2, 3, 4, 5].find((n) => !this.guests.has(n));
+    if (id === undefined || this.seats.length >= MAX_PLAYERS) return refuse("the room is full");
     const queue = new InputQueue({
       backlogWindowTicks: net.inputBacklogWindowTicks,
       backlogSpare: net.inputBacklogSpare,
       maxQueued: net.maxQueuedInputs,
     });
     this.guests.set(id, { link, queue });
-    this.edit((s) => s.players.push(newPlayer(id, this.sim.roles.survivor, spawns.survivors[slot].x * M, spawns.survivors[slot].y * M, playerRng(this.seed, id))));
-
+    this.seats = [...this.seats, { id }];
     link.state.onMessage((m) => {
       const frames = parseInputs(m);
       if (frames) queue.push(frames);
     });
+    link.events.onMessage((m) => {
+      const p = parsePick(m);
+      if (p && !this.started) this.setRole(id, p.role);
+    });
     link.onClose(() => {
       this.guests.delete(id);
-      this.edit((s) => (s.players = s.players.filter((p) => p.id !== id)));
+      this.seats = this.seats.filter((s) => s.id !== id);
+      if (this.started) this.edit((s) => (s.players = s.players.filter((p) => p.id !== id)));
+      this.broadcast();
     });
-    link.events.send({ t: "welcome", id });
+    this.broadcast();
   }
 
-  /** A fresh match with everyone still connected, back at their spawns. The tick keeps counting so guests keep accepting snapshots. */
+  pick(role: Role) {
+    if (!this.started) this.setRole(HOST_ID, role);
+  }
+
+  private setRole(id: number, role: Role) {
+    this.seats = pick(this.seats, id, role);
+    this.broadcast();
+  }
+
+  /** Begin the match, if the lobby allows it. */
+  start() {
+    if (this.started || startProblem(this.seats)) return;
+    this.started = true;
+    this.newMatch();
+    this.broadcast();
+  }
+
+  /** A fresh match with the same roles, everyone back at their spawns. The tick keeps counting so guests keep accepting snapshots. */
   rematch() {
+    if (this.started) this.newMatch();
+  }
+
+  private newMatch() {
     this.seed = randomSeed();
     const s = this.sim;
-    const survivor = (id: number) => newPlayer(id, s.roles.survivor, spawns.survivors[id - 2].x * M, spawns.survivors[id - 2].y * M, playerRng(this.seed, id));
+    const { killer, survivors } = lineup(this.seats.filter((seat) => seat.id === HOST_ID || this.guests.has(seat.id)));
+    this.killerId = killer;
     s.load({
       tick: this.curr.tick,
-      players: [newPlayer(KILLER_ID, s.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(this.seed, KILLER_ID)), ...[...this.guests.keys()].map(survivor)],
-      gens: s.genSites.map(() => 0),
-      noise: s.genSites.map(() => 0),
-      gates: s.gateSites.map(() => 0),
-      over: false,
+      players: [
+        newPlayer(killer, s.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(this.seed, killer)),
+        ...survivors.map((id, i) => newPlayer(id, s.roles.survivor, spawns.survivors[i].x * M, spawns.survivors[i].y * M, playerRng(this.seed, id))),
+      ],
+      ...emptyWorld(s),
     });
     this.prev = this.curr = s.state();
+  }
+
+  private broadcast() {
+    for (const [id, g] of this.guests) g.link.events.send({ t: "lobby", you: id, seats: this.seats, started: this.started });
+  }
+
+  room(): RoomView {
+    return { you: HOST_ID, seats: this.seats, started: this.started, isHost: true, problem: startProblem(this.seats) };
   }
 
   private edit(change: (s: SimState) => void) {
@@ -176,17 +201,36 @@ export class HostSession implements Session {
   }
 
   tick() {
-    // The killer is in this tab and sees the host's own state, drawn up to a
-    // couple of ticks behind the one being stepped. A swing landing this tick
-    // is judged against what that last frame showed.
-    const viewLagMs = Math.round(Math.max(0, this.curr.tick + 1 - this.drawnTick) * (1000 / this.sim.tickRate));
-    const { act, attack } = readActions();
-    const inputs: SimInput[] = [{ ...toInput(KILLER_ID, { ...readIntent(look.yaw, wasd, arrows), act, skill: false, attack }), viewLagMs }];
-    for (const [id, g] of this.guests) inputs.push(toInput(id, g.queue.take()));
+    if (!this.started) return;
+    const next = this.curr.tick + 1;
+    const tickMs = 1000 / this.sim.tickRate;
+    const actions = readActions();
+    const mine = { ...toInput(HOST_ID, { ...readIntent(look.yaw, wasd, arrows), ...actions }) };
+    // A swing landing this tick is judged against what the killer last saw.
+    // The host's own screen draws its own state a tick or two behind the one
+    // being stepped; a guest says which host tick it was drawing.
+    const lagFor = (seen: number | undefined) => (seen === undefined ? 0 : Math.round(Math.max(0, next - seen) * tickMs));
+    let killerLag = 0;
+    const inputs: SimInput[] = [];
+    if (this.killerId === HOST_ID) {
+      killerLag = lagFor(this.drawnTick);
+      inputs.push({ ...mine, viewLagMs: killerLag });
+    } else {
+      inputs.push(mine);
+    }
+    for (const [id, g] of this.guests) {
+      const move: Move = g.queue.take();
+      if (id === this.killerId) {
+        killerLag = lagFor(move.seen);
+        inputs.push({ ...toInput(id, move), viewLagMs: killerLag });
+      } else {
+        inputs.push(toInput(id, move));
+      }
+    }
     this.sim.step(inputs);
     this.prev = this.curr;
     this.curr = this.sim.state();
-    this.logSwing(viewLagMs);
+    this.logSwing(killerLag);
 
     const rate = net.snapshotRate / this.sim.tickRate;
     if (Math.floor(this.curr.tick * rate) === Math.floor((this.curr.tick - 1) * rate)) return;
@@ -195,8 +239,8 @@ export class HostSession implements Session {
   }
 
   private logSwing(viewLagMs: number) {
-    const was = this.prev.players.find((p) => p.id === KILLER_ID);
-    const k = this.curr.players.find((p) => p.id === KILLER_ID);
+    const was = this.prev.players.find((p) => p.id === this.killerId);
+    const k = this.curr.players.find((p) => p.id === this.killerId);
     if (!was || !k || was.swing !== this.sim.swing.windup || k.swing !== this.sim.swing.recover) return;
     const pos = (p: SimPlayer) => ({ id: p.id, x: p.x, y: p.y });
     const survivors = (ps: SimPlayer[]) => ps.filter((p) => p.role === this.sim.roles.survivor).map(pos);
@@ -212,30 +256,37 @@ export class HostSession implements Session {
   }
 
   view(_now: number, alpha: number) {
-    const hud = [`hosting   tick ${this.curr.tick}   killer: WASD or arrows, click to attack`];
+    if (!this.started) return { players: [], hud: [], world: this.curr };
+    const role = this.killerId === HOST_ID ? "killer" : "survivor";
+    const hud = [`hosting   tick ${this.curr.tick}   you: ${role}`];
     for (const [id, g] of this.guests) hud.push(`guest ${id}: input queue ${g.queue.depth}, dropped ${g.queue.dropped}`);
     this.drawnTick = this.prev.tick + (this.curr.tick - this.prev.tick) * alpha;
     this.drawn = blend(this.prev, this.curr, alpha);
-    return { players: this.drawn, hud, self: KILLER_ID, world: this.curr };
+    return { players: this.drawn, hud, self: HOST_ID, world: this.curr };
   }
 
   stats() {
     return {
       tick: this.curr.tick,
+      started: this.started,
+      killerId: this.killerId,
       guests: [...this.guests].map(([id, g]) => ({ id, ack: g.queue.ack, depth: g.queue.depth, dropped: g.queue.dropped })),
     };
   }
 }
 
 /**
- * A survivor's tab. Predicts its own player from local inputs, replays the
- * unacknowledged ones on top of each host snapshot, and draws everyone else
- * from the interpolation buffer.
+ * A guest's tab, killer or survivor. Predicts its own player from local
+ * inputs, replays the unacknowledged ones on top of each host snapshot, and
+ * draws everyone else from the interpolation buffer.
  */
 export class GuestSession implements Session {
   private sim: PaleSim;
   private link: Link;
   private selfId: number | undefined;
+  private seats: Seat[] = [];
+  private started = false;
+  private refused: string | undefined;
   private seq = 0;
   private unacked: InputFrame[] = [];
   private newest: SnapshotMsg | undefined;
@@ -251,8 +302,14 @@ export class GuestSession implements Session {
     this.link = link;
     this.remote = new SnapshotBuffer(1000 / sim.tickRate, net.interpDelayMs, net.clockSmoothing);
     link.events.onMessage((m) => {
-      const w = parseWelcome(m);
-      if (w) this.selfId = w.id;
+      const lobby = parseLobby(m);
+      if (lobby) {
+        this.selfId = lobby.you;
+        this.seats = lobby.seats;
+        this.started = lobby.started;
+      }
+      const no = parseRefused(m);
+      if (no) this.refused = no.reason;
     });
     link.state.onMessage((m) => {
       const snap = parseSnapshot(m);
@@ -262,12 +319,22 @@ export class GuestSession implements Session {
     });
   }
 
-  tick() {
-    if (this.selfId === undefined) return;
-    if (this.newest && this.newest.state.tick > this.reconciledTick) this.reconcile(this.newest);
-    if (!this.curr) return;
+  pick(role: Role) {
+    this.link.events.send({ t: "pick", role });
+  }
 
-    const frame = { seq: ++this.seq, ...readIntent(look.yaw, wasd, arrows), ...readActions() };
+  room(): RoomView {
+    return { you: this.selfId ?? 0, seats: this.seats, started: this.started, isHost: false, problem: startProblem(this.seats), refused: this.refused };
+  }
+
+  tick() {
+    if (this.selfId === undefined || !this.started) return;
+    if (this.newest && this.newest.state.tick > this.reconciledTick) this.reconcile(this.newest);
+    if (!this.curr || !this.self(this.curr)) return;
+
+    // seen: the host tick the other players are drawn at, so the host can judge this tab's swings as it saw them.
+    const seen = this.remote.renderTick(performance.now());
+    const frame: InputFrame = { seq: ++this.seq, ...readIntent(look.yaw, wasd, arrows), ...readActions(), ...(Number.isFinite(seen) ? { seen } : {}) };
     this.unacked.push(frame);
     if (this.unacked.length > net.maxUnackedInputs) this.unacked.shift();
     this.sim.step([toInput(this.selfId, frame)]);
@@ -301,25 +368,26 @@ export class GuestSession implements Session {
   }
 
   view(now: number, alpha: number) {
+    const fallback = this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [], over: false };
+    if (!this.started) return { players: [], hud: [], world: fallback };
     const remote = this.remote.sample(now);
     const others = remote.filter((p) => p.id !== this.selfId);
     let self = this.prev && this.curr ? blend(this.prev, this.curr, alpha).filter((p) => p.id === this.selfId) : [];
     // Carried, the guest goes where the killer goes, so draw it on the same clock as the killer.
     if (self[0]?.carried) self = remote.filter((p) => p.id === this.selfId);
+    const role = self[0]?.role === this.sim.roles.killer ? "killer" : "survivor";
     return {
       players: [...others, ...self],
       self: this.selfId,
-      world: this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [], over: false },
-      hud: [
-        this.selfId === undefined ? "joined, waiting for host" : `survivor ${this.selfId}   move: WASD or arrows`,
-        `unacked inputs ${this.unacked.length}   corrections ${this.corrections} (last ${this.lastCorrectionM.toFixed(3)} m)`,
-      ],
+      world: fallback,
+      hud: [`${role} ${this.selfId}   move: WASD or arrows`, `unacked inputs ${this.unacked.length}   corrections ${this.corrections} (last ${this.lastCorrectionM.toFixed(3)} m)`],
     };
   }
 
   stats() {
     return {
       selfId: this.selfId,
+      started: this.started,
       seq: this.seq,
       unacked: this.unacked.length,
       corrections: this.corrections,

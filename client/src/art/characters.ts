@@ -269,7 +269,9 @@ export class KillerModel {
     r.chest.rotation.x += 0.28; // always hunched
     r.head.rotation.x = -0.2;
     this.strips.forEach((s, i) => (s.parent!.rotation.x = 0.12 * stride * Math.sin(phase + i) + 0.04 * Math.sin(t * 2 + i)));
-    if (state.carrying) r.armL.set(-2.7, -1.2, -0.2); // a hand on the survivor over his shoulder
+    // Carrying, both arms stay low: the left forearm comes across the chest to
+    // hold the survivor's legs, the right hangs with the cleaver and swings as he walks.
+    if (state.carrying) r.armL.set(0.25, 1.3, 0.25);
     if (state.stunned) {
       r.chest.rotation.x = -0.35 + 0.1 * Math.sin(t * 14);
       r.armL.set(0.6, 0.4, -0.6);

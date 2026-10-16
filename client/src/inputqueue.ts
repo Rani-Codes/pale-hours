@@ -14,6 +14,8 @@ export interface Move {
   act: boolean;
   skill: boolean;
   attack: boolean;
+  /** The host tick the guest was drawing when it sent this, if it said. */
+  seen?: number;
 }
 
 /**
@@ -53,7 +55,7 @@ export class InputQueue {
   push(frames: InputFrame[]) {
     for (const f of frames) {
       if (f.seq >= this.next && f.seq < this.next + 2 * this.limits.maxQueued) {
-        this.queued.set(f.seq, { moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack });
+        this.queued.set(f.seq, { moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack, seen: f.seen });
       }
     }
     while (this.queued.size > this.limits.maxQueued) this.dropOldest();

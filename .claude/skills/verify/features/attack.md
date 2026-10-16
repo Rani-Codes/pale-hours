@@ -28,6 +28,6 @@ Preconditions:
 ## Gotchas
 
 - Setup places players with `paleSim.load` on the host. Delete `trail` from a player you move, or the first swings rewind into their old spot.
-- The killer hosts, so the view lag is the host's render gap, about 33 to 50 ms whatever the network query. Network delay changes what the guest sees, not what the killer is judged on.
+- This driver makes the host the killer, so the view lag is the host's render gap, about 33 to 50 ms whatever the network query. A guest killer's lag (from `seen`) is covered by `drive-lobby.mjs`.
 - Clicking the canvas also asks for pointer lock. A background tab refuses it; `look.ts` swallows the refusal.
 - A hit shoves the survivor forward, which shows up as one correction on the guest. Do not add a zero-corrections check to this driver.

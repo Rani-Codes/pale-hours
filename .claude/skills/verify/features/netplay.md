@@ -29,5 +29,5 @@ Preconditions:
 
 - Killer latency varies by about ±25 ms per run because the sim only advances every 33 ms. Compare averages over at least 5 runs, not single runs.
 - The killer distance check is a lower bound only, because Playwright's key-up can reach the host tab late.
-- A guest that never gets a welcome message shows `joined, waiting for host` and never predicts.
+- A guest predicts nothing until the host's `lobby` message says the match has started.
 - Starved frames up to a handful under 5% loss are expected. The pass condition is the jump check.

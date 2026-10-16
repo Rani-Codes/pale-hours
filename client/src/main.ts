@@ -1,5 +1,5 @@
-import { initLobby } from "./lobby";
-import { GuestSession, HostSession, LocalSession, type Session } from "./session";
+import { initLobby, renderRoom } from "./lobby";
+import { GuestSession, HostSession, IdleSession, type Session } from "./session";
 import { audio } from "./config";
 import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
@@ -53,7 +53,7 @@ function use(s: Session) {
   session = s;
   (globalThis as { paleSession?: Session }).paleSession = s;
 }
-use(new LocalSession(sim));
+use(new IdleSession(sim));
 
 initLobby({
   host() {
@@ -64,6 +64,8 @@ initLobby({
   join() {
     return (link) => use(new GuestSession(sim, link));
   },
+  pick: (role) => session.pick?.(role),
+  start: () => session instanceof HostSession && session.start(),
 });
 
 const tickMs = 1000 / sim.tickRate;
@@ -78,6 +80,7 @@ function frame(now: number) {
     carry -= tickMs;
   }
   session.flush?.();
+  renderRoom(session.room?.());
   const { players, hud: lines, self, world } = session.view(now, carry / tickMs);
   draw(players, lines, self, world);
   requestAnimationFrame(frame);
@@ -177,6 +180,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   pips.forEach((pip, i) => pip.classList.toggle("full", i < filled));
   if (watching) lines.push(`spectating ${watching.role === sim.roles.killer ? "the killer" : `survivor ${watching.id}`}: Space or click to switch`);
   hud.textContent = lines.join("\n");
+  hud.style.display = self === undefined ? "none" : ""; // in the lobby there is nothing to report
 
   result.style.display = world.over ? "flex" : "none";
   if (world.over) {

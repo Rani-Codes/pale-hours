@@ -11,6 +11,7 @@
 //      lag compensation promises. Swings where the survivor's position on the
 //      landing tick would have given the other answer are counted.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "attack", query = ""] = process.argv.slice(2);
 const withQuery = (u) => (query ? u + (u.includes("?") ? "&" : "?") + query : u);
@@ -36,6 +37,7 @@ const linked = () => /rtt reliable/.test(document.querySelector("#netstatus").te
 await host.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
+await startMatch(host, [guest]);
 await host.waitForFunction(() => paleSim.state().tick > 30);
 
 const M = 1e6;

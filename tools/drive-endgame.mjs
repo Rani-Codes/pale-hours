@@ -8,6 +8,7 @@
 //      screen speaks to its player, and the match is frozen.
 //   4. The host clicks Rematch: a fresh match on every tab.
 import { chromium } from "playwright-core";
+import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "endgame", query = ""] = process.argv.slice(2);
 const withQuery = (u) => (query ? u + (u.includes("?") ? "&" : "?") + query : u);
@@ -38,6 +39,7 @@ const join = async (name) => {
 const a = await join("A");
 const b = await join("B");
 const [idA, idB] = [await a.evaluate(() => paleSession.stats().selfId), await b.evaluate(() => paleSession.stats().selfId)];
+await startMatch(host, [a, b]);
 await host.waitForFunction(() => paleSim.state().tick > 30);
 
 const M = 1e6;
