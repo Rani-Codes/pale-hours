@@ -50,6 +50,12 @@ export interface PickMsg {
   role: Role;
 }
 
+/** Guest to host: the name this guest wants. The host cleans it and makes it unique. */
+export interface NameMsg {
+  t: "name";
+  name: string;
+}
+
 /** Host to guest before closing the link: why they cannot join. */
 export interface RefusedMsg {
   t: "refused";
@@ -92,12 +98,16 @@ const isRole = (r: unknown): r is Role => r === "killer" || r === "survivor";
 
 export function parseLobby(m: unknown): LobbyMsg | undefined {
   if (!isObj(m) || m.t !== "lobby" || !isInt(m.you) || typeof m.started !== "boolean" || !Array.isArray(m.seats)) return undefined;
-  const seats = m.seats.filter((s): s is Seat => isObj(s) && isInt(s.id) && (s.role === undefined || isRole(s.role)));
+  const seats = m.seats.filter((s): s is Seat => isObj(s) && isInt(s.id) && (s.role === undefined || isRole(s.role)) && (s.name === undefined || typeof s.name === "string"));
   return seats.length === m.seats.length ? { t: "lobby", you: m.you, seats, started: m.started } : undefined;
 }
 
 export function parsePick(m: unknown): PickMsg | undefined {
   return isObj(m) && m.t === "pick" && isRole(m.role) ? { t: "pick", role: m.role } : undefined;
+}
+
+export function parseName(m: unknown): NameMsg | undefined {
+  return isObj(m) && m.t === "name" && typeof m.name === "string" ? { t: "name", name: m.name.slice(0, 100) } : undefined;
 }
 
 export function parseRefused(m: unknown): RefusedMsg | undefined {

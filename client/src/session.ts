@@ -4,8 +4,8 @@ import { lerpYaw, SnapshotBuffer } from "./interp";
 import { arrows, readActions, readIntent, wasd } from "./keys";
 import { look } from "./look";
 import type { Link } from "./net";
-import { parseInputs, parseLobby, parsePick, parseRefused, parseSnapshot, type InputFrame, type SnapshotMsg } from "./protocol";
-import { lineup, MAX_PLAYERS, pick, startProblem, type Role, type Seat } from "./room";
+import { parseInputs, parseLobby, parseName, parsePick, parseRefused, parseSnapshot, type InputFrame, type SnapshotMsg } from "./protocol";
+import { lineup, MAX_PLAYERS, pick, rename, startProblem, type Role, type Seat } from "./room";
 import { newPlayer, type PaleSim, type SimInput, type SimPlayer, type SimState, type World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
@@ -44,6 +44,7 @@ export interface Session {
   view(now: number, alpha: number): { players: SimPlayer[]; hud: string[]; self?: number; world: World };
   room?(): RoomView;
   pick?(role: Role): void;
+  setName?(name: string): void;
 }
 
 /** Players drawn part-way between the last two ticks. */
@@ -98,7 +99,7 @@ function forGuests(s: SimState): SimState {
 export class HostSession implements Session {
   private sim: PaleSim;
   private guests = new Map<number, Guest>();
-  private seats: Seat[] = [{ id: HOST_ID }];
+  private seats: Seat[];
   private started = false;
   private killerId = 0;
   private seed = 0;
@@ -109,8 +110,9 @@ export class HostSession implements Session {
   private drawn: SimPlayer[] = [];
   readonly swings: SwingLog[] = [];
 
-  constructor(sim: PaleSim) {
+  constructor(sim: PaleSim, name = "") {
     this.sim = sim;
+    this.seats = rename([{ id: HOST_ID }], HOST_ID, name);
     sim.load({ tick: 0, players: [], ...emptyWorld(sim) });
     this.prev = this.curr = sim.state();
   }
@@ -137,6 +139,8 @@ export class HostSession implements Session {
     link.events.onMessage((m) => {
       const p = parsePick(m);
       if (p && !this.started) this.setRole(id, p.role);
+      const n = parseName(m);
+      if (n && !this.started) this.setName(n.name, id);
     });
     link.onClose(() => {
       this.guests.delete(id);
@@ -149,6 +153,11 @@ export class HostSession implements Session {
 
   pick(role: Role) {
     if (!this.started) this.setRole(HOST_ID, role);
+  }
+
+  setName(name: string, id = HOST_ID) {
+    this.seats = rename(this.seats, id, name);
+    this.broadcast();
   }
 
   private setRole(id: number, role: Role) {
@@ -283,6 +292,7 @@ export class HostSession implements Session {
 export class GuestSession implements Session {
   private sim: PaleSim;
   private link: Link;
+  private name: string;
   private selfId: number | undefined;
   private seats: Seat[] = [];
   private started = false;
@@ -297,13 +307,16 @@ export class GuestSession implements Session {
   private corrections = 0;
   private lastCorrectionM = 0;
 
-  constructor(sim: PaleSim, link: Link) {
+  constructor(sim: PaleSim, link: Link, name = "") {
+    this.name = name;
     this.sim = sim;
     this.link = link;
     this.remote = new SnapshotBuffer(1000 / sim.tickRate, net.interpDelayMs, net.clockSmoothing);
     link.events.onMessage((m) => {
       const lobby = parseLobby(m);
       if (lobby) {
+        // The first word from the host: tell it who we are. Later changes go out through setName.
+        if (this.selfId === undefined && this.name) this.link.events.send({ t: "name", name: this.name });
         this.selfId = lobby.you;
         this.seats = lobby.seats;
         this.started = lobby.started;
@@ -321,6 +334,11 @@ export class GuestSession implements Session {
 
   pick(role: Role) {
     this.link.events.send({ t: "pick", role });
+  }
+
+  setName(name: string) {
+    this.name = name;
+    this.link.events.send({ t: "name", name });
   }
 
   room(): RoomView {

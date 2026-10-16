@@ -1,12 +1,13 @@
 import { lagSim, net } from "./config";
 import { hostRoom, joinRoom, type Link } from "./net";
 import { parsePing } from "./protocol";
-import type { Role } from "./room";
+import { cleanName, MAX_NAME, nameOf, randomName, type Role } from "./room";
 import type { RoomView } from "./session";
 
 // Lobby UI plus a ping over both channels, so each tab shows the link's round trip.
 const status = document.querySelector<HTMLDivElement>("#netstatus")!;
 const codeInput = document.querySelector<HTMLInputElement>("#code")!;
+const nameInput = document.querySelector<HTMLInputElement>("#name")!;
 const rtt = { events: NaN, state: NaN };
 let lines = ["offline"];
 
@@ -46,9 +47,10 @@ function wirePing(link: Link) {
 
 /** What the lobby needs from the game: start a mode, get back what to do with each link; pass on picks and Start. */
 export interface Game {
-  host(): (link: Link) => void;
-  join(): (link: Link) => void;
+  host(name: string): (link: Link) => void;
+  join(name: string): (link: Link) => void;
   pick(role: Role): void;
+  setName(name: string): void;
   start(): void;
 }
 
@@ -77,7 +79,7 @@ export function renderRoom(view: RoomView | undefined) {
   codeText.textContent = view.isHost ? (roomCode ?? "") : "";
   codeText.hidden = copyButton.hidden = !view.isHost || !roomCode;
   panel.seats.textContent = view.seats
-    .map((s) => `player ${s.id}${s.id === view.you ? " (you)" : ""}${s.id === 1 ? " host" : ""}`.padEnd(22) + (s.role ?? "picking…"))
+    .map((s) => `${nameOf(view.seats, s.id)}${s.id === view.you ? " (you)" : ""}${s.id === 1 ? " host" : ""}`.padEnd(MAX_NAME + 12) + (s.role ?? "picking…"))
     .join("\n");
   const mine = view.seats.find((s) => s.id === view.you)?.role;
   const killerTaken = view.seats.some((s) => s.role === "killer" && s.id !== view.you);
@@ -88,7 +90,29 @@ export function renderRoom(view: RoomView | undefined) {
   panel.status.textContent = view.problem ?? (view.isHost ? "ready: press Start" : "ready: waiting for the host to start");
 }
 
+const NAME_KEY = "pale-name";
+
+/** A name typed here earlier, else a fresh random one. Storage can be blocked, so it is only a convenience. */
+function startingName(): string {
+  try {
+    const saved = cleanName(localStorage.getItem(NAME_KEY) ?? "");
+    if (saved) return saved;
+  } catch {}
+  return randomName();
+}
+
 export function initLobby(game: Game) {
+  nameInput.maxLength = MAX_NAME;
+  nameInput.value = startingName();
+  const myName = () => cleanName(nameInput.value) || randomName();
+  nameInput.addEventListener("keydown", (e) => e.key === "Enter" && nameInput.blur());
+  nameInput.addEventListener("change", () => {
+    nameInput.value = myName();
+    try {
+      localStorage.setItem(NAME_KEY, nameInput.value);
+    } catch {}
+    game.setName(nameInput.value);
+  });
   pickButtons.killer.addEventListener("click", () => game.pick("killer"));
   pickButtons.survivor.addEventListener("click", () => game.pick("survivor"));
   panel.start.addEventListener("click", () => game.start());
@@ -132,7 +156,7 @@ export function initLobby(game: Game) {
   document.querySelector("#host")!.addEventListener("click", async () => {
     try {
       say("creating room…");
-      const room = await hostRoom(handlers(game.host()));
+      const room = await hostRoom(handlers(game.host(myName())));
       roomCode = room.code;
       say(`hosting room ${room.code} — waiting for a guest`);
     } catch (err) {
@@ -153,7 +177,7 @@ export function initLobby(game: Game) {
       show();
       joinTimer = setInterval(show, 250);
       await joinRoom(codeInput.value, {
-        ...handlers(game.join()),
+        ...handlers(game.join(myName())),
         onProgress(s: string) {
           stage = s;
           show();

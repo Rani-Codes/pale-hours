@@ -1,12 +1,12 @@
 import { initLobby, renderRoom } from "./lobby";
-import { GuestSession, HostSession, IdleSession, type Session } from "./session";
+import { MAX_NAME, nameOf } from "./room";import { GuestSession, HostSession, IdleSession, type Session } from "./session";
 import { audio, view } from "./config";
 import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
 import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts";
-import { hearsHeartbeat, isOut, results, spectateTarget } from "./endgame";
+import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
 import { HookAlerts } from "./hookalert";
 
 const m = 1_000_000; // micrometers per meter
@@ -58,15 +58,16 @@ function use(s: Session) {
 use(new IdleSession(sim));
 
 initLobby({
-  host() {
-    const host = new HostSession(sim);
+  host(name) {
+    const host = new HostSession(sim, name);
     use(host);
     return (link) => host.addGuest(link);
   },
-  join() {
-    return (link) => use(new GuestSession(sim, link));
+  join(name) {
+    return (link) => use(new GuestSession(sim, link, name));
   },
   pick: (role) => session.pick?.(role),
+  setName: (name) => session.setName?.(name),
   start: () => session instanceof HostSession && session.start(),
 });
 
@@ -119,6 +120,7 @@ canvas.addEventListener("mousedown", (e) => e.button === 0 && nextWatch());
 
 const result = document.querySelector<HTMLDivElement>("#result")!;
 const resultHeadline = document.querySelector<HTMLHeadingElement>("#result-headline")!;
+const resultYou = document.querySelector<HTMLDivElement>("#result-you")!;
 const resultLines = document.querySelector<HTMLDivElement>("#result-lines")!;
 const rematch = document.querySelector<HTMLButtonElement>("#rematch")!;
 rematch.addEventListener("click", () => {
@@ -126,6 +128,22 @@ rematch.addEventListener("click", () => {
   spectate.pick = 0;
   rematch.blur();
 });
+
+const nameOfId = (id: number) => nameOf(session.room?.().seats ?? [], id);
+
+// Everyone is told when a survivor gets out, unless that ends the match: the end screen says it then.
+const feed = document.querySelector<HTMLDivElement>("#feed")!;
+const exitsKnown = new Map<number, "in" | "escaped" | "died">();
+function announce(players: SimPlayer[], over: boolean) {
+  for (const e of newExits(exitsKnown, players, sim)) {
+    if (over) continue;
+    const note = document.createElement("div");
+    note.className = e.how;
+    note.textContent = `${nameOfId(e.id)} ${e.how === "escaped" ? "escaped" : "died"}`;
+    feed.append(note);
+    setTimeout(() => note.remove(), view.feedMs);
+  }
+}
 
 const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
@@ -138,6 +156,8 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   const me = players.find((p) => p.id === self);
   const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
   spectate.id = watching?.id;
+  announce(players, !!world.over);
+  feed.style.display = world.over ? "none" : "";
   const hooked = hookAlerts.update(players, self, performance.now());
   if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked);
   else renderer.draw(players, world, self, look.yaw, look.pitch, hooked);
@@ -147,7 +167,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   heartbeat.update(hears ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
   lines = [...lines, `volume ${volume.value}%` + (heartbeat.current.bpm > 0 ? `   heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : "")];
   for (const p of players) {
-    lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${status(p, sim)}` : ""));
+    lines.push(`${nameOfId(p.id).padEnd(MAX_NAME)} ${p.role === sim.roles.killer ? "killer  " : "survivor"} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${status(p, sim)}` : ""));
   }
   const done = gens.filter((g) => g >= sim.genTicks).length;
   lines.push(`generators ${done}/${gens.length} done   ` + gens.map((g) => `${Math.floor((100 * Math.min(g, sim.genTicks)) / sim.genTicks)}%`).join(" "));
@@ -167,7 +187,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
     const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
     const byOpenGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange * 2 && gates[i] >= sim.gateTicks);
-    for (const h of hooked) lines.push(`TEAMMATE HOOKED: survivor ${h.id}, ${bearing(mine, sim.hookSites[h.hook])}`);
+    for (const h of hooked) lines.push(`TEAMMATE HOOKED: ${nameOfId(h.id)}, ${bearing(mine, sim.hookSites[h.hook])}`);
     showHit(mine);
     const prompts = survivorPrompts(mine, players, sim, sim.canVault(Math.round(mine.x), Math.round(mine.y)));
     const able = mine.health !== sim.health.downed && !mine.repairing && !mine.escaped && prompts.length === 0;
@@ -183,14 +203,15 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   healthBar.style.display = mine?.role === sim.roles.survivor && !isOut(mine) ? "flex" : "none";
   const filled = mine ? healthPips(mine, sim) : 0;
   pips.forEach((pip, i) => pip.classList.toggle("full", i < filled));
-  if (watching) lines.push(`spectating ${watching.role === sim.roles.killer ? "the killer" : `survivor ${watching.id}`}: Space or click to switch`);
+  if (watching) lines.push(`spectating ${nameOfId(watching.id)}${watching.role === sim.roles.killer ? " (the killer)" : ""}: Space or click to switch`);
   hud.textContent = lines.join("\n");
   hud.style.display = self === undefined ? "none" : ""; // in the lobby there is nothing to report
 
   result.style.display = world.over ? "flex" : "none";
   if (world.over) {
-    const r = results(me, players, sim);
+    const r = results(me, players, sim, nameOfId);
     resultHeadline.textContent = r.headline;
+    resultYou.textContent = r.you;
     resultLines.textContent = r.lines.join("\n");
     rematch.style.display = session instanceof HostSession ? "block" : "none";
   }

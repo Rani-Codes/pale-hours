@@ -60,7 +60,7 @@ const place = (changes, world = {}) =>
 const on = (page, id) => page.evaluate((id) => paleSim.state().players.find((p) => p.id === id), id);
 const bpm = (page) => page.evaluate(() => paleHeartbeat.current.bpm);
 const over = (page) => page.evaluate(() => !!paleSim.state().over);
-const headline = (page) => page.textContent("#result-headline");
+const headline = async (page) => `${await page.textContent("#result-headline")} | ${await page.textContent("#result-you")}`;
 const shown = (page) => page.evaluate(() => getComputedStyle(document.querySelector("#result")).display !== "none");
 const settle = (ms = 900) => host.waitForTimeout(ms);
 const { hookTicks, hook, gateTicks, gensRequired, genTicks } = await host.evaluate(() => ({
@@ -138,7 +138,7 @@ const checks = {
   "the spectating tab says so, with no heartbeat": /spectating/.test(aHud) && beatOut === 0,
   "the last hook death ends the match on every tab": ended && overAll.every(Boolean),
   "every tab shows the end screen": shownAll.every(Boolean),
-  "each end screen speaks to its player": screens.host === "You killed 1 of 2" && screens.A === "You escaped" && screens.B === "You died",
+  "each end screen speaks to its player": [screens.host, screens.A, screens.B].every((t) => t.startsWith("Game over: the survivors win | ")) && screens.host.endsWith("You killed 1 of 2") && screens.A.endsWith("You escaped") && screens.B.endsWith("You died"),
   "only the host gets Rematch": rematchShown.host && !rematchShown.A,
   "a finished match is frozen": frozenTo.y === frozenFrom.y,
   "Rematch starts a fresh match on every tab": fresh.every(inPlay) && freshShown.every((v) => !v),

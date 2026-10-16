@@ -17,6 +17,7 @@
       #room input, #room button { font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 5px 10px; }
       #room button:disabled { opacity: 0.4; }
       #room button.chosen { border-color: #c0392b; color: #fff; }
+      #room #name { width: 14em; text-transform: none; }
       #room input { width: 5em; text-transform: uppercase; }
       #room .row { display: flex; gap: 8px; align-items: center; }
       #room-code-text { font-size: inherit; font-weight: bold; color: #d8d4c8; cursor: pointer; user-select: all; }
@@ -30,6 +31,11 @@
       #health .pip { width: 26px; height: 26px; border: 2px solid #d8d4c8; box-sizing: border-box; }
       #health .pip.full { background: #c0392b; border-color: #c0392b; }
       #result { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(5, 5, 7, 0.7); font: 14px/1.6 ui-monospace, monospace; color: #d8d4c8; pointer-events: none; }
+      #result-you { font-size: 18px; color: #fff; }
+      #feed { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; font: 15px ui-monospace, monospace; }
+      #feed div { padding: 6px 14px; background: rgba(8, 8, 10, 0.85); border: 1px solid #2a2a33; color: #d8d4c8; }
+      #feed .escaped { border-color: #3f9f5a; }
+      #feed .died { border-color: #c0392b; }
       #result-lines { white-space: pre; text-align: center; }
       #result h1 { font-size: 34px; font-weight: normal; letter-spacing: 0.08em; margin: 0 0 8px; }
       #result #rematch { pointer-events: auto; font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 6px 14px; margin-top: 10px; }
@@ -47,6 +53,7 @@
     </div>
     <div id="room">
       <h1>PALE HOURS</h1>
+      <label class="row">your name <input id="name" autocomplete="off" spellcheck="false" /></label>
       <div class="row" id="room-entry">
         <button id="host">Create room</button>
         <span>or</span>
@@ -69,8 +76,9 @@
     <div id="check"><div id="check-zone"></div><div id="check-needle"></div></div>
     <div id="check-result"></div>
     <div id="health"><div class="pip"></div><div class="pip"></div></div>
+    <div id="feed"></div>
     <div id="flash"></div>
-    <div id="result"><h1 id="result-headline"></h1><div id="result-lines"></div><button id="rematch">Rematch</button></div>
+    <div id="result"><h1 id="result-headline"></h1><div id="result-you"></div><div id="result-lines"></div><button id="rematch">Rematch</button></div>
     <div id="netstatus">offline</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
