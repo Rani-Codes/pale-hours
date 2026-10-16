@@ -2,6 +2,8 @@ import { view } from "./config";
 
 /** Where this tab's player is looking. Mouse look needs pointer lock: click the canvas. */
 export const look = { yaw: 0, pitch: 0 };
+// Exposed for the tools/ drivers, which cannot capture the mouse in headless Chrome.
+(globalThis as { paleLook?: typeof look }).paleLook = look;
 
 export function initLook(canvas: HTMLCanvasElement) {
   canvas.addEventListener("click", () => {

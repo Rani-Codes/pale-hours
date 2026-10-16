@@ -30,6 +30,8 @@ func main() {
 		"health":           map[string]any{"healthy": int(sim.Healthy), "injured": int(sim.Injured), "downed": int(sim.Downed)},
 		"swing":            map[string]any{"idle": int(sim.SwingIdle), "windup": int(sim.SwingWindup), "recover": int(sim.SwingRecover), "hit": int(sim.SwingHit), "miss": int(sim.SwingMiss)},
 		"rewindCapMs":      sim.RewindCapMs,
+		"attack":           map[string]any{"windupTicks": sim.AttackWindupTicks, "recoverHitTicks": sim.AttackRecoverHitTicks, "recoverMissTicks": sim.AttackRecoverMissTicks},
+		"stunTicks":        sim.StunTicks,
 		"hookSites":        sites(sim.HookSites),
 		"hookTicks":        sim.HookTicks,
 		"hookRange":        sim.HookRange,

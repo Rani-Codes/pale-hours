@@ -114,6 +114,8 @@ export interface PaleSim {
   health: { healthy: number; injured: number; downed: number };
   swing: { idle: number; windup: number; recover: number; hit: number; miss: number };
   rewindCapMs: number;
+  attack: { windupTicks: number; recoverHitTicks: number; recoverMissTicks: number };
+  stunTicks: number;
   hookSites: { x: number; y: number }[];
   hookTicks: number;
   hookRange: number;

@@ -1,12 +1,8 @@
 import {
   AmbientLight,
-  BoxGeometry,
-  CylinderGeometry,
   DirectionalLight,
   Fog,
-  Group,
   Mesh,
-  MeshLambertMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   PointLight,
@@ -14,15 +10,29 @@ import {
   WebGLRenderer,
 } from "three";
 import { view } from "./config";
-import { RetroPass, snapped } from "./art/retro";
+import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
+import { RetroPass } from "./art/retro";
+import { ViewModel } from "./art/viewmodel";
 import { floor, GateModel, GeneratorModel, hookModel, noiseBeam, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
 const WALL_HEIGHT = 3;
-const KILLER_HEIGHT = 1.9;
-const SURVIVOR_HEIGHT = 1.7;
+const STRIKE_S = 0.12; // the fast part of a swing, at the start of the recovery
 const gone = (p: SimPlayer | undefined) => !p || p.escaped || p.eliminated;
+
+/** One player's model and what the renderer remembers about them between frames. */
+interface Actor {
+  model: SurvivorModel | KillerModel;
+  x: number;
+  y: number;
+  /** Smoothed meters per second, from how far they moved. */
+  speed: number;
+  /** Walk cycle, radians. */
+  phase: number;
+  swing: number;
+  swingSince: number;
+}
 
 /**
  * Draws the sim's world in Three.js. The sim's plane is (x, y); here that is
@@ -33,7 +43,8 @@ export class Renderer {
   private readonly scene = new Scene();
   private readonly overhead: OrthographicCamera;
   private readonly eye = new PerspectiveCamera(view.survivor.fov, 1, view.near, view.far);
-  private readonly bodies = new Map<number, Group>();
+  private readonly actors = new Map<number, Actor>();
+  private readonly viewModel = new ViewModel();
   /** Show the whole map from above instead of the player's own view. Toggle with M. */
   showMap = false;
   private readonly ambient = new AmbientLight(0xffffff, 0.8);
@@ -45,9 +56,6 @@ export class Renderer {
   private readonly beams: Mesh[] = [];
   private readonly gates: GateModel[] = [];
   private lastFrame = performance.now();
-  private readonly killerMat = snapped(new MeshLambertMaterial({ color: 0xc0392b }));
-  private readonly survivorMat = snapped(new MeshLambertMaterial({ color: 0xd8d4c8 }));
-  private readonly injuredMat = snapped(new MeshLambertMaterial({ color: 0xa8514a }));
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -112,21 +120,12 @@ export class Renderer {
     const live = new Set<number>();
     for (const p of players) {
       live.add(p.id);
-      let body = this.bodies.get(p.id);
-      if (!body) {
-        body = this.makeBody(p.role === this.sim.roles.killer);
-        this.bodies.set(p.id, body);
-        this.scene.add(body);
-      }
-      body.visible = !gone(p);
-      body.position.set(p.x / M, 0, -p.y / M);
-      body.rotation.y = (-p.yaw / 65536) * 2 * Math.PI;
-      this.pose(body, p);
+      this.animate(p, players, dt, now);
     }
-    for (const [id, body] of this.bodies) {
+    for (const [id, a] of this.actors) {
       if (live.has(id)) continue;
-      this.scene.remove(body);
-      this.bodies.delete(id);
+      this.scene.remove(a.model.object);
+      this.actors.delete(id);
     }
 
     const me = players.find((p) => p.id === self);
@@ -137,17 +136,17 @@ export class Renderer {
     this.scene.fog = mapLook ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
     this.gl.setClearColor(mapLook ? 0x0b0b0d : view.fog.color);
     if (mapLook || !me) {
-      for (const [id, body] of this.bodies) body.visible = !gone(players.find((p) => p.id === id));
+      for (const [id, a] of this.actors) a.model.object.visible = !gone(players.find((p) => p.id === id));
       this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
       this.gl.render(this.scene, this.overhead);
       return;
     }
     // Your own body stays out of your first-person view.
     const killer = me.role === this.sim.roles.killer;
-    for (const [id, body] of this.bodies) {
+    for (const [id, a] of this.actors) {
       const p = players.find((q) => q.id === id);
       // The killer's own body, and whoever he carries, would sit inside his camera.
-      body.visible = !(killer && (id === self || p?.carried)) && !gone(p);
+      a.model.object.visible = !(killer && (id === self || p?.carried)) && !gone(p);
     }
     this.beams.forEach((b, i) => (b.visible = killer && (noise[i] ?? 0) > 0));
 
@@ -167,46 +166,71 @@ export class Renderer {
     }
     this.lantern.position.copy(this.eye.position);
     this.eye.updateProjectionMatrix();
-    this.retro.render(this.gl, this.scene, this.eye);
-  }
-
-  private makeBody(killer: boolean): Group {
-    const h = killer ? KILLER_HEIGHT : SURVIVOR_HEIGHT;
-    const group = new Group();
-    const torso = new Mesh(new CylinderGeometry(0.4, 0.4, h, 12), killer ? this.killerMat : this.survivorMat);
-    torso.position.y = h / 2;
-    // A nose so you can see which way someone faces. The model art comes later.
-    const nose = new Mesh(new BoxGeometry(0.2, 0.2, 0.5), killer ? this.killerMat : this.survivorMat);
-    nose.position.set(0, h * 0.8, -0.45);
-    group.add(torso, nose);
     if (killer) {
-      // The weapon arm: it pivots at the shoulder, raised during the windup so survivors can read the swing.
-      const arm = new Group();
-      arm.name = "arm";
-      arm.position.set(0.45, h * 0.78, 0);
-      const blade = new Mesh(new BoxGeometry(0.12, 0.12, 1.1), this.killerMat);
-      blade.position.z = -0.55;
-      arm.add(blade);
-      group.add(arm);
+      const a = this.actors.get(me.id)!;
+      this.viewModel.update(this.eye, this.swingView(me, a, now), a.phase, Math.min(1, a.speed / 4));
     }
-    return group;
+    this.retro.render(this.gl, this.scene, this.eye, killer && me.stun === 0 ? this.viewModel.scene : undefined);
   }
 
-  /** Swing tell for the killer; injured and downed looks for survivors. */
-  private pose(body: Group, p: SimPlayer): void {
-    const arm = body.getObjectByName("arm");
-    if (arm) {
-      const s = this.sim.swing;
-      arm.rotation.x = p.swing === s.windup ? 1.1 : p.swing === s.recover ? -0.5 : 0;
-      return;
+  /** Move and pose one player's model for this frame. */
+  private animate(p: SimPlayer, players: SimPlayer[], dt: number, now: number) {
+    const isKiller = p.role === this.sim.roles.killer;
+    let a = this.actors.get(p.id);
+    if (!a) {
+      a = { model: isKiller ? new KillerModel() : new SurvivorModel(p.id), x: p.x, y: p.y, speed: 0, phase: 0, swing: p.swing, swingSince: now };
+      this.actors.set(p.id, a);
+      this.scene.add(a.model.object);
     }
-    const torso = body.children[0] as Mesh;
-    torso.material = p.health === this.sim.health.healthy ? this.survivorMat : this.injuredMat;
-    // Downed survivors lie low; carried ones lie across the killer's shoulder;
-    // hooked ones hang off the ground. Proper animation comes with the art pass.
-    const downed = p.health === this.sim.health.downed;
-    body.scale.y = downed && !p.onHook ? 0.3 : 1;
-    body.position.y = p.carried ? 1.5 : p.onHook ? 0.6 : 0;
+    // Speed from movement, capped so a teleport (a rematch, a hook) is not a sprint.
+    const moved = Math.hypot(p.x - a.x, p.y - a.y) / M;
+    const inst = dt > 0 ? Math.min(8, moved / dt) : 0;
+    a.speed += (inst - a.speed) * Math.min(1, dt * 10);
+    a.phase += a.speed * dt * (isKiller ? 2.2 : 2.6);
+    a.x = p.x;
+    a.y = p.y;
+    if (p.swing !== a.swing) {
+      a.swing = p.swing;
+      a.swingSince = now;
+    }
+
+    const root = a.model.object;
+    root.visible = !gone(p);
+    const yaw = (-p.yaw / 65536) * 2 * Math.PI;
+    if (p.onHook) {
+      const site = this.sim.hookSites[p.onHook - 1];
+      root.position.set(site.x / M + 0.1, 0, -site.y / M);
+      root.rotation.y = 0;
+    } else {
+      root.position.set(p.x / M, 0, -p.y / M);
+      // Carried, they lie over the killer's shoulder facing his back.
+      const carrier = p.carried ? players.find((k) => k.carrying === p.id) : undefined;
+      root.rotation.y = carrier ? (-carrier.yaw / 65536) * 2 * Math.PI + Math.PI : yaw;
+    }
+    const t = now / 1000;
+    if (a.model instanceof KillerModel) {
+      a.model.pose({ carrying: p.carrying !== 0, stunned: p.stun > 0 }, this.swingView(p, a, now), a.speed, a.phase, t);
+    } else {
+      const h = this.sim.health;
+      a.model.pose(
+        { injured: p.health === h.injured, downed: p.health === h.downed, carried: p.carried, hooked: p.onHook !== 0, working: p.repairing || p.helping !== 0 },
+        a.speed,
+        a.phase,
+        t,
+      );
+    }
+  }
+
+  /** Where the killer is in a swing, in real time since the phase began. */
+  private swingView(p: SimPlayer, a: Actor, now: number): SwingView {
+    const s = this.sim.swing;
+    const secs = (now - a.swingSince) / 1000;
+    const tick = 1 / this.sim.tickRate;
+    if (p.swing === s.windup) return { stage: "windup", k: Math.min(1, secs / (this.sim.attack.windupTicks * tick)) };
+    if (p.swing !== s.recover) return { stage: "idle", k: 0 };
+    if (secs < STRIKE_S) return { stage: "strike", k: secs / STRIKE_S };
+    const total = (p.swingResult === s.hit ? this.sim.attack.recoverHitTicks : this.sim.attack.recoverMissTicks) * tick;
+    return { stage: "recover", k: Math.min(1, (secs - STRIKE_S) / Math.max(0.01, total - STRIKE_S)) };
   }
 
   private resize(): void {

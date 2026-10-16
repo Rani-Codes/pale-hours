@@ -33,7 +33,7 @@ for (const [name, [k, s, extra = {}]] of Object.entries(spots)) {
       const st = paleSim.state();
       for (const p of st.players) {
         delete p.trail;
-        Object.assign(p, p.id === 1 ? { x: k[0] * 1e6, y: k[1] * 1e6, yaw: 0 } : { x: s[0] * 1e6, y: s[1] * 1e6, yaw: 32768, ...extra });
+        Object.assign(p, p.id === 1 ? { x: k[0] * 1e6, y: k[1] * 1e6, yaw: 0 } : { x: s[0] * 1e6, y: s[1] * 1e6, yaw: 32768, health: 0, onHook: 0, carried: false, ...extra });
       }
       paleSim.load(st);
     },
