@@ -55,6 +55,9 @@ export interface Game {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const panel = { root: $("#room"), entry: $("#room-entry"), code: $("#room-code"), seats: $("#room-seats"), picks: $("#room-picks"), start: $<HTMLButtonElement>("#start"), status: $("#room-status") };
 const pickButtons = { killer: $<HTMLButtonElement>("#pick-killer"), survivor: $<HTMLButtonElement>("#pick-survivor") };
+const codeLabel = $("#room-code-label");
+const codeText = $("#room-code-text");
+const copyButton = $<HTMLButtonElement>("#copy-code");
 let roomCode: string | undefined;
 let entryNote = "";
 
@@ -70,7 +73,9 @@ export function renderRoom(view: RoomView | undefined) {
     panel.status.textContent = view?.refused ? `refused: ${view.refused}` : entryNote;
     return;
   }
-  panel.code.textContent = view.isHost ? `room ${roomCode ?? ""}: share this code` : "in the room";
+  codeLabel.textContent = view.isHost ? "room code" : "in the room";
+  codeText.textContent = view.isHost ? (roomCode ?? "") : "";
+  codeText.hidden = copyButton.hidden = !view.isHost || !roomCode;
   panel.seats.textContent = view.seats
     .map((s) => `player ${s.id}${s.id === view.you ? " (you)" : ""}${s.id === 1 ? " host" : ""}`.padEnd(22) + (s.role ?? "picking…"))
     .join("\n");
@@ -87,6 +92,22 @@ export function initLobby(game: Game) {
   pickButtons.killer.addEventListener("click", () => game.pick("killer"));
   pickButtons.survivor.addEventListener("click", () => game.pick("survivor"));
   panel.start.addEventListener("click", () => game.start());
+  const copyCode = async () => {
+    if (!roomCode) return;
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      copyButton.textContent = "Copied";
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(codeText);
+      getSelection()?.removeAllRanges();
+      getSelection()?.addRange(range);
+      copyButton.textContent = "Press Ctrl/Cmd+C";
+    }
+    setTimeout(() => (copyButton.textContent = "Copy"), 1500);
+  };
+  copyButton.addEventListener("click", copyCode);
+  codeText.addEventListener("click", copyCode);
   let joinTimer: ReturnType<typeof setInterval> | undefined;
   const stopJoinTimer = () => clearInterval(joinTimer);
 
