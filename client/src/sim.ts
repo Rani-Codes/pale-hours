@@ -58,10 +58,12 @@ export interface SimState {
   noise: number[];
   /** Hand-opening progress in ticks, one per gate site. */
   gates: number[];
+  /** Every survivor has escaped or died. The match is frozen. */
+  over?: boolean;
 }
 
 /** The part of the state that is not a player. */
-export type World = Pick<SimState, "gens" | "noise" | "gates">;
+export type World = Pick<SimState, "gens" | "noise" | "gates" | "over">;
 
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {

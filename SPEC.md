@@ -28,6 +28,9 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - **Hit shove.** A hit pushes the survivor forward: a 0.33 s burst that carries a running survivor 2.2 m. Only survivors get it.
 - **Killer attack:** left click. A short windup, then a forward cone hit resolved by the host with lag compensation. Two hits take a survivor from healthy to downed. A downed survivor cannot be hit again. They can crawl slowly, and they recover very slowly if left alone. The only way to eliminate a survivor is to pick them up and hang them on a hook.
 - Win condition: survivors escape through a gate, or the killer eliminates everyone.
+- **Match end (decided 2026-10-15).** The match ends when every survivor has escaped or died; downed, carried and hooked survivors are still in play. Outcomes are per player: each survivor sees "You escaped" or "You died", the killer sees how many he killed ("You killed 2 of 4", "You killed them all", "They all escaped"). There is no team winner. A finished match is frozen; the host gets a Rematch button that respawns everyone still connected.
+- **Spectating.** Once a survivor escapes or dies, their camera follows someone still in play, survivors first, then the killer. Space or a click switches. Their health bar hides.
+- **Heartbeat.** Silent while the survivor is carried, hooked, escaped or dead, and once the match is over: it only plays when hearing it can change what they do.
 - Lobby with a shareable room code. The killer hosts.
 
 ## Netcode
@@ -87,7 +90,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [ ] Generator tuning pass in a real playtest: 80 s of repair per generator, check gap 4 to 9 s, zone 7 ticks (about 0.23 s)
 - [x] Killer attack with lag-compensated hits (left click; 0.2 s windup, 2.2 m 100° cone blocked by walls and generators, 0.6 s recovery on a hit and 1.0 s on a whiff; a hit survivor sprints for 2 s; downed survivors crawl at 0.7 m/s and cannot be hit; numbers in `sim/config.go`, logic in `sim/attack.go`)
 - [x] Injured and downed states, carry, hook, rescue (see the MVP scope notes above; logic in `sim/downed.go`, numbers in `sim/config.go`)
-- [ ] Win and loss conditions
+- [x] Win and loss conditions (match end, per-player end screen, spectating, rematch; `matchOver` in `sim/sim.go`, screens in `client/src/endgame.ts`)
 
 ### Phase 4: playable with friends
 - [ ] Lobby with room codes, 5 players

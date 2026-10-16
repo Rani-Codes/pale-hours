@@ -118,6 +118,7 @@ func load(_ js.Value, args []js.Value) any {
 		Players: players,
 		Gens:    gens,
 		Gates:   gates,
+		Over:    args[0].Get("over").Truthy(),
 	}
 	return nil
 }
@@ -195,7 +196,7 @@ func snapshot(js.Value, []js.Value) any {
 	for i, g := range state.Gates {
 		gates[i] = int(g.Progress)
 	}
-	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates}
+	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates, "over": state.Over}
 }
 
 func viewLag(v js.Value) uint16 {

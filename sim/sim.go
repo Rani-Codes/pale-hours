@@ -85,12 +85,19 @@ type State struct {
 	Gens []Generator
 	// Gates runs parallel to GateSites.
 	Gates []Gate
+	// Over is set once every survivor has escaped or been eliminated. From
+	// then on the match is frozen: only Tick moves.
+	Over bool
 }
 
 // Step advances the state by one tick. A player with no entry in inputs
 // stands still. The input state is not modified.
 func Step(s State, inputs map[PlayerID]Input) State {
-	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players)), Gens: append([]Generator(nil), s.Gens...), Gates: append([]Gate(nil), s.Gates...)}
+	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players)), Gens: append([]Generator(nil), s.Gens...), Gates: append([]Gate(nil), s.Gates...), Over: s.Over}
+	if s.Over {
+		copy(next.Players, s.Players)
+		return next
+	}
 	for i := range next.Gens {
 		next.Gens[i].Noise = max(next.Gens[i].Noise-1, 0)
 	}
@@ -181,7 +188,23 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			v.Carried, v.Health, v.Recover = false, Injured, 0
 		}
 	}
+	next.Over = matchOver(next.Players)
 	return next
+}
+
+// matchOver reports whether there were survivors and none is left in play.
+func matchOver(players []Player) bool {
+	survivors := 0
+	for _, p := range players {
+		if p.Role != Survivor {
+			continue
+		}
+		if !p.Escaped && !p.Eliminated {
+			return false
+		}
+		survivors++
+	}
+	return survivors > 0
 }
 
 func find(players []Player, id PlayerID) *Player {

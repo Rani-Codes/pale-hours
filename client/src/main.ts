@@ -6,6 +6,7 @@ import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
 import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts";
+import { hearsHeartbeat, isOut, results, spectateTarget } from "./endgame";
 
 const m = 1_000_000; // micrometers per meter
 
@@ -103,16 +104,38 @@ function showHit(me: SimPlayer | undefined) {
   lastHealth = me && { id: me.id, health: me.health };
 }
 
+// Spectating: once this tab's survivor is out, the camera follows someone
+// still in play. Space or a click moves to the next one. Exposed for the tools/ drivers.
+const spectate: { pick: number; id: number | undefined } = { pick: 0, id: undefined };
+(globalThis as { paleSpectate?: typeof spectate }).paleSpectate = spectate;
+const nextWatch = () => spectate.id !== undefined && spectate.pick++;
+addEventListener("keydown", (e) => e.code === "Space" && !e.repeat && nextWatch());
+canvas.addEventListener("mousedown", (e) => e.button === 0 && nextWatch());
+
+const result = document.querySelector<HTMLDivElement>("#result")!;
+const resultHeadline = document.querySelector<HTMLHeadingElement>("#result-headline")!;
+const resultLines = document.querySelector<HTMLDivElement>("#result-lines")!;
+const rematch = document.querySelector<HTMLButtonElement>("#rematch")!;
+rematch.addEventListener("click", () => {
+  if (session instanceof HostSession) session.rematch();
+  spectate.pick = 0;
+  rematch.blur();
+});
+
 const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
 function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
   const { gens, gates } = world;
-  renderer.draw(players, world, self, look.yaw, look.pitch);
   const me = players.find((p) => p.id === self);
+  const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
+  spectate.id = watching?.id;
+  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0);
+  else renderer.draw(players, world, self, look.yaw, look.pitch);
   const killer = players.find((p) => p.role === sim.roles.killer);
-  // Only survivors hear it. The killer does not hear his own heart.
-  heartbeat.update(me && killer && me.role !== sim.roles.killer ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
+  // Only survivors hear it, and only while it can help them. The killer does not hear his own heart.
+  const hears = me && killer && me.role !== sim.roles.killer && hearsHeartbeat(me) && !world.over;
+  heartbeat.update(hears ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
   lines = [...lines, `volume ${volume.value}%` + (heartbeat.current.bpm > 0 ? `   heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : "")];
   for (const p of players) {
     lines.push(`${p.role === sim.roles.killer ? "killer  " : "survivor"} ${p.id} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${status(p, sim)}` : ""));
@@ -149,10 +172,19 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     else if (mine.repairing && !mine.checkActive) lines.push("working...");
   }
   // Two squares: full health, one when injured, none when down.
-  healthBar.style.display = mine?.role === sim.roles.survivor ? "flex" : "none";
+  healthBar.style.display = mine?.role === sim.roles.survivor && !isOut(mine) ? "flex" : "none";
   const filled = mine ? healthPips(mine, sim) : 0;
   pips.forEach((pip, i) => pip.classList.toggle("full", i < filled));
+  if (watching) lines.push(`spectating ${watching.role === sim.roles.killer ? "the killer" : `survivor ${watching.id}`}: Space or click to switch`);
   hud.textContent = lines.join("\n");
+
+  result.style.display = world.over ? "flex" : "none";
+  if (world.over) {
+    const r = results(me, players, sim);
+    resultHeadline.textContent = r.headline;
+    resultLines.textContent = r.lines.join("\n");
+    rematch.style.display = session instanceof HostSession ? "block" : "none";
+  }
 
   // The skill check: a needle sweeps the bar, press Space while it is in the bright zone.
   check.style.display = mine?.checkActive ? "block" : "none";

@@ -152,6 +152,22 @@ export class HostSession implements Session {
     link.events.send({ t: "welcome", id });
   }
 
+  /** A fresh match with everyone still connected, back at their spawns. The tick keeps counting so guests keep accepting snapshots. */
+  rematch() {
+    this.seed = randomSeed();
+    const s = this.sim;
+    const survivor = (id: number) => newPlayer(id, s.roles.survivor, spawns.survivors[id - 2].x * M, spawns.survivors[id - 2].y * M, playerRng(this.seed, id));
+    s.load({
+      tick: this.curr.tick,
+      players: [newPlayer(KILLER_ID, s.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(this.seed, KILLER_ID)), ...[...this.guests.keys()].map(survivor)],
+      gens: s.genSites.map(() => 0),
+      noise: s.genSites.map(() => 0),
+      gates: s.gateSites.map(() => 0),
+      over: false,
+    });
+    this.prev = this.curr = s.state();
+  }
+
   private edit(change: (s: SimState) => void) {
     const s = this.sim.state();
     change(s);
@@ -293,7 +309,7 @@ export class GuestSession implements Session {
     return {
       players: [...others, ...self],
       self: this.selfId,
-      world: this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [] },
+      world: this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [], over: false },
       hud: [
         this.selfId === undefined ? "joined, waiting for host" : `survivor ${this.selfId}   move: WASD or arrows`,
         `unacked inputs ${this.unacked.length}   corrections ${this.corrections} (last ${this.lastCorrectionM.toFixed(3)} m)`,
