@@ -41,6 +41,8 @@ export const view = {
   exit: { roadLength: 22 }, // how far the road past each gate is drawn, in meters; only the first part is walkable
   checkResultMs: 1000, // how long "good" or "missed" stays up after a skill check
   feedMs: 3000, // how long "X escaped" and "X died" stay up
+  // A finished generator lights a column and a ring that every player sees, through walls and fog.
+  generatorDone: { showMs: 4000, color: 0xfff1b0, columnRadius: 1.3, ringRadius: 16, ringMs: 1400 },
   // When a survivor is hung on a hook, the other survivors see a beam over it this long.
   hookAlert: { showMs: 3000, color: 0xe03c3c },
   // ?light=review: full light and no fog, to judge models and animation. Never for play.
@@ -68,6 +70,14 @@ export const audio = {
     attack: 0.02,
     decay: 0.1,
     lowpassHz: 280,
+  },
+  // The sound every player hears when a generator finishes, wherever they are.
+  generatorDone: {
+    gain: 0.5,
+    thudHz: 62, // the low hit that lands first
+    bellHz: [220, 330, 440, 660], // a bright chord that rings out over it
+    sweepMs: 700, // a rising whine into the hit
+    ringSec: 2.6,
   },
 };
 

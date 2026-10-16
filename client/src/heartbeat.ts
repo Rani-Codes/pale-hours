@@ -12,6 +12,14 @@ export interface HeartbeatConfig {
   lowpassHz: number; // rounds off the top of the thump
 }
 
+export interface GeneratorDoneConfig {
+  gain: number;
+  thudHz: number;
+  bellHz: number[];
+  sweepMs: number;
+  ringSec: number;
+}
+
 export interface Beat {
   bpm: number;
   gain: number;
@@ -41,8 +49,36 @@ export class Heartbeat {
   /** What is playing right now, for drivers and the HUD. */
   current: Beat = { bpm: 0, gain: 0 };
 
-  constructor(config: HeartbeatConfig) {
+  private readonly done: GeneratorDoneConfig;
+
+  constructor(config: HeartbeatConfig, done: GeneratorDoneConfig) {
     this.config = config;
+    this.done = done;
+  }
+
+  /** A generator finished: a rising whine, a heavy hit, then a bright chord ringing out. Heard at full strength wherever you are. */
+  generatorDone() {
+    const { ctx, master } = this;
+    if (!ctx || !master || ctx.state !== "running") return;
+    const d = this.done;
+    const t0 = ctx.currentTime + 0.02;
+    const hit = t0 + d.sweepMs / 1000;
+    const tone = (type: OscillatorType, from: number, to: number, start: number, end: number, peak: number, atk: number) => {
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, start);
+      if (to !== from) osc.frequency.exponentialRampToValueAtTime(to, end);
+      env.gain.setValueAtTime(0, start);
+      env.gain.linearRampToValueAtTime(peak, start + atk);
+      env.gain.exponentialRampToValueAtTime(0.001, end);
+      osc.connect(env).connect(master);
+      osc.start(start);
+      osc.stop(end + 0.05);
+    };
+    tone("sawtooth", 90, 520, t0, hit, d.gain * 0.25, d.sweepMs / 1000 - 0.05);
+    tone("triangle", d.thudHz * 1.6, d.thudHz, hit, hit + 0.9, d.gain, 0.01);
+    for (const hz of d.bellHz) tone("sine", hz, hz, hit, hit + d.ringSec, (d.gain * 0.5) / d.bellHz.length, 0.01);
   }
 
   /** Master volume, 0 to 1. Applies to every sound the game makes. */

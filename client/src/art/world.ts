@@ -3,6 +3,7 @@ import {
   BufferGeometry,
   Color,
   CylinderGeometry,
+  DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -148,6 +149,50 @@ export class GeneratorModel {
     const done = progress >= ticks;
     this.lamp.emissive.setHex(done ? 0xffc870 : 0x000000);
     this.glow.intensity = done ? 6 : 0;
+  }
+}
+
+/**
+ * What every player sees when a generator finishes: a bright column of light
+ * and a ring that sweeps out across the ground. Drawn over walls and fog, so
+ * it shows from anywhere on the map.
+ */
+export class GeneratorFlash {
+  readonly object = new Group();
+  private readonly column: Mesh;
+  private readonly ring: Mesh;
+  private startedAt = -Infinity;
+  private readonly showMs: number;
+  private readonly ringMs: number;
+  private readonly ringRadius: number;
+
+  constructor(c: { showMs: number; color: number; columnRadius: number; ringRadius: number; ringMs: number }) {
+    this.showMs = c.showMs;
+    this.ringMs = c.ringMs;
+    this.ringRadius = c.ringRadius;
+    const glow = () => new MeshBasicMaterial({ color: c.color, transparent: true, fog: false, depthTest: false, side: DoubleSide });
+    this.column = new Mesh(new CylinderGeometry(c.columnRadius, c.columnRadius, 80, 24, 1, true), glow());
+    this.column.position.y = 40;
+    this.ring = new Mesh(new CylinderGeometry(1, 1, 2.5, 48, 1, true), glow());
+    this.ring.position.y = 1.2;
+    for (const m of [this.column, this.ring]) m.renderOrder = 11;
+    this.object.add(this.column, this.ring);
+    this.object.visible = false;
+  }
+
+  start(nowMs: number) {
+    this.startedAt = nowMs;
+  }
+
+  update(nowMs: number) {
+    const t = nowMs - this.startedAt;
+    this.object.visible = t >= 0 && t < this.showMs;
+    if (!this.object.visible) return;
+    // The column flares, holds, then fades; the ring races outward and thins.
+    (this.column.material as MeshBasicMaterial).opacity = 0.85 * Math.min(1, (1 - t / this.showMs) * 1.6) * (0.85 + 0.15 * Math.sin(t / 45));
+    const r = Math.min(1, t / this.ringMs);
+    this.ring.scale.set(1 + (this.ringRadius - 1) * (1 - (1 - r) ** 2), 1, 1 + (this.ringRadius - 1) * (1 - (1 - r) ** 2));
+    (this.ring.material as MeshBasicMaterial).opacity = 0.9 * (1 - r) ** 1.5;
   }
 }
 

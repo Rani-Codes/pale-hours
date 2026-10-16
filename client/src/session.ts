@@ -178,6 +178,15 @@ export class HostSession implements Session {
     if (this.started) this.newMatch();
   }
 
+  /** The match is done with: everyone back to the lobby with their names and picks, free to change them. */
+  toLobby() {
+    if (!this.started) return;
+    this.started = false;
+    this.sim.load({ tick: this.curr.tick, players: [], ...emptyWorld(this.sim) });
+    this.prev = this.curr = this.sim.state();
+    this.broadcast();
+  }
+
   private newMatch() {
     this.seed = randomSeed();
     const s = this.sim;
@@ -319,6 +328,7 @@ export class GuestSession implements Session {
         if (this.selfId === undefined && this.name) this.link.events.send({ t: "name", name: this.name });
         this.selfId = lobby.you;
         this.seats = lobby.seats;
+        if (this.started && !lobby.started) this.leaveMatch();
         this.started = lobby.started;
       }
       const no = parseRefused(m);
@@ -330,6 +340,13 @@ export class GuestSession implements Session {
       this.newest = snap;
       this.remote.push(snap.state, performance.now());
     });
+  }
+
+  /** The host called the match off: forget it, so the lobby shows a clean room and the next start begins fresh. */
+  private leaveMatch() {
+    this.newest = this.prev = this.curr = undefined;
+    this.unacked = [];
+    this.remote = new SnapshotBuffer(1000 / this.sim.tickRate, net.interpDelayMs, net.clockSmoothing);
   }
 
   pick(role: Role) {

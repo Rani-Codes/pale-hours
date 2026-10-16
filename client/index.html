@@ -38,7 +38,7 @@
       #feed .died { border-color: #c0392b; }
       #result-lines { white-space: pre; text-align: center; }
       #result h1 { font-size: 34px; font-weight: normal; letter-spacing: 0.08em; margin: 0 0 8px; }
-      #result #rematch { pointer-events: auto; font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 6px 14px; margin-top: 10px; }
+      #result #rematch, #result #to-lobby { pointer-events: auto; font: inherit; background: #16161a; color: #d8d4c8; border: 1px solid #2a2a33; padding: 6px 14px; margin-top: 10px; }
       #flash { position: fixed; inset: 0; background: #8a0d0d; opacity: 0; pointer-events: none; transition: opacity 0.6s ease-out; }
       #flash.on { opacity: 0.45; transition: none; }
       #netstatus { position: fixed; bottom: 12px; left: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre; }
@@ -78,7 +78,7 @@
     <div id="health"><div class="pip"></div><div class="pip"></div></div>
     <div id="feed"></div>
     <div id="flash"></div>
-    <div id="result"><h1 id="result-headline"></h1><div id="result-you"></div><div id="result-lines"></div><button id="rematch">Rematch</button></div>
+    <div id="result"><h1 id="result-headline"></h1><div id="result-you"></div><div id="result-lines"></div><button id="rematch">Rematch</button><button id="to-lobby">Back to lobby</button></div>
     <div id="netstatus">offline</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

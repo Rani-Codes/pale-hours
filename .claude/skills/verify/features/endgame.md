@@ -30,3 +30,7 @@ Preconditions:
 - `paleHeartbeat.current.bpm` is the beat the tab wants, independent of whether audio is unlocked.
 
 When a survivor gets out and others remain, every tab shows "<name> escaped" or "<name> died" in `#feed` for 3 s; the last exit shows the end screen instead. Names come from the lobby (`#name`), random until edited.
+
+The host's end screen also has Back to lobby (`#to-lobby`): every tab returns to the room panel with names and picks kept, and Start begins a fresh match.
+
+A finished generator flashes a column and ring on every tab and plays a chime (`paleHeartbeat.generatorDone`); a gate opening does neither.

@@ -16,7 +16,7 @@ import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
 import type { HookAlert } from "./hookalert";
-import { ExitModel, floor, GateModel, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
+import { ExitModel, floor, GateModel, GeneratorFlash, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
@@ -57,6 +57,7 @@ export class Renderer {
   private readonly retro = new RetroPass(view.retro);
   private readonly gens: GeneratorModel[] = [];
   private readonly beams: Mesh[] = [];
+  private readonly flashes: GeneratorFlash[] = [];
   private readonly hookBeams: Mesh[] = [];
   private readonly exits: ExitModel[] = [];
   private readonly gates: GateModel[] = [];
@@ -93,7 +94,10 @@ export class Renderer {
       const beam = noiseBeam();
       beam.position.set(site.x / M, beam.position.y, -site.y / M);
       this.beams.push(beam);
-      this.scene.add(gen.object, beam);
+      const flash = new GeneratorFlash(view.generatorDone);
+      flash.object.position.set(site.x / M, 0, -site.y / M);
+      this.flashes.push(flash);
+      this.scene.add(gen.object, beam, flash.object);
     }
     for (const site of sim.gateSites) {
       const gate = new GateModel((2 * sim.gateHalfWidth) / M);
@@ -133,6 +137,11 @@ export class Renderer {
     this.scene.remove(...warm);
   }
 
+  /** A generator just finished: light it up for everyone. */
+  flashGenerator(i: number): void {
+    this.flashes[i]?.start(performance.now());
+  }
+
   /**
    * Draw one frame. self is this tab's player and yaw/pitch (radians) where
    * it looks, straight from the mouse so the view never waits on the network.
@@ -158,6 +167,7 @@ export class Renderer {
       this.actors.delete(id);
     }
 
+    this.flashes.forEach((f) => f.update(now));
     this.hookBeams.forEach((b, i) => {
       const alert = hooks.find((h) => h.hook === i);
       b.visible = alert !== undefined;

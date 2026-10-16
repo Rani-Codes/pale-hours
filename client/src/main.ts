@@ -7,6 +7,7 @@ import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
 import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
+import { newlyDone } from "./genflash";
 import { HookAlerts } from "./hookalert";
 
 const m = 1_000_000; // micrometers per meter
@@ -17,7 +18,7 @@ const sim = await loadSim("/sim.wasm");
 const renderer = new Renderer(canvas, sim);
 const hookAlerts = new HookAlerts(view.hookAlert.showMs, sim.roles);
 initLook(canvas);
-const heartbeat = new Heartbeat(audio.heartbeat);
+const heartbeat = new Heartbeat(audio.heartbeat, audio.generatorDone);
 // Exposed for the tools/ drivers.
 (globalThis as { paleHeartbeat?: Heartbeat }).paleHeartbeat = heartbeat;
 for (const type of ["pointerdown", "keydown"]) addEventListener(type, () => heartbeat.unlock());
@@ -129,6 +130,7 @@ rematch.addEventListener("click", () => {
   rematch.blur();
 });
 
+const gensKnown: number[] = []; // each generator's progress as of the last frame
 const nameOfId = (id: number) => nameOf(session.room?.().seats ?? [], id);
 
 // Everyone is told when a survivor gets out, unless that ends the match: the end screen says it then.
@@ -145,6 +147,13 @@ function announce(players: SimPlayer[], over: boolean) {
   }
 }
 
+const toLobby = document.querySelector<HTMLButtonElement>("#to-lobby")!;
+toLobby.addEventListener("click", () => {
+  if (session instanceof HostSession) session.toLobby();
+  spectate.pick = 0;
+  toLobby.blur();
+});
+
 const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
@@ -157,6 +166,10 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
   spectate.id = watching?.id;
   announce(players, !!world.over);
+  for (const i of newlyDone(gensKnown, gens, sim.genTicks)) {
+    renderer.flashGenerator(i);
+    heartbeat.generatorDone();
+  }
   feed.style.display = world.over ? "none" : "";
   const hooked = hookAlerts.update(players, self, performance.now());
   if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked);
@@ -213,7 +226,7 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     resultHeadline.textContent = r.headline;
     resultYou.textContent = r.you;
     resultLines.textContent = r.lines.join("\n");
-    rematch.style.display = session instanceof HostSession ? "block" : "none";
+    rematch.style.display = toLobby.style.display = session instanceof HostSession ? "block" : "none";
   }
 
   // The skill check: a needle sweeps the bar, press Space while it is in the bright zone.
