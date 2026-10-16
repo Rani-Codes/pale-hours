@@ -2,7 +2,7 @@ import type { PaleSim, SimPlayer } from "./sim";
 
 type Rules = Pick<
   PaleSim,
-  "health" | "tickRate" | "hookTicks" | "hookSites" | "hookRange" | "rescueTicks" | "rescueRange" | "reviveRange" | "pickupRange" | "recoverTicks" | "roles"
+  "health" | "tickRate" | "hookTicks" | "hookSites" | "hookRange" | "rescueTicks" | "rescueRange" | "reviveRange" | "pickupRange" | "recoverTicks" | "hookCheckPenalty" | "roles"
 >;
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -29,8 +29,13 @@ const hookLeft = (p: SimPlayer, rules: Rules) => Math.ceil((rules.hookTicks - p.
 export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules): string[] {
   if (me.escaped) return ["you escaped"];
   if (me.eliminated) return ["you died on the hook"];
-  if (me.onHook) return [`on the hook: ${hookLeft(me, rules)} s left. A teammate can hold E beside you to free you` + (me.rescue ? ` (${pct(me.rescue, rules.rescueTicks)})` : "")];
-  if (me.carried) return ["you are being carried"];
+  if (me.onHook) {
+    return [
+      `on the hook: ${hookLeft(me, rules)} s left. A teammate can hold E beside you to free you` + (me.rescue ? ` (${pct(me.rescue, rules.rescueTicks)})` : ""),
+      `press Space on each skill check: a miss costs ${rules.hookCheckPenalty / rules.tickRate} s`,
+    ];
+  }
+  if (me.carried) return [`you are being carried: breaking free ${pct(me.recover, rules.recoverTicks)}`];
   const lines: string[] = [];
   if (me.health === rules.health.downed) {
     const helper = players.some((p) => p.helping === me.id);
@@ -48,10 +53,13 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
 
 /** The killer's carry and hook prompts. */
 export function killerPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules): string[] {
+  if (me.stun) return ["STUNNED"];
   if (me.carrying) {
+    const v = players.find((p) => p.id === me.carrying);
+    const freeIn = v ? ` They break free in ${Math.ceil((rules.recoverTicks - v.recover) / rules.tickRate)} s.` : "";
     const taken = new Set(players.map((p) => p.onHook).filter(Boolean));
     const hook = rules.hookSites.some((h, i) => !taken.has(i + 1) && dist(h, me) <= rules.hookRange);
-    return [hook ? "press E to hang them on the hook" : "carrying: find a hook, or press E to drop them"];
+    return [(hook ? "press E to hang them on the hook." : "carrying: find a hook, or press E to drop them.") + freeIn];
   }
   const downed = players.some(
     (p) => p.role === rules.roles.survivor && p.health === rules.health.downed && !p.carried && !p.onHook && !p.eliminated && !p.escaped && dist(p, me) <= rules.pickupRange,

@@ -15,6 +15,7 @@ const rules = {
   reviveRange: 1_500_000,
   pickupRange: 1_500_000,
   recoverTicks: 1800,
+  hookCheckPenalty: 150,
 };
 const survivor = (id: number, x: number, extra = {}) => ({ ...newPlayer(id, 0, x, 0, 1), ...extra });
 
@@ -41,6 +42,8 @@ test("the killer is prompted to pick up, then to hang by a free hook", () => {
   const killer = { ...newPlayer(1, 1, 1_000_000, 0, 1) };
   assert.deepEqual(killerPrompts(killer, [killer, survivor(2, 0, { health: 2 })], rules), ["press E to pick them up"]);
   const carrying = { ...killer, carrying: 2 };
-  assert.deepEqual(killerPrompts(carrying, [carrying], rules), ["press E to hang them on the hook"]);
-  assert.deepEqual(killerPrompts(carrying, [carrying, survivor(3, 0, { onHook: 1 })], rules), ["carrying: find a hook, or press E to drop them"]);
+  const held = survivor(2, 1_000_000, { health: 2, carried: true, recover: 1800 - 90 });
+  assert.deepEqual(killerPrompts(carrying, [carrying, held], rules), ["press E to hang them on the hook. They break free in 3 s."]);
+  assert.deepEqual(killerPrompts(carrying, [carrying, held, survivor(3, 0, { onHook: 1 })], rules), ["carrying: find a hook, or press E to drop them. They break free in 3 s."]);
+  assert.deepEqual(killerPrompts({ ...killer, stun: 10 }, [killer], rules), ["STUNNED"]);
 });

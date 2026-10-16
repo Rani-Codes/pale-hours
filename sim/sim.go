@@ -65,6 +65,7 @@ type Player struct {
 	HookUsed   int16 // ticks spent on hooks, ever; at HookTicks they are eliminated
 	Rescue     int16 // ticks a teammate has held E to unhook them, this hold
 	Eliminated bool  // died on a hook; out of play
+	Stun       int16 // ticks the killer is stunned: no moving, swinging or E
 
 	// The killer's attack.
 	AttackHeld  bool
@@ -102,6 +103,10 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			continue
 		}
 		in, ok := inputs[p.ID]
+		if p.Stun > 0 {
+			p.Stun--
+			in = Input{Yaw: in.Yaw} // he can still look around
+		}
 		if !p.Carried && p.OnHook == 0 {
 			p.Pos = move(p.Pos, in, speed(p))
 		}
@@ -114,16 +119,23 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			p.ActHeld, p.SkillHeld = in.Act, in.Skill
 		}
 		if p.Health == Downed {
+			in.Act = false
+		}
+		switch {
+		case p.OnHook != 0:
+			stepHookCheck(&p, skillPress)
+		case p.Health == Downed:
 			// Letting go of everything: an active skill check counts as a miss.
-			in.Act, skillPress = false, false
-		}
-		if id := stepHelp(&p, in, ok, skillPress, s.Players, next.Gens); id != 0 {
-			helped = append(helped, id)
-		}
-		if p.Helping == 0 {
-			stepRepair(&p, in, ok, skillPress, next.Gens)
-		} else {
-			p.Repairing = false
+			stepRepair(&p, in, ok, false, next.Gens)
+		default:
+			if id := stepHelp(&p, in, ok, skillPress, s.Players, next.Gens); id != 0 {
+				helped = append(helped, id)
+			}
+			if p.Helping == 0 {
+				stepRepair(&p, in, ok, skillPress, next.Gens)
+			} else {
+				p.Repairing = false
+			}
 		}
 		if p.Health != Downed {
 			stepGate(&p, in, ok, next.Gates, s.Gates, powered)
@@ -152,11 +164,21 @@ func Step(s State, inputs map[PlayerID]Input) State {
 	}
 	stepRescue(next.Players, inputs)
 	for i := range next.Players {
-		if k := next.Players[i]; k.Carrying != 0 {
-			if v := find(next.Players, k.Carrying); v != nil {
-				v.Pos = k.Pos
-				v.Trail[next.Tick%TrailLen] = v.Pos
-			}
+		k := &next.Players[i]
+		if k.Carrying == 0 {
+			continue
+		}
+		v := find(next.Players, k.Carrying)
+		if v == nil {
+			k.Carrying = 0
+			continue
+		}
+		v.Pos = k.Pos
+		v.Trail[next.Tick%TrailLen] = v.Pos
+		if v.Recover >= DownedRecoverTicks {
+			// Held too long: they get up on the killer's shoulder and break free.
+			k.Carrying, k.Stun = 0, StunTicks
+			v.Carried, v.Health, v.Recover = false, Injured, 0
 		}
 	}
 	return next
@@ -173,6 +195,8 @@ func find(players []Player, id PlayerID) *Player {
 
 func speed(p Player) int64 {
 	switch {
+	case p.Stun > 0:
+		return 0
 	case p.Role == Killer && p.Carrying != 0:
 		return KillerCarrySpeed
 	case p.Role == Killer && p.Swing == SwingRecover:

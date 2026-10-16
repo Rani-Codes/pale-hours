@@ -43,6 +43,8 @@ export interface SimPlayer {
   rescue: number;
   /** Died on a hook: out of play. */
   eliminated: boolean;
+  /** Ticks the killer is stunned. */
+  stun: number;
   /** Recent positions [x0, y0, x1, y1, ...] by tick % trail length, for lag compensation. Host only: snapshots leave it out. */
   trail?: number[];
 }
@@ -64,7 +66,7 @@ export type World = Pick<SimState, "gens" | "noise" | "gates">;
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
   return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
-    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false };
+    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, stun: 0 };
 }
 
 export interface SimInput {
@@ -118,6 +120,8 @@ export interface PaleSim {
   reviveRange: number;
   pickupRange: number;
   recoverTicks: number;
+  /** Hook ticks a missed hook skill check costs. */
+  hookCheckPenalty: number;
   /** Whether a swing from (x, y) facing yaw would touch a survivor standing at (tx, ty) now. For the tools. */
   inReach(x: number, y: number, yaw: number, tx: number, ty: number): boolean;
   /** Replace the whole state, e.g. with a host snapshot. */

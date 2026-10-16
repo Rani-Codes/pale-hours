@@ -55,10 +55,13 @@ const (
 	HitBoostSpeed    = HitBoostDistance * TickRate / HitBoostTicks
 	CrawlSpeed       = 700_000 // a downed survivor
 
-	// Downed. Left alone long enough, a survivor gets back up injured. A
-	// teammate holding E beside them gets a skill check almost at once; a
-	// good one stands them up injured.
+	// Downed. Left alone long enough, a survivor gets back up injured. The
+	// timer keeps running on the killer's shoulder; if it fills there they
+	// break free injured and the killer is stunned. A teammate holding E
+	// beside them gets a skill check almost at once; a good one stands them
+	// up injured.
 	DownedRecoverTicks = 60 * TickRate
+	StunTicks          = 1 * TickRate
 	ReviveRange        = 1_500_000
 	ReviveCheckDelay   = 6 // ticks of holding E before each help check
 
@@ -73,6 +76,9 @@ const (
 	HookTicks   = 60 * TickRate
 	RescueRange = 1_500_000
 	RescueTicks = 1 * TickRate // a teammate holding E this long unhooks them
+	// A hooked survivor gets skill checks on the generator schedule; each
+	// miss costs this much hook time.
+	HookCheckPenalty = 5 * TickRate
 
 	// Lag compensation: a swing is checked against survivors as the killer
 	// saw them, at most this far back. TrailLen ticks of positions are kept;

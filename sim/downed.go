@@ -62,10 +62,11 @@ func stepDowned(p *Player) {
 	case p.OnHook != 0:
 		p.Recover = 0
 		if p.HookUsed++; p.HookUsed >= HookTicks {
-			p.Eliminated, p.OnHook = true, 0
+			p.Eliminated, p.OnHook, p.CheckActive = true, 0, false
 		}
-	case p.Health == Downed && !p.Carried:
-		if p.Recover++; p.Recover >= DownedRecoverTicks {
+	case p.Health == Downed:
+		// Carried, a full timer means breaking free, which Step settles with the killer.
+		if p.Recover++; p.Recover >= DownedRecoverTicks && !p.Carried {
 			p.Health, p.Recover = Injured, 0
 		}
 	default:
@@ -90,7 +91,7 @@ func killerAct(k *Player, players []Player) {
 		}
 		if best != nil {
 			k.Carrying = best.ID
-			best.Carried, best.Recover = true, 0
+			best.Carried = true
 		}
 		return
 	}
@@ -145,6 +146,27 @@ func stepRescue(players []Player, inputs map[PlayerID]Input) {
 		}
 		if v.Rescue++; v.Rescue >= RescueTicks {
 			v.OnHook, v.Health, v.Rescue, v.Recover = 0, Injured, 0, 0
+			v.CheckActive = false // a hook check in progress just ends
 		}
+	}
+}
+
+// stepHookCheck runs a hooked survivor's skill checks, on the generator
+// schedule. A miss costs HookCheckPenalty of hook time; stepDowned, which
+// runs next, eliminates them if that uses it up.
+func stepHookCheck(p *Player, press bool) {
+	if !p.CheckActive {
+		if p.CheckIn <= 0 {
+			p.CheckIn = int16(CheckMinGap + rand(&p.Rng)%(CheckMaxGap-CheckMinGap+1))
+		}
+		countdownCheck(p)
+		return
+	}
+	switch r := judgeCheck(p, press); r {
+	case CheckMiss:
+		p.HookUsed += HookCheckPenalty
+		endCheck(p, r)
+	case CheckHit:
+		endCheck(p, r)
 	}
 }

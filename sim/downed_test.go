@@ -202,16 +202,47 @@ func TestPickUpRules(t *testing.T) {
 	})
 }
 
-func TestPickingUpResetsRecovery(t *testing.T) {
+// Carried too long, a survivor's get-up timer fills on the killer's
+// shoulder: they break free injured and the killer is stunned.
+func TestBreakFree(t *testing.T) {
 	withHooks(t)
 	s := State{Players: []Player{killerAt(Vec2{}, 0), target(2, Vec2{1 * m, 0}, Downed)}}
-	s.Players[1].Recover = DownedRecoverTicks - 2 // one tick short after the pickup tick
-	s = Step(s, map[PlayerID]Input{1: {Act: true}})
-	for range 5 {
-		s = Step(s, map[PlayerID]Input{1: {}})
+	s.Players[1].Recover = DownedRecoverTicks - 5
+	s = Step(s, map[PlayerID]Input{1: {Act: true}}) // picked up with 4 ticks to go
+	for range 3 {
+		s = Step(s, map[PlayerID]Input{1: {MoveX: MaxAxis}})
 	}
-	if v := byID(s, 2); v.Health != Downed || v.Recover != 0 {
-		t.Errorf("carried survivor recovered: %+v", v)
+	if v := byID(s, 2); !v.Carried || v.Recover != DownedRecoverTicks-1 {
+		t.Fatalf("the timer should run on while carried: %+v", v)
+	}
+	s = Step(s, map[PlayerID]Input{1: {MoveX: MaxAxis}})
+	k, v := byID(s, 1), byID(s, 2)
+	if k.Carrying != 0 || k.Stun != StunTicks {
+		t.Errorf("killer after the break: carrying %d stun %d, want 0 and %d", k.Carrying, k.Stun, StunTicks)
+	}
+	if v.Carried || v.Health != Injured || v.Recover != 0 || v.Pos != k.Pos {
+		t.Errorf("survivor after the break: %+v", v)
+	}
+}
+
+func TestStunnedKiller(t *testing.T) {
+	withHooks(t)
+	k := killerAt(Vec2{}, 0)
+	k.Stun = StunTicks
+	s := State{Players: []Player{k, target(2, Vec2{0, 1500_000}, Downed)}}
+	for i := range StunTicks {
+		s = Step(s, map[PlayerID]Input{1: {MoveX: MaxAxis, Attack: i%2 == 0, Act: i%2 == 0, Yaw: 100}})
+	}
+	k = byID(s, 1)
+	if k.Pos != (Vec2{}) || k.Swing != SwingIdle || k.Carrying != 0 || k.Stun != 0 {
+		t.Fatalf("a stunned killer acted: %+v", k)
+	}
+	if k.Yaw != 100 {
+		t.Errorf("a stunned killer can still look around, yaw %d", k.Yaw)
+	}
+	s = Step(s, map[PlayerID]Input{1: {MoveX: MaxAxis}})
+	if byID(s, 1).Pos.X == 0 {
+		t.Error("the killer is still stuck after the stun")
 	}
 }
 
@@ -337,5 +368,81 @@ func TestHookSitesStandInTheOpen(t *testing.T) {
 		if inWall(h) {
 			t.Errorf("hook %d at %v is inside a wall or generator", i, h)
 		}
+	}
+}
+
+func TestHookSkillChecks(t *testing.T) {
+	withHooks(t, Vec2{})
+	active := func(age int16, held bool) Player {
+		p := hooked(100)
+		p.CheckActive, p.CheckAge, p.CheckZone, p.SkillHeld = true, age, 20, held
+		return p
+	}
+	tests := []struct {
+		name     string
+		p        Player
+		in       Input
+		wantUsed int16
+		wantRes  CheckResult
+	}{
+		{"a good press costs nothing", active(20, false), Input{Skill: true}, 101, CheckHit},
+		{"an early press costs five seconds", active(5, false), Input{Skill: true}, 101 + HookCheckPenalty, CheckMiss},
+		{"timing out costs five seconds", active(CheckDuration-1, false), Input{}, 101 + HookCheckPenalty, CheckMiss},
+		{"no input is no press", active(10, false), Input{}, 101, CheckNone},
+		{"a held key is not a press", active(20, true), Input{Skill: true}, 101, CheckNone},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Step(State{Players: []Player{tt.p}, Gens: make([]Generator, 1)}, map[PlayerID]Input{2: tt.in})
+			v := byID(s, 2)
+			if v.HookUsed != tt.wantUsed || v.CheckResult != tt.wantRes {
+				t.Errorf("hook used %d result %d, want %d and %d", v.HookUsed, v.CheckResult, tt.wantUsed, tt.wantRes)
+			}
+		})
+	}
+}
+
+func TestHookChecksKeepComing(t *testing.T) {
+	withHooks(t, Vec2{})
+	p := hooked(0)
+	p.Rng = 3
+	s := State{Players: []Player{p}}
+	checks := 0
+	for range 20 * TickRate {
+		before := byID(s, 2).CheckActive
+		s = Step(s, map[PlayerID]Input{2: {}})
+		if !before && byID(s, 2).CheckActive {
+			checks++
+		}
+	}
+	if checks < 20/(CheckMaxGap/TickRate+2) || checks > 20/(CheckMinGap/TickRate) {
+		t.Errorf("%d checks in 20 s on the hook", checks)
+	}
+}
+
+func TestMissingAHookCheckCanKill(t *testing.T) {
+	withHooks(t, Vec2{})
+	p := hooked(HookTicks - 10)
+	p.CheckActive, p.CheckAge, p.CheckZone = true, 3, 20
+	s := Step(State{Players: []Player{p}}, map[PlayerID]Input{2: {Skill: true}})
+	if !byID(s, 2).Eliminated {
+		t.Error("a miss past the end of the hook time did not eliminate")
+	}
+}
+
+func TestRescueEndsAHookCheck(t *testing.T) {
+	withHooks(t, Vec2{})
+	v := hooked(0)
+	v.CheckActive, v.CheckZone, v.Rescue = true, 40, RescueTicks-1
+	gens := []Generator{{Progress: 500}}
+	withMap(t, nil, []Vec2{{0, -1_400_000}}) // in repair range of the hook, not of the rescuer
+	s := State{Players: []Player{v, target(3, Vec2{1 * m, 500_000}, Healthy)}, Gens: gens}
+	s = Step(s, map[PlayerID]Input{3: {Act: true}})
+	s = Step(s, map[PlayerID]Input{2: {}, 3: {}})
+	if got := byID(s, 2); got.OnHook != 0 || got.CheckActive {
+		t.Errorf("after rescue: %+v", got)
+	}
+	if s.Gens[0].Progress != 500 {
+		t.Errorf("a hook check charged a generator: %d", s.Gens[0].Progress)
 	}
 }
