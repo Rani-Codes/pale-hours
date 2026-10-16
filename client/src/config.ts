@@ -35,6 +35,9 @@ export const view = {
   // Fog and darkness. Everything past fog.far is the fog colour, so the
   // killer can only be seen up close and survivors cannot see him coming.
   fog: { color: 0x07080a, near: 4, far: 26 },
+  // The PS1 look: a low-res image stretched with hard pixels, banded color
+  // with an ordered dither, and vertices snapped to the pixel grid.
+  retro: { pixelHeight: 240, colorLevels: 24, dither: 1 },
   light: {
     ambient: 0.12, // what the dark leaves you
     moon: 0.25, // faint directional light so shapes read
