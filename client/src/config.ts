@@ -40,7 +40,7 @@ export const view = {
   retro: { pixelHeight: 240, colorLevels: 24, dither: 1 },
   exit: { roadLength: 22 }, // how far the road past each gate is drawn, in meters; only the first part is walkable
   checkResultMs: 1000, // how long "good" or "missed" stays up after a skill check
-  feedMs: 5000, // how long "X escaped" and "X died" stay up
+  feedMs: 3000, // how long "X escaped" and "X died" stay up
   // When a survivor is hung on a hook, the other survivors see a beam over it this long.
   hookAlert: { showMs: 3000, color: 0xe03c3c },
   // ?light=review: full light and no fog, to judge models and animation. Never for play.

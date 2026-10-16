@@ -29,4 +29,4 @@ Preconditions:
 - Do not edit client files while a driver runs: Vite reloads the tabs and the match is lost. One run failed this way (the match never ended), so the driver prints `NOT OVER` with the host state when it times out.
 - `paleHeartbeat.current.bpm` is the beat the tab wants, independent of whether audio is unlocked.
 
-When a survivor gets out and others remain, every tab shows "<name> escaped" or "<name> died" in `#feed` for 5 s; the last exit shows the end screen instead. Names come from the lobby (`#name`), random until edited.
+When a survivor gets out and others remain, every tab shows "<name> escaped" or "<name> died" in `#feed` for 3 s; the last exit shows the end screen instead. Names come from the lobby (`#name`), random until edited.
