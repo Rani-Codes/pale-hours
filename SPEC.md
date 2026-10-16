@@ -18,9 +18,9 @@ PS1-style low-poly, low-res textures, heavy fog, dithering. The fog hides draw d
 - 1 map, gray-boxed first, around 60m x 60m, with tiles of walls, windows, and pallets for chases.
 - 1 killer with a basic attack and no special power yet.
 - 4 survivors with identical abilities.
-- 5 generators. Survivors must repair 4. Repairing is hold-to-progress, interrupted by skill checks (a timing input). A good check adds 2.5% of a generator (2 s of work), a failed one costs 3.75% (3 s) and makes noise; the result shows its percentage.
+- 5 generators. Survivors must repair 4. Repairing is hold-to-progress, interrupted by skill checks (a timing input). A good check adds 3% of a generator, a failed one costs 3.75% (3 s) and makes noise; the result shows its percentage for 1 s.
 - 2 exit gates. They become powered when the generator goal is met. A gate takes a few seconds to open.
-- **Gates (decided 2026-10-16, owner feedback).** Each gate is set into the fence that closes the map's edge, so nobody can get behind it; shut, it blocks its opening like a wall. Opening takes 7.5 s of holding E (was 5 s) with skill checks every 2 to 3 s: a hit adds 0.5 s, a miss or letting go takes 1.5 s off. Opening it does not let anyone out: behind the gate is a walled exit lane, and a survivor escapes once they are 4 m down it. The killer never gets past the gate line, open or shut; his swing still reaches into the lane. A downed survivor who crawls down an open lane escapes too.
+- **Gates (decided 2026-10-16, owner feedback).** Each gate is set into the fence that closes the map's edge, so nobody can get behind it; shut, it blocks its opening like a wall. Opening takes 7.5 s of holding E (was 5 s) with skill checks every 2 to 3 s: a hit adds 0.5 s, a miss or letting go takes 1.5 s off. Opening it does not let anyone out: behind the gate is a walled exit lane, and a survivor escapes once they are 5 m down it, the most anyone can walk. The road is drawn running on into the fog with a police car parked just past that point, lights flashing, so it reads as running to safety. The killer never gets past the gate line, open or shut; his swing still reaches into the lane, so a survivor just past the gate can still be hit. A downed survivor who crawls down an open lane escapes too.
 - **Hook alert (decided 2026-10-16, owner feedback).** When a survivor is hung on a hook, every other survivor sees a red beam over that hook, through walls and fog, and a HUD line with distance and bearing, for 3 s. The killer and the hooked survivor do not.
 - Health states: healthy, injured, downed. Two hits takes a survivor from healthy to downed.
 - Downed survivors can be picked up, carried, and placed on a hook. Teammates can rescue them. A hook timer eliminates the survivor when it runs out.
@@ -86,9 +86,9 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [x] Killer proximity audio (synthesized heartbeat in `client/src/heartbeat.ts`, soft lowpassed thud, master volume slider and [ ] keys; silent beyond 32 m, speeds up and gets louder as the killer closes in, survivors only)
 
 ### Phase 3: the game loop
-- [x] Generators with skill checks (5 sites in `sim/map.go`, repair and checks in `sim/generator.go`; hold E, press Space in the zone; a hit adds 2 s of progress, a miss costs 3 s)
+- [x] Generators with skill checks (5 sites in `sim/map.go`, repair and checks in `sim/generator.go`; hold E, press Space in the zone; a hit adds 3% of a generator, a miss costs 3 s)
 - [x] A failed skill check makes noise the killer can perceive (a gold beam over the generator for 2 s, visible through walls and fog, plus a HUD line with distance and bearing)
-- [x] Exit gates (`GateSites` in the north and south fences; powered at 4 generators, 7.5 s to open by hand with skill checks, then a 4 m walk down the exit lane to escape; `Fences` and `Lanes` in `sim/map.go`)
+- [x] Exit gates (`GateSites` in the north and south fences; powered at 4 generators, 7.5 s to open by hand with skill checks, then a 5 m walk down the exit lane to a waiting police car to escape; `Fences` and `Lanes` in `sim/map.go`)
 - [x] Hook alert for the other survivors (`client/src/hookalert.ts`; 3 s, `view.hookAlert`)
 - [ ] The noise beam is visible to every client in the snapshot today; strip noise for survivors in the host's snapshots when we add anti-cheat or fog of information
 - [ ] Generator tuning pass in a real playtest: 80 s of repair per generator, check gap 4 to 9 s, zone 7 ticks (about 0.23 s)

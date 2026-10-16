@@ -49,7 +49,7 @@ export function worldBox(w: number, h: number, d: number, tile: number): BufferG
 }
 
 export function floor(halfExtent: number): Mesh {
-  const size = 2 * halfExtent + 40; // runs on under the treeline past the edge
+  const size = 2 * halfExtent + 60; // runs on under the treeline and the exit roads past the edge
   const geo = new PlaneGeometry(size, size, 24, 24);
   const uv = geo.getAttribute("uv");
   for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * size) / 2, (uv.getY(i) * size) / 2);
@@ -219,6 +219,83 @@ export class GateModel {
     this.bars.position.y = open * 3.1;
     const color = open >= 1 ? 0x40ff70 : powered ? 0xff3020 : 0x000000;
     this.lamps.forEach((l) => l.emissive.setHex(color));
+  }
+}
+
+/**
+ * What lies past a gate: the road running on into the dark between brick
+ * walls, and a police car parked just past where survivors get out, its
+ * lights going. Built along -z from the gate line, so it runs north; turn it
+ * to face a southern gate. walkable is how far down it players can go.
+ */
+export class ExitModel {
+  readonly object = new Group();
+  private readonly red = new MeshBasicMaterial({ color: 0xff2020, fog: false });
+  private readonly blue = new MeshBasicMaterial({ color: 0x2040ff, fog: false });
+  private readonly flash = new PointLight(0xff2020, 10, 16, 1.5);
+
+  constructor(halfWidth: number, walkable: number, length: number) {
+    const road = new Mesh(new PlaneGeometry(2 * halfWidth, length), lambert(concrete(), 0x48484c));
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(0, 0.02, -length / 2);
+    const paint = lambert(null, 0xb8b090);
+    for (let z = 1; z < length; z += 2.5) {
+      const dash = new Mesh(new BoxGeometry(0.1, 0.02, 1.2), paint);
+      dash.position.set(0, 0.03, -z);
+      this.object.add(dash);
+    }
+    for (const side of [-1, 1]) {
+      const w = wall(0.5, 3, length);
+      w.position.set(side * (halfWidth + 0.25), 0, -length / 2);
+      this.object.add(w);
+    }
+    const car = this.car();
+    car.position.set(0.2, 0, -(walkable + 3.4));
+    car.rotation.y = 0.18;
+    this.flash.position.set(0, 2.2, -(walkable + 3.4));
+    this.object.add(road, car, this.flash);
+  }
+
+  /** A patrol car, nose toward the gate: dark body, white doors, a light bar. */
+  private car(): Group {
+    const g = new Group();
+    const box = (w: number, h: number, d: number, mat: MeshLambertMaterial | MeshBasicMaterial, x: number, y: number, z: number) => {
+      const m = new Mesh(new BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z);
+      g.add(m);
+    };
+    const black = lambert(null, 0x16181d);
+    const white = lambert(null, 0xd4d4d0);
+    box(1.8, 0.6, 4.4, black, 0, 0.55, 0);
+    box(1.82, 0.36, 2.0, white, 0, 0.6, -0.1);
+    box(1.6, 0.52, 2.1, lambert(null, 0x1a2230), 0, 1.11, -0.25);
+    box(1.62, 0.06, 1.7, white, 0, 1.4, -0.25);
+    box(0.62, 0.14, 0.3, this.red, -0.34, 1.5, -0.1);
+    box(0.62, 0.14, 0.3, this.blue, 0.34, 1.5, -0.1);
+    const head = new MeshBasicMaterial({ color: 0xfff0c0, fog: false });
+    const tail = new MeshBasicMaterial({ color: 0x901010 });
+    for (const x of [-0.62, 0.62]) {
+      box(0.36, 0.14, 0.04, head, x, 0.66, 2.21);
+      box(0.3, 0.12, 0.04, tail, x, 0.7, -2.21);
+    }
+    const tyre = lambert(null, 0x0c0c0c);
+    for (const x of [-0.86, 0.86]) {
+      for (const z of [-1.4, 1.4]) {
+        const wheel = new Mesh(new CylinderGeometry(0.33, 0.33, 0.24, 8), tyre);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.33, z);
+        g.add(wheel);
+      }
+    }
+    return g;
+  }
+
+  /** t in seconds: the light bar alternates red and blue. */
+  update(t: number) {
+    const redOn = Math.floor(t * 3) % 2 === 0;
+    this.red.color.setHex(redOn ? 0xff2020 : 0x300808);
+    this.blue.color.setHex(redOn ? 0x081030 : 0x3050ff);
+    this.flash.color.setHex(redOn ? 0xff2020 : 0x2040ff);
   }
 }
 

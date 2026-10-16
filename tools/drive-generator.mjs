@@ -64,6 +64,9 @@ await guest.waitForFunction(
 await guest.keyboard.press("Space");
 await guest.waitForFunction(() => paleSession.stats().predicted.checkResult !== 0 && !paleSession.stats().predicted.checkActive, null, { timeout: 3000 });
 const hit = await me();
+const hitText = await guest.textContent("#check-result");
+await guest.waitForTimeout(1200);
+const hitTextLater = await guest.textContent("#check-result");
 
 // The next one: leave it alone until it times out.
 await waitCheck();
@@ -95,7 +98,9 @@ console.log(`check 1 zone ${first.checkZone}..${first.checkZone + 6}, result ${h
 console.log(`check 2 result ${miss.checkResult}, progress ${beforeMiss} -> ${afterMiss}`);
 console.log(`host gen ${hostGen}, guest gen ${guestGen}; corrections ${stats.corrections}`);
 console.log(`errors: ${errors.length ? errors.join(" | ") : "none"}`);
+console.log(`result text "${hitText}", 1.2 s later "${hitTextLater}"`);
 const checks = {
+  "a hit says good +3%, then the text goes": hitText === "good +3%" && hitTextLater === "",
   "reached the generator": Math.hypot(parked.x, parked.y - 5e6) < 1.8e6,
   "pressing in the zone is a hit": hit.checkResult === 1,
   "letting it time out is a miss": miss.checkResult === 2,

@@ -9,11 +9,12 @@ import { startMatch } from "./lib/lobby.mjs";
 
 const [url = "http://localhost:5173/", prefix = "look", ...only] = process.argv.slice(2);
 const M = 1e6;
-// [killer x, y], [survivor x, y], extra survivor fields
+// [killer x, y], [survivor x, y], extra survivor fields, gate progress (ticks; "open" opens it)
 const spots = {
   generator: [[-21, 13.5], [-19.5, 16]],
   hook: [[-16, -3.2], [-16, 0], { health: 2, onHook: 3 }],
   gate: [[1.5, 22.5], [2, 26]],
+  exit: [[0.4, 27.5], [5, 24], {}, ["open", 0]],
   survivors: [[10, -3.5], [10, 0]],
   injured: [[10, -2.2], [10, 0], { health: 1 }],
   downed: [[10, -2.2], [10, 0], { health: 2 }],
@@ -41,18 +42,19 @@ await guest.fill("#code", (await page.textContent("#netstatus")).match(/room ([A
 await guest.click("#join");
 await startMatch(page, [guest]);
 
-for (const [name, [k, s, extra = {}]] of Object.entries(spots)) {
+for (const [name, [k, s, extra = {}, gates = [0, 0]]] of Object.entries(spots)) {
   if (only.length && !only.includes(name)) continue;
   await page.evaluate(
-    ({ k, s, extra }) => {
+    ({ k, s, extra, gates }) => {
       const st = paleSim.state();
+      st.gates = gates.map((g) => (g === "open" ? paleSim.gateTicks : g));
       for (const p of st.players) {
         delete p.trail;
         Object.assign(p, p.id === 1 ? { x: k[0] * 1e6, y: k[1] * 1e6, yaw: 0 } : { x: s[0] * 1e6, y: s[1] * 1e6, yaw: 32768, health: 0, onHook: 0, carried: false, ...extra });
       }
       paleSim.load(st);
     },
-    { k, s, extra },
+    { k, s, extra, gates },
   );
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${prefix}-${name}.png` });

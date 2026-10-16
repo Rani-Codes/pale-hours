@@ -16,7 +16,7 @@ import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
 import type { HookAlert } from "./hookalert";
-import { floor, GateModel, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
+import { ExitModel, floor, GateModel, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
@@ -58,6 +58,7 @@ export class Renderer {
   private readonly gens: GeneratorModel[] = [];
   private readonly beams: Mesh[] = [];
   private readonly hookBeams: Mesh[] = [];
+  private readonly exits: ExitModel[] = [];
   private readonly gates: GateModel[] = [];
   private lastFrame = performance.now();
 
@@ -73,7 +74,7 @@ export class Renderer {
     this.sun.position.set(-20, 60, 30);
 
     this.scene.add(floor(half), dressing(sim));
-    for (const w of [...sim.walls, ...sim.lanes]) {
+    for (const w of sim.walls) {
       const mesh = wall((w.maxX - w.minX) / M, WALL_HEIGHT, (w.maxY - w.minY) / M);
       mesh.position.set((w.minX + w.maxX) / 2 / M, 0, -(w.minY + w.maxY) / 2 / M);
       this.scene.add(mesh);
@@ -98,7 +99,13 @@ export class Renderer {
       const gate = new GateModel((2 * sim.gateHalfWidth) / M);
       gate.object.position.set(site.x / M, 0, -site.y / M);
       this.gates.push(gate);
-      this.scene.add(gate.object);
+      // The lane past the gate. Its sim walls stop at the walkable part and
+      // its end is invisible; the road and walls run on into the fog.
+      const exit = new ExitModel(sim.gateHalfWidth / M, sim.exitDepth / M, view.exit.roadLength);
+      exit.object.position.copy(gate.object.position);
+      if (site.y < 0) exit.object.rotation.y = Math.PI;
+      this.exits.push(exit);
+      this.scene.add(gate.object, exit.object);
     }
     for (const site of sim.hookSites) {
       const hook = hookModel();
@@ -138,6 +145,7 @@ export class Renderer {
     const { gens, noise, gates } = world;
     this.gens.forEach((g, i) => g.update(gens[i] ?? 0, this.sim.genTicks, dt, now / 1000));
     const powered = gens.filter((g) => g >= this.sim.genTicks).length >= this.sim.gensRequired;
+    this.exits.forEach((e) => e.update(now / 1000));
     this.gates.forEach((g, i) => g.update(Math.min(1, (gates[i] ?? 0) / this.sim.gateTicks), powered));
     const live = new Set<number>();
     for (const p of players) {

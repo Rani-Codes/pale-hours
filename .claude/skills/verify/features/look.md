@@ -5,7 +5,7 @@ The game renders at 240 rows and stretches that over the window with hard pixels
 ## Sub-features
 
 - `look-retro` draws the low-res, dithered image with no colored speckle (a texture bug once produced it).
-- `look-world` shows walls, generators, hooks, gates and dressing at the fixed spots in `drive-look.mjs`.
+- `look-world` shows walls, generators, hooks, gates and dressing at the fixed spots in `drive-look.mjs`; the `exit` spot opens the north gate and looks down the road at the police car.
 - `look-survivor` poses survivors for walking, limping injured, kneeling at work, crawling downed, carried and hooked.
 - `look-killer` poses the killer idle, walking, winding up, striking, carrying, and shows the first-person cleaver swing.
 - `look-perf` keeps 60 frames per second in headless Chrome in a two-tab match.

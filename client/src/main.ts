@@ -131,6 +131,7 @@ const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
 let checkAtGen = false; // whether the current or last skill check was a generator's
+let checkEndedAt: number | undefined; // when the last skill check ended, for its result
 
 function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
   const { gens, gates } = world;
@@ -202,12 +203,16 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     checkZone.style.width = `${(100 * sim.check.zoneLen) / span}%`;
     checkNeedle.style.left = `${(100 * Math.min(mine.checkAge, span)) / span}%`;
   }
-  // The last result lingers on screen until the next check begins.
-  // At a generator it says what the check did to the repair, even after letting go.
-  if (mine?.checkActive) checkAtGen = mine.repairing && !mine.opening && !mine.helping && !mine.onHook;
-  const atGen = checkAtGen;
-  const delta = (ticks: number) => (atGen ? ` ${ticks > 0 ? "+" : "-"}${((100 * Math.abs(ticks)) / sim.genTicks).toFixed(1)}%` : "");
-  checkResult.textContent = mine?.checkActive ? "" : mine?.checkResult === 1 ? "good" + delta(sim.checkBonus) : mine?.checkResult === 2 ? "missed" + delta(-sim.checkPenalty) : "";
+  // The result shows for a moment after the check ends. At a generator it
+  // says what the check did to the repair, even after letting go.
+  const now = performance.now();
+  if (mine?.checkActive) {
+    checkAtGen = mine.repairing && !mine.opening && !mine.helping && !mine.onHook;
+    checkEndedAt = undefined;
+  } else if (checkEndedAt === undefined && mine?.checkResult) checkEndedAt = now;
+  const fresh = checkEndedAt !== undefined && now - checkEndedAt < view.checkResultMs;
+  const delta = (ticks: number) => (checkAtGen ? ` ${ticks > 0 ? "+" : "-"}${Number(((100 * Math.abs(ticks)) / sim.genTicks).toFixed(1))}%` : "");
+  checkResult.textContent = !fresh ? "" : mine?.checkResult === 1 ? "good" + delta(sim.checkBonus) : mine?.checkResult === 2 ? "missed" + delta(-sim.checkPenalty) : "";
 }
 
 /** How far and which way to turn from where p faces to reach a site. */

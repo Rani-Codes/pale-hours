@@ -13,6 +13,7 @@ import {
 import { snapped } from "./retro";
 import { mulberry, wood } from "./textures";
 import type { PaleSim } from "../sim";
+import { view } from "../config";
 
 /**
  * Set dressing: a weathered fence along the map edge with gaps at the exits
@@ -73,7 +74,7 @@ export function dressing(sim: PaleSim): Group {
     const y = (rand() * 2 - 1) * (half + 16);
     if (Math.max(Math.abs(x), Math.abs(y)) < half + 2.5) continue;
     // Not in an exit lane or on top of its walls.
-    if (sim.gateSites.some((s) => Math.abs(x - s.x / M) < gap + 1.5 && Math.sign(y) === Math.sign(s.y) && Math.abs(y) < half + sim.exitDepth / M + 3)) continue;
+    if (sim.gateSites.some((s) => Math.abs(x - s.x / M) < gap + 1.5 && Math.sign(y) === Math.sign(s.y) && Math.abs(y) < half + view.exit.roadLength + 3)) continue;
     trees.push({ x, z: -y, s: 0.8 + rand() * 0.9, ry: rand() * Math.PI });
   }
   const bark = snapped(new MeshLambertMaterial({ color: 0x2a221c }));

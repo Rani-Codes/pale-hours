@@ -299,3 +299,30 @@ func TestGateLayout(t *testing.T) {
 		}
 	}
 }
+
+// The killer stops at the gate line, but a survivor close past it in the
+// lane is still in reach; one further down is not.
+func TestKillerSwingsIntoTheLane(t *testing.T) {
+	tests := []struct {
+		name string
+		y    int32 // the survivor, past the gate line
+		want Health
+	}{
+		{"just past the gate", MapHalfExtent + meter, Injured},
+		{"out of reach down the lane", MapHalfExtent + 3*meter, Healthy},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withGate(t)
+			s := State{
+				Players: []Player{killerAt(front, 0), target(2, Vec2{0, tt.y}, Healthy)},
+				Gens:    doneGens(GensRequired),
+				Gates:   []Gate{{Progress: GateTicks}},
+			}
+			s = swing(s, 0)
+			if got := s.Players[1].Health; got != tt.want {
+				t.Errorf("health = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
