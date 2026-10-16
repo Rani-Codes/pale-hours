@@ -199,11 +199,12 @@ export class SurvivorModel {
       // Low and tucked: knees bent, back bowed, arms in, a slow shuffle when moving.
       const shuffle = Math.min(1, speed / 1.6);
       const c = Math.sin(phase * 1.4);
-      r.hips.position.y = -0.34;
+      // A deep squat with the feet on the ground: thighs about 65 degrees forward, shins folded back under them.
+      r.hips.position.y = 0.44;
       r.chest.rotation.x = 0.55;
       r.head.rotation.x = -0.35;
-      r.legL.set(0.95 + c * 0.25 * shuffle, -1.45);
-      r.legR.set(0.95 - c * 0.25 * shuffle, -1.45);
+      r.legL.set(1.15 + c * 0.1 * shuffle, -2.1);
+      r.legR.set(1.15 - c * 0.1 * shuffle, -2.1);
       r.armL.set(0.5, 1.1);
       r.armR.set(0.5, 1.1);
       return;

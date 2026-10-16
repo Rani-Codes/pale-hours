@@ -110,7 +110,7 @@ export function dressing(sim: PaleSim): Group {
 }
 
 /**
- * The tall grass patches: dense stalks about as high as a crouched survivor,
+ * The tall grass patches: dense stalks a little taller than a crouched survivor,
  * so one hiding in it is lost to the eye and one standing is not. The sim's
  * Grass boxes are what actually hide them.
  */

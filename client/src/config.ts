@@ -43,8 +43,8 @@ export const view = {
   feedMs: 3000, // how long "X escaped" and "X died" stay up
   // A finished generator lights a column and a ring that every player sees, through walls and fog.
   generatorDone: { showMs: 4000, color: 0xff8a2a, opacity: 0.4, columnRadius: 1.3, ringRadius: 16, ringMs: 1400 },
-  // Tall grass: stalks per square metre, and how high they stand. A crouched survivor is about 1 m tall.
-  tallGrass: { density: 14, minHeight: 1.0, maxHeight: 1.5 },
+  // Tall grass: stalks per square metre, and how high they stand. A crouched survivor is about 1.2 m tall.
+  tallGrass: { density: 14, minHeight: 1.3, maxHeight: 1.8 },
   // When a survivor is hung on a hook, the other survivors see a beam over it this long.
   hookAlert: { showMs: 3000, color: 0xe03c3c },
   // ?light=review: full light and no fog, to judge models and animation. Never for play.
