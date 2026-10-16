@@ -141,6 +141,10 @@ export function initLobby(game: Game) {
     }
   });
 
+  codeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.repeat && codeInput.value.trim()) document.querySelector<HTMLButtonElement>("#join")!.click();
+  });
+
   document.querySelector("#join")!.addEventListener("click", async () => {
     try {
       const start = performance.now();
