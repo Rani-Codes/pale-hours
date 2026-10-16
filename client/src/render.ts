@@ -89,8 +89,8 @@ export class Renderer {
       const gen = new GeneratorModel(sim.generatorHalf / M);
       gen.object.position.set(site.x / M, 0, -site.y / M);
       this.gens.push(gen);
-      // A missed skill check lights a beam over its generator. Only the killer
-      // sees it, through walls and fog, for a moment.
+      // A missed skill check lights a beam over its generator, seen by
+      // everyone through walls and fog for a moment.
       const beam = noiseBeam();
       beam.position.set(site.x / M, beam.position.y, -site.y / M);
       this.beams.push(beam);
@@ -194,7 +194,7 @@ export class Renderer {
       // The killer's own body, and whoever he carries, would sit inside his camera.
       a.model.object.visible = !(killer && (id === self || p?.carried)) && !gone(p);
     }
-    this.beams.forEach((b, i) => (b.visible = killer && (noise[i] ?? 0) > 0));
+    this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
 
     const x = me.x / M;
     const z = -me.y / M;

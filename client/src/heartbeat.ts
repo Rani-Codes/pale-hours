@@ -19,7 +19,7 @@ export interface GeneratorDoneConfig {
   chugSpeedup: number;
   idleHz: number;
   rattleHz: number;
-  idleSec: number;
+  totalSec: number;
 }
 
 export interface Beat {
@@ -105,6 +105,7 @@ export class Heartbeat {
     clank.connect(ring).connect(clankEnv).connect(out);
     clank.start(at);
 
+    const idleSec = Math.max(0.3, d.totalSec - (at - t0));
     const idle = ctx.createOscillator();
     const level = ctx.createGain();
     const shudder = ctx.createOscillator();
@@ -114,8 +115,8 @@ export class Heartbeat {
     idle.frequency.exponentialRampToValueAtTime(d.idleHz, at + 0.35);
     level.gain.setValueAtTime(0.0, at);
     level.gain.linearRampToValueAtTime(0.5, at + 0.04);
-    level.gain.setValueAtTime(0.5, at + d.idleSec * 0.55);
-    level.gain.exponentialRampToValueAtTime(0.001, at + d.idleSec);
+    level.gain.setValueAtTime(0.5, at + idleSec * 0.5);
+    level.gain.exponentialRampToValueAtTime(0.001, at + idleSec);
     shudder.type = "square";
     shudder.frequency.value = d.rattleHz;
     depth.gain.value = 0.22; // the idle's level swings by this much, 15 times a second
@@ -123,8 +124,8 @@ export class Heartbeat {
     idle.connect(level).connect(dull);
     idle.start(at);
     shudder.start(at);
-    idle.stop(at + d.idleSec + 0.05);
-    shudder.stop(at + d.idleSec + 0.05);
+    idle.stop(at + idleSec + 0.05);
+    shudder.stop(at + idleSec + 0.05);
   }
 
   /** Master volume, 0 to 1. Applies to every sound the game makes. */

@@ -90,7 +90,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 
 ### Phase 3: the game loop
 - [x] Generators with skill checks (5 sites in `sim/map.go`, repair and checks in `sim/generator.go`; hold E, press Space in the zone; a hit adds 3% of a generator, a miss costs 3 s)
-- [x] A failed skill check makes noise the killer can perceive (a gold beam over the generator for 2 s, visible through walls and fog, plus a HUD line with distance and bearing)
+- [x] A failed skill check makes noise the killer can perceive (a gold beam over the generator for 1.5 s, visible through walls and fog to every player, plus a HUD line with distance and bearing for the killer)
 - [x] Exit gates (`GateSites` in the north and south fences; powered at 4 generators, 7.5 s to open by hand with skill checks, then a 5 m walk down the exit lane to a waiting police car to escape; `Fences` and `Lanes` in `sim/map.go`)
 - [x] Hook alert for the other survivors (`client/src/hookalert.ts`; 3 s, `view.hookAlert`)
 - [ ] The noise beam is visible to every client in the snapshot today; strip noise for survivors in the host's snapshots when we add anti-cheat or fog of information

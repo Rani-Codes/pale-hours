@@ -80,7 +80,7 @@ export const audio = {
     chugSpeedup: 0.78,
     idleHz: 46, // the engine's note once running
     rattleHz: 15, // how fast the idle shudders
-    idleSec: 2.4,
+    totalSec: 1.6, // the whole sound, crank to last rattle; the idle fills whatever the cranking leaves
   },
 };
 

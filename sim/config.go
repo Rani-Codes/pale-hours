@@ -29,8 +29,8 @@ const (
 	CheckBonus    = GeneratorTicks * 3 / 100 // ticks of progress gained on a hit, 3%
 	CheckPenalty  = 3 * TickRate             // ticks lost on a miss, 3.75%
 
-	// A missed skill check lights up its generator for the killer this long.
-	NoiseTicks = 2 * TickRate
+	// A missed skill check lights up its generator for everyone this long.
+	NoiseTicks = 3 * TickRate / 2
 
 	GensRequired = 4 // generators that must be done to power the gates
 	GateCount    = 2
