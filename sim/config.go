@@ -100,6 +100,13 @@ const (
 	VaultReach = 600_000
 	VaultClear = 50_000
 
+	// Crouching in tall grass hides a survivor from the killer's screen once
+	// they have settled, unless he is within HideRevealRange. Crouching is slow,
+	// and a crouched survivor cannot repair, open a gate or vault.
+	CrouchSpeed     = 1_600_000
+	HideSettleTicks = TickRate / 2
+	HideRevealRange = 5_000_000
+
 	// Lag compensation: a swing is checked against survivors as the killer
 	// saw them, at most this far back. TrailLen ticks of positions are kept;
 	// it must be a power of two and cover the cap plus two ticks.

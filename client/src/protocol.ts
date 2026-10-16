@@ -14,6 +14,8 @@ export interface InputFrame {
   skill: boolean;
   /** Pressed attack this tick. Only a killer's counts. */
   attack: boolean;
+  /** Holding the crouch key. Only a survivor's counts. */
+  crouch: boolean;
   /**
    * The host tick this guest's screen was drawing everyone else at, for lag
    * compensation when the guest is the killer. The host caps what it does with it.
@@ -77,7 +79,7 @@ export function parseInputs(m: unknown): InputFrame[] | undefined {
   const frames: InputFrame[] = [];
   for (const f of m.inputs) {
     if (isObj(f) && isInt(f.seq) && f.seq > 0 && isInt(f.moveX) && isInt(f.moveY) && isInt(f.yaw)) {
-      frames.push({ seq: f.seq, moveX: int8(f.moveX), moveY: int8(f.moveY), yaw: f.yaw & 0xffff, act: f.act === true, skill: f.skill === true, attack: f.attack === true, seen: typeof f.seen === "number" && Number.isFinite(f.seen) ? f.seen : undefined });
+      frames.push({ seq: f.seq, moveX: int8(f.moveX), moveY: int8(f.moveY), yaw: f.yaw & 0xffff, act: f.act === true, skill: f.skill === true, attack: f.attack === true, crouch: f.crouch === true, seen: typeof f.seen === "number" && Number.isFinite(f.seen) ? f.seen : undefined });
     }
   }
   return frames;

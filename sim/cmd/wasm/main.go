@@ -38,6 +38,10 @@ func main() {
 		"attack":           map[string]any{"windupTicks": sim.AttackWindupTicks, "recoverHitTicks": sim.AttackRecoverHitTicks, "recoverMissTicks": sim.AttackRecoverMissTicks},
 		"stunTicks":        sim.StunTicks,
 		"vaults":           boxes(sim.Vaults),
+		"grass":            boxes(sim.Grass),
+		"hideSettleTicks":  sim.HideSettleTicks,
+		"hideRevealRange":  sim.HideRevealRange,
+		"concealed":        js.FuncOf(concealed),
 		"vaultTicks":       sim.VaultTicks,
 		"canVault":         js.FuncOf(canVault),
 		"hookSites":        sites(sim.HookSites),
@@ -80,6 +84,8 @@ func load(_ js.Value, args []js.Value) any {
 			Rng:         uint32(p.Get("rng").Int()),
 			Escaped:     p.Get("escaped").Bool(),
 			Opening:     uint8(p.Get("opening").Int()),
+			Crouching:   p.Get("crouching").Truthy(),
+			HideTicks:   int16(numOr0(p.Get("hideTicks"))),
 
 			Health:      sim.Health(p.Get("health").Int()),
 			Boost:       int16(p.Get("boost").Int()),
@@ -144,11 +150,12 @@ func step(_ js.Value, args []js.Value) any {
 	for i := range list.Length() {
 		in := list.Index(i)
 		inputs[sim.PlayerID(in.Get("id").Int())] = sim.Input{
-			MoveX: int8(in.Get("moveX").Int()),
-			MoveY: int8(in.Get("moveY").Int()),
-			Yaw:   uint16(in.Get("yaw").Int()),
-			Act:   in.Get("act").Bool(),
-			Skill: in.Get("skill").Bool(),
+			MoveX:  int8(in.Get("moveX").Int()),
+			MoveY:  int8(in.Get("moveY").Int()),
+			Yaw:    uint16(in.Get("yaw").Int()),
+			Act:    in.Get("act").Bool(),
+			Skill:  in.Get("skill").Bool(),
+			Crouch: in.Get("crouch").Truthy(),
 
 			// Optional: only the host's killer input carries them.
 			Attack:    in.Get("attack").Truthy(),
@@ -180,6 +187,8 @@ func snapshot(js.Value, []js.Value) any {
 			"rng":         int(p.Rng),
 			"escaped":     p.Escaped,
 			"opening":     int(p.Opening),
+			"crouching":   p.Crouching,
+			"hideTicks":   int(p.HideTicks),
 
 			"health":      int(p.Health),
 			"boost":       int(p.Boost),
@@ -217,6 +226,21 @@ func snapshot(js.Value, []js.Value) any {
 		gates[i] = int(g.Progress)
 	}
 	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates, "over": state.Over}
+}
+
+// numOr0 reads an optional number, so a player built before a field existed still loads.
+func numOr0(v js.Value) int {
+	if v.Type() != js.TypeNumber {
+		return 0
+	}
+	return v.Int()
+}
+
+// concealed(viewerX, viewerY, targetX, targetY, hideTicks) reports whether a killer at the
+// viewer cannot see a survivor at the target, who has been crouched in grass for hideTicks.
+func concealed(_ js.Value, a []js.Value) any {
+	p := sim.Player{Pos: sim.Vec2{X: int32(a[2].Int()), Y: int32(a[3].Int())}, HideTicks: int16(a[4].Int())}
+	return sim.Concealed(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, p)
 }
 
 func viewLag(v js.Value) uint16 {

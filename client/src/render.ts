@@ -11,7 +11,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { view } from "./config";
-import { dressing } from "./art/dressing";
+import { dressing, tallGrass } from "./art/dressing";
 import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
@@ -23,6 +23,7 @@ const M = 1_000_000; // micrometers per meter
 const WALL_HEIGHT = 3;
 const STRIKE_S = 0.12; // the fast part of a swing, at the start of the recovery
 const gone = (p: SimPlayer | undefined) => !p || p.escaped || p.eliminated;
+
 
 /** One player's model and what the renderer remembers about them between frames. */
 interface Actor {
@@ -74,7 +75,7 @@ export class Renderer {
     this.scene.add(this.ambient, this.sun, this.lantern);
     this.sun.position.set(-20, 60, 30);
 
-    this.scene.add(floor(half), dressing(sim));
+    this.scene.add(floor(half), dressing(sim), tallGrass(sim));
     for (const w of sim.walls) {
       const mesh = wall((w.maxX - w.minX) / M, WALL_HEIGHT, (w.maxY - w.minY) / M);
       mesh.position.set((w.minX + w.maxX) / 2 / M, 0, -(w.minY + w.maxY) / 2 / M);
@@ -182,7 +183,10 @@ export class Renderer {
     this.scene.fog = lit ? null : new Fog(view.fog.color, view.fog.near, view.fog.far);
     this.gl.setClearColor(mapLook ? 0x0b0b0d : view.fog.color);
     if (mapLook || !me) {
-      for (const [id, a] of this.actors) a.model.object.visible = !gone(players.find((p) => p.id === id));
+      for (const [id, a] of this.actors) {
+        const p = players.find((q) => q.id === id);
+        a.model.object.visible = !gone(p) && !this.hiddenFrom(me, p);
+      }
       this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
       this.gl.render(this.scene, this.overhead);
       return;
@@ -192,7 +196,7 @@ export class Renderer {
     for (const [id, a] of this.actors) {
       const p = players.find((q) => q.id === id);
       // The killer's own body, and whoever he carries, would sit inside his camera.
-      a.model.object.visible = !(killer && (id === self || p?.carried)) && !gone(p);
+      a.model.object.visible = !(killer && (id === self || p?.carried)) && !gone(p) && !this.hiddenFrom(me, p);
     }
     this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
 
@@ -205,7 +209,8 @@ export class Renderer {
       this.eye.fov = view.killer.fov;
       this.eye.position.set(x, view.killer.eyeHeight, z);
     } else {
-      const { fov, distance, height, shoulder } = view.survivor;
+      const { fov, distance, crouchHeight, shoulder } = view.survivor;
+      const height = me.crouching ? crouchHeight : view.survivor.height;
       this.eye.fov = fov;
       // Behind the player, a little to the right so the body does not cover the crosshair.
       this.eye.position.set(x - fx * distance - fz * shoulder, height, z - fz * distance + fx * shoulder);
@@ -217,6 +222,12 @@ export class Renderer {
       this.viewModel.update(this.eye, this.swingView(me, a, now), a.phase, Math.min(1, a.speed / 4));
     }
     this.retro.render(this.gl, this.scene, this.eye, killer && me.stun === 0 ? this.viewModel.scene : undefined);
+  }
+
+  /** Whether the killer viewing cannot see this survivor: crouched in grass, and he is not close. */
+  private hiddenFrom(viewer: SimPlayer | undefined, p: SimPlayer | undefined): boolean {
+    if (!viewer || !p || viewer.role !== this.sim.roles.killer || p.role !== this.sim.roles.survivor) return false;
+    return this.sim.concealed(Math.round(viewer.x), Math.round(viewer.y), Math.round(p.x), Math.round(p.y), p.hideTicks);
   }
 
   /** Move and pose one player's model for this frame. */
@@ -266,6 +277,7 @@ export class Renderer {
           carried: p.carried,
           hooked: p.onHook !== 0,
           working: p.repairing || p.helping !== 0,
+          crouching: p.crouching,
           vault: p.vaultTicks > 0 ? 1 - p.vaultTicks / this.sim.vaultTicks : undefined,
         },
         a.speed,

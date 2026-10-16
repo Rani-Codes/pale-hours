@@ -134,7 +134,7 @@ export class SurvivorModel {
    * Pose for this frame. speed in m/s from how far they moved, t in seconds.
    * state carries what the sim says about them.
    */
-  pose(state: { injured: boolean; downed: boolean; carried: boolean; hooked: boolean; working: boolean; vault?: number }, speed: number, phase: number, t: number) {
+  pose(state: { injured: boolean; downed: boolean; carried: boolean; hooked: boolean; working: boolean; crouching?: boolean; vault?: number }, speed: number, phase: number, t: number) {
     const r = this.rig;
     r.rest();
     this.blood.visible = state.injured || state.downed;
@@ -193,6 +193,19 @@ export class SurvivorModel {
       r.chest.rotation.x = 0.35;
       r.armL.set(1.1 + 0.15 * Math.sin(t * 9), 0.5);
       r.armR.set(1.1 + 0.15 * Math.sin(t * 9 + 2), 0.5);
+      return;
+    }
+    if (state.crouching) {
+      // Low and tucked: knees bent, back bowed, arms in, a slow shuffle when moving.
+      const shuffle = Math.min(1, speed / 1.6);
+      const c = Math.sin(phase * 1.4);
+      r.hips.position.y = -0.34;
+      r.chest.rotation.x = 0.55;
+      r.head.rotation.x = -0.35;
+      r.legL.set(0.95 + c * 0.25 * shuffle, -1.45);
+      r.legR.set(0.95 - c * 0.25 * shuffle, -1.45);
+      r.armL.set(0.5, 1.1);
+      r.armR.set(0.5, 1.1);
       return;
     }
     r.walk(phase, Math.min(1, speed / 4), state.injured ? 1 : 0);

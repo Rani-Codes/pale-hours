@@ -108,3 +108,27 @@ export function dressing(sim: PaleSim): Group {
   g.add(instanced(new ConeGeometry(0.05, 0.3, 3), grass, blades));
   return g;
 }
+
+/**
+ * The tall grass patches: dense stalks about as high as a crouched survivor,
+ * so one hiding in it is lost to the eye and one standing is not. The sim's
+ * Grass boxes are what actually hide them.
+ */
+export function tallGrass(sim: PaleSim): Group {
+  const g = new Group();
+  const rand = mulberry(0x7a11);
+  const stalk = snapped(new MeshLambertMaterial({ color: 0x55672f }));
+  const blades: { x: number; y: number; z: number; s: number; sy: number; ry: number; rz: number }[] = [];
+  for (const b of sim.grass) {
+    const w = (b.maxX - b.minX) / M;
+    const d = (b.maxY - b.minY) / M;
+    for (let i = 0; i < Math.round(w * d * view.tallGrass.density); i++) {
+      const x = b.minX / M + rand() * w;
+      const y = b.minY / M + rand() * d;
+      const tall = view.tallGrass.minHeight + rand() * (view.tallGrass.maxHeight - view.tallGrass.minHeight);
+      blades.push({ x, y: tall / 2, z: -y, s: 1, sy: tall, ry: rand() * Math.PI, rz: (rand() - 0.5) * 0.3 });
+    }
+  }
+  g.add(instanced(new ConeGeometry(0.09, 1, 3), stalk, blades));
+  return g;
+}

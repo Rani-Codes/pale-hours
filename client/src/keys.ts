@@ -9,7 +9,7 @@ export const wasd: Binding = { up: "KeyW", down: "KeyS", left: "KeyA", right: "K
 export const arrows: Binding = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
 
 const held = new Set<string>();
-const bound = new Set([wasd, arrows].flatMap((b) => [b.up, b.down, b.left, b.right]).concat(["KeyE", "Space"]));
+const bound = new Set([wasd, arrows].flatMap((b) => [b.up, b.down, b.left, b.right]).concat(["KeyE", "Space", "KeyC"]));
 let skillPress = false;
 let attackPress = false;
 let actTap = false;
@@ -30,7 +30,7 @@ const axis = (negative: string, positive: string) => (held.has(positive) ? 127 :
 const clamp = (v: number) => Math.max(-127, Math.min(127, v));
 
 /**
- * Hold E to repair; press Space on a skill check; left click to attack. A
+ * Hold E to repair; hold C to crouch; press Space on a skill check; left click to attack. A
  * press is reported for exactly one tick, however long it is held. Read
  * once per tick: reading takes the presses.
  */
@@ -40,7 +40,7 @@ export function readActions() {
   // A tap shorter than a tick still counts as held for one.
   const act = held.has("KeyE") || actTap;
   skillPress = attackPress = actTap = false;
-  return { act, skill, attack };
+  return { act, skill, attack, crouch: held.has("KeyC") };
 }
 
 /** Facing in radians to the sim's 1/65536 turns, 0 to 65535. */

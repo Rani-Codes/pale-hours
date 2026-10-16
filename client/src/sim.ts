@@ -45,6 +45,9 @@ export interface SimPlayer {
   rescue: number;
   /** Died on a hook: out of play. */
   eliminated: boolean;
+  /** Held low. Slow, and hidden once HideTicks settles in grass. */
+  crouching: boolean;
+  hideTicks: number;
   /** Ticks the killer is stunned. */
   stun: number;
   /** A vault in progress: ticks left, and the line it follows in micrometers. */
@@ -76,7 +79,7 @@ export type World = Pick<SimState, "gens" | "noise" | "gates" | "over">;
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
   return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, opening: 0, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
-    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, stun: 0,
+    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, crouching: false, hideTicks: 0, stun: 0,
     vaultTicks: 0, vaultFromX: 0, vaultFromY: 0, vaultToX: 0, vaultToY: 0 };
 }
 
@@ -87,6 +90,8 @@ export interface SimInput {
   yaw: number;
   act: boolean;
   skill: boolean;
+  /** Held to crouch. */
+  crouch?: boolean;
   /** The killer's attack button, edge-triggered in the sim. */
   attack?: boolean;
   /** How far behind this tick the attacker's screen showed everyone else. The host measures it. */
@@ -137,6 +142,12 @@ export interface PaleSim {
   stunTicks: number;
   /** Waist-high walls survivors can vault and the killer cannot. */
   vaults: Wall[];
+  /** Tall grass: a survivor crouched in it hides from the killer. */
+  grass: Wall[];
+  hideSettleTicks: number;
+  hideRevealRange: number;
+  /** Whether a killer at (vx, vy) cannot see a survivor at (tx, ty) who has crouched in grass for hideTicks. */
+  concealed(vx: number, vy: number, tx: number, ty: number, hideTicks: number): boolean;
   vaultTicks: number;
   /** Whether a survivor standing at (x, y) could vault right now. */
   canVault(x: number, y: number): boolean;

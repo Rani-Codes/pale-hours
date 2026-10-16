@@ -12,8 +12,8 @@ const M = 1_000_000; // micrometers per meter
 const HOST_ID = 1; // the room creator; guests take 2 to 5
 
 /** The sim's input for a player, from whatever moves they sent. */
-function toInput(id: number, f: { moveX: number; moveY: number; yaw: number; act: boolean; skill: boolean; attack: boolean }): SimInput {
-  return { id, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack };
+function toInput(id: number, f: { moveX: number; moveY: number; yaw: number; act: boolean; skill: boolean; attack: boolean; crouch: boolean }): SimInput {
+  return { id, moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack, crouch: f.crouch };
 }
 
 /** Each player draws skill checks from their own stream, so seed one per player from the match seed. */

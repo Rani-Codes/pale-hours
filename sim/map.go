@@ -139,6 +139,18 @@ func outThrough(pos Vec2) bool {
 
 func abs(v int32) int32 { return max(v, -v) }
 
+// Grass is tall grass in open ground. A survivor crouched in it hides from
+// the killer's screen. The patches are small and kept apart: places to run
+// to, not a place to live.
+var Grass = []Box{
+	block(4, 8, 10, 14),
+	block(-9, -12, -3, -6),
+	block(-28, -6, -22, 0),
+	block(22, -2, 28, 4),
+	block(14, 24, 21, 28),
+	block(-18, 22, -12, 27),
+}
+
 // HookSites are where the killer hangs survivors, spread through open
 // ground so one is always a short carry away. They do not block movement.
 var HookSites = []Vec2{

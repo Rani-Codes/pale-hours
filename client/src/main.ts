@@ -180,6 +180,12 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   heartbeat.update(hears ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
   lines = [...lines, `volume ${volume.value}%` + (heartbeat.current.bpm > 0 ? `   heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : "")];
   for (const p of players) {
+    // The killer's list must not give away a survivor his screen cannot see.
+    const unseen = me?.role === sim.roles.killer && p.role === sim.roles.survivor && sim.concealed(Math.round(me.x), Math.round(me.y), Math.round(p.x), Math.round(p.y), p.hideTicks);
+    if (unseen) {
+      lines.push(`${nameOfId(p.id).padEnd(MAX_NAME)} survivor out of sight`);
+      continue;
+    }
     lines.push(`${nameOfId(p.id).padEnd(MAX_NAME)} ${p.role === sim.roles.killer ? "killer  " : "survivor"} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${status(p, sim)}` : ""));
   }
   const done = gens.filter((g) => g >= sim.genTicks).length;
@@ -206,6 +212,10 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     const able = mine.health !== sim.health.downed && !mine.repairing && !mine.escaped && prompts.length === 0;
     if (mine.health === sim.health.injured && mine.boost > 0) lines.push("you are hit: run");
     lines.push(...prompts);
+    const inGrass = sim.grass.some((g) => mine.x > g.minX && mine.x < g.maxX && mine.y > g.minY && mine.y < g.maxY);
+    if (mine.hideTicks >= sim.hideSettleTicks) lines.push("hidden: the killer cannot see you unless he is close");
+    else if (mine.crouching && inGrass) lines.push("settling into the grass...");
+    else if (inGrass && able && !mine.boost) lines.push("hold C to crouch and hide in the grass");
     if (near && able) lines.push("hold E to repair");
     else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.opening && !mine.checkActive) lines.push("opening the gate...");

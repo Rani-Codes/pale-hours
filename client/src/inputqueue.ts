@@ -14,6 +14,7 @@ export interface Move {
   act: boolean;
   skill: boolean;
   attack: boolean;
+  crouch: boolean;
   /** The host tick the guest was drawing when it sent this, if it said. */
   seen?: number;
 }
@@ -32,6 +33,7 @@ export class InputQueue {
   private queued = new Map<number, Move>();
   private next = 1;
   private lastYaw = 0;
+  private lastCrouch = false;
   private windowMin = Infinity;
   private windowTicks = 0;
   /** Inputs dropped by the host. Each one shows up as a correction on the guest. */
@@ -55,7 +57,7 @@ export class InputQueue {
   push(frames: InputFrame[]) {
     for (const f of frames) {
       if (f.seq >= this.next && f.seq < this.next + 2 * this.limits.maxQueued) {
-        this.queued.set(f.seq, { moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack, seen: f.seen });
+        this.queued.set(f.seq, { moveX: f.moveX, moveY: f.moveY, yaw: f.yaw, act: f.act, skill: f.skill, attack: f.attack, crouch: f.crouch, seen: f.seen });
       }
     }
     while (this.queued.size > this.limits.maxQueued) this.dropOldest();
@@ -67,11 +69,12 @@ export class InputQueue {
     if (!this.queued.has(this.next)) {
       // The guest gave up on inputs it held too long, so they will never come.
       const oldest = this.oldest();
-      if (oldest === undefined) return { moveX: 0, moveY: 0, yaw: this.lastYaw, act: false, skill: false, attack: false };
+      if (oldest === undefined) return { moveX: 0, moveY: 0, yaw: this.lastYaw, act: false, skill: false, attack: false, crouch: this.lastCrouch }; // a stall keeps them low, so cover is not lost to a late packet
       this.next = oldest;
     }
     const move = this.queued.get(this.next)!;
     this.lastYaw = move.yaw;
+    this.lastCrouch = move.crouch;
     this.queued.delete(this.next++);
     return move;
   }

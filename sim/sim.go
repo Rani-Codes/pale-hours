@@ -25,6 +25,9 @@ type Input struct {
 	// killer's swing; the sim only counts the tick each goes down, so
 	// holding one does nothing.
 	Act, Skill, Attack bool
+	// Crouch is held to get low. A crouched survivor walks slowly, cannot
+	// repair, open a gate or vault, and hides in tall grass.
+	Crouch bool
 	// ViewLagMs is how far behind this tick the attacker's screen showed the
 	// other players. The host measures it; a swing rewinds survivors by it,
 	// up to RewindCapMs.
@@ -49,6 +52,11 @@ type Player struct {
 	Rng         uint32 // this player's skill check stream; seed it per player
 	Escaped     bool   // walked out down an exit lane; out of play
 	Opening     uint8  // the gate they are opening, plus one, or 0
+
+	// Crouching is set while a survivor is held low. HideTicks counts how long
+	// they have been crouched in grass, up to HideSettleTicks.
+	Crouching bool
+	HideTicks int16
 
 	Health  Health
 	Boost   int16 // ticks of shove left after being hit
@@ -126,6 +134,11 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			p.Yaw = in.Yaw
 			p.ActHeld, p.SkillHeld = in.Act, in.Skill
 		}
+		// Low to the ground, hands off everything: no repairing, opening, or vaulting.
+		p.Crouching = ok && in.Crouch && canCrouch(p)
+		if p.Crouching {
+			in.Act, skillPress = false, false
+		}
 		if p.VaultTicks == 0 && skillPress && startVault(&p) {
 			skillPress = false
 		}
@@ -137,6 +150,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			p.Pos = move(p.Pos, in, speed(p), shut[p.Role])
 		}
 		p.Trail[next.Tick%TrailLen] = p.Pos
+		stepHide(&p)
 		p.Boost = max(p.Boost-1, 0)
 		if p.Health == Downed {
 			in.Act = false
@@ -245,6 +259,8 @@ func speed(p Player) int64 {
 		return CrawlSpeed
 	case p.Boost > 0:
 		return HitBoostSpeed
+	case p.Crouching:
+		return CrouchSpeed
 	}
 	return roleSpeed[p.Role]
 }
