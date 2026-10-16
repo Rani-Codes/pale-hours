@@ -17,6 +17,8 @@ const spots = {
   injured: [[10, -2.2], [10, 0], { health: 1 }],
   downed: [[10, -2.2], [10, 0], { health: 2 }],
   lane: [[4, -14], [6, -8]],
+  edge: [[14, 25], [16, 27]],
+  open: [[-4, -6], [-2, 2]],
 };
 const browser = await chromium.launch({ channel: "chrome" });
 const page = await browser.newPage({ viewport: { width: 960, height: 600 } });

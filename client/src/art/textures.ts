@@ -8,7 +8,8 @@ import { CanvasTexture, NearestFilter, NearestMipmapNearestFilter, RepeatWrappin
 
 type Paint = (px: (x: number, y: number, rgb: [number, number, number]) => void, rand: () => number, size: number) => void;
 
-function mulberry(seed: number) {
+/** A small seeded random generator, so painted and scattered things come out the same every load. */
+export function mulberry(seed: number) {
   return () => {
     seed = (seed + 0x6d2b79f5) | 0;
     let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);

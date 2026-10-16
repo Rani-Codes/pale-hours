@@ -10,6 +10,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { view } from "./config";
+import { dressing } from "./art/dressing";
 import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
@@ -68,7 +69,7 @@ export class Renderer {
     this.scene.add(this.ambient, this.sun, this.lantern);
     this.sun.position.set(-20, 60, 30);
 
-    this.scene.add(floor(half));
+    this.scene.add(floor(half), dressing(sim));
     for (const w of sim.walls) {
       const mesh = wall((w.maxX - w.minX) / M, WALL_HEIGHT, (w.maxY - w.minY) / M);
       mesh.position.set((w.minX + w.maxX) / 2 / M, 0, -(w.minY + w.maxY) / 2 / M);
@@ -102,6 +103,15 @@ export class Renderer {
     this.overhead.up.set(0, 0, -1);
     this.overhead.lookAt(0, 0, 0);
     this.eye.rotation.order = "YXZ";
+
+    // Compile every shader now, with one of each model in the scene, so the
+    // first time someone comes into view does not stall the frame (and the
+    // host's tick loop with it).
+    const warm = [new SurvivorModel(0), new KillerModel()].map((m) => m.object);
+    this.scene.add(...warm);
+    this.gl.compile(this.scene, this.eye);
+    this.gl.compile(this.viewModel.scene, this.eye);
+    this.scene.remove(...warm);
   }
 
   /**
