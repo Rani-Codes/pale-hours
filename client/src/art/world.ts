@@ -225,7 +225,7 @@ export class GateModel {
 /**
  * What lies past a gate: the road running on into the dark between brick
  * walls, and a police car parked just past where survivors get out, its
- * lights going. Built along -z from the gate line, so it runs north; turn it
+ * lights dark until the gate is open. Built along -z from the gate line, so it runs north; turn it
  * to face a southern gate. walkable is how far down it players can go.
  */
 export class ExitModel {
@@ -290,8 +290,14 @@ export class ExitModel {
     return g;
   }
 
-  /** t in seconds: the light bar alternates red and blue. */
-  update(t: number) {
+  /** t in seconds: the light bar alternates red and blue while on, and stays dark until the gate is open. */
+  update(t: number, on: boolean) {
+    this.flash.visible = on;
+    if (!on) {
+      this.red.color.setHex(0x1a0404);
+      this.blue.color.setHex(0x040818);
+      return;
+    }
     const redOn = Math.floor(t * 3) % 2 === 0;
     this.red.color.setHex(redOn ? 0xff2020 : 0x300808);
     this.blue.color.setHex(redOn ? 0x081030 : 0x3050ff);

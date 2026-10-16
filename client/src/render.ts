@@ -145,7 +145,7 @@ export class Renderer {
     const { gens, noise, gates } = world;
     this.gens.forEach((g, i) => g.update(gens[i] ?? 0, this.sim.genTicks, dt, now / 1000));
     const powered = gens.filter((g) => g >= this.sim.genTicks).length >= this.sim.gensRequired;
-    this.exits.forEach((e) => e.update(now / 1000));
+    this.exits.forEach((e, i) => e.update(now / 1000, (gates[i] ?? 0) >= this.sim.gateTicks));
     this.gates.forEach((g, i) => g.update(Math.min(1, (gates[i] ?? 0) / this.sim.gateTicks), powered));
     const live = new Set<number>();
     for (const p of players) {
