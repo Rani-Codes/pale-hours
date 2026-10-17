@@ -5,7 +5,7 @@ import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
-import { healthPips, carryBanner, fullGeneratorPrompt, killerPrompts, palletPrompt, repairLine, survivorPrompts } from "./prompts";
+import { healthPips, carryBanner, fullGeneratorPrompt, hookEscapeView, killerPrompts, palletPrompt, repairLine, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
 import { newlyDone } from "./genflash";
 import { HookAlerts } from "./hookalert";
@@ -155,6 +155,15 @@ toLobby.addEventListener("click", () => {
 });
 
 const carryBox = document.querySelector<HTMLDivElement>("#carry")!;
+const hookBox = document.querySelector<HTMLDivElement>("#hook-escape")!;
+const hookTitle = hookBox.querySelector<HTMLDivElement>(".title")!;
+const hookOdds = hookBox.querySelector<HTMLDivElement>(".odds")!;
+const hookPips = [...hookBox.querySelectorAll<HTMLSpanElement>(".try")];
+const hookResult = hookBox.querySelector<HTMLDivElement>(".result")!;
+let hookTriesSeen = 0;
+let wasHooked = false;
+let hookNote = "";
+let hookNoteUntil = 0;
 const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
@@ -216,6 +225,36 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   const banner = mine?.role === sim.roles.killer ? carryBanner(mine, nameOfId) : "";
   carryBox.textContent = banner;
   carryBox.style.display = banner ? "block" : "none";
+  // The wriggle-off panel: a prompt, the odds, a pip a try left, and a shake when a try fails.
+  const nowMs = performance.now();
+  const hv = mine?.role === sim.roles.survivor ? hookEscapeView(mine, sim) : undefined;
+  if (hv && mine) {
+    if (mine.hookTries > hookTriesSeen) {
+      hookNote = "no luck: still hooked";
+      hookNoteUntil = nowMs + 1600;
+      hookBox.classList.remove("failed");
+      void hookBox.offsetWidth; // restart the shake
+      hookBox.classList.add("failed");
+    }
+    hookTriesSeen = mine.hookTries;
+  } else {
+    hookTriesSeen = 0;
+    if (wasHooked && mine && !mine.eliminated) {
+      hookNote = "you are off the hook!";
+      hookNoteUntil = nowMs + 1800;
+    }
+  }
+  wasHooked = !!hv;
+  const noting = nowMs < hookNoteUntil;
+  hookBox.style.display = hv || noting ? "block" : "none";
+  hookTitle.textContent = hv ? hv.title : noting ? hookNote : "";
+  hookOdds.textContent = hv?.odds ?? "";
+  hookPips.forEach((pip, i) => {
+    pip.style.display = hv ? "" : "none";
+    pip.classList.toggle("on", !!hv?.pips[i]);
+  });
+  hookResult.textContent = hv && noting ? hookNote : "";
+  if (!noting) hookBox.classList.remove("failed");
   // Two squares: full health, one when injured, none when down.
   healthBar.style.display = mine?.role === sim.roles.survivor && !isOut(mine) ? "flex" : "none";
   const filled = mine ? healthPips(mine, sim) : 0;

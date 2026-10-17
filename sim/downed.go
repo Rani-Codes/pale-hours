@@ -74,15 +74,16 @@ func stepDowned(p *Player) {
 	}
 }
 
-// killerAct is the killer pressing E: pick up a downed survivor in reach,
+// killerAct is the killer pressing E: pick up a downed survivor in reach and
+// not behind a wall, window or dropped pallet,
 // or, when carrying, hang them on a free hook in range or drop them here.
-func killerAct(k *Player, players []Player) {
+func killerAct(k *Player, players []Player, pallets []Pallet) {
 	if k.Carrying == 0 {
 		var best *Player
 		bestD := int64(PickupRange)*int64(PickupRange) + 1
 		for i := range players {
 			v := &players[i]
-			if v.Role != Survivor || v.Health != Downed || v.Carried || v.OnHook != 0 || v.Escaped || v.Eliminated {
+			if v.Role != Survivor || v.Health != Downed || v.Carried || v.OnHook != 0 || v.Escaped || v.Eliminated || blocked(k.Pos, v.Pos, pallets) {
 				continue
 			}
 			if d := distSq(k.Pos, v.Pos); d < bestD {

@@ -10,7 +10,7 @@ func TestAttackReachIsTwentyPercentShorter(t *testing.T) {
 		dist int32
 		want bool
 	}{{1_700_000, true}, {2_100_000, true}, {2_200_000, false}, {2_500_000, false}} {
-		if got := InReach(Vec2{}, 0, Vec2{0, tt.dist}); got != tt.want {
+		if got := InReach(Vec2{}, 0, Vec2{0, tt.dist}, nil); got != tt.want {
 			t.Errorf("target %d µm away: in reach %v, want %v", tt.dist, got, tt.want)
 		}
 	}

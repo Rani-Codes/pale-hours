@@ -35,9 +35,6 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
     return [
       `on the hook: ${hookLeft(me, rules)} s left. A teammate can hold E beside you to free you` + (me.rescue ? ` (${pct(me.rescue, rules.rescueTicks)})` : ""),
       `press Space on each skill check: a miss costs ${rules.hookCheckPenalty / rules.tickRate} s`,
-      triesLeft(me, rules) > 0
-        ? `press E to wriggle off the hook: ${rules.hookEscapeChance}% a try, ${triesLeft(me, rules)} ${triesLeft(me, rules) === 1 ? "try" : "tries"} left`
-        : "no tries left to wriggle off the hook",
     ];
   }
   if (me.carried) return [`you are being carried: press E then Q, again and again, to wriggle free. ${secondsLeft(me.recover, rules)} s left`];
@@ -141,4 +138,17 @@ export function palletPrompt(
     if (!killer && states[i] === 0 && distToBox(me, box) <= rules.palletReach) return "Space to throw down the pallet";
   }
   return "";
+}
+
+/**
+ * The panel a hooked survivor sees to wriggle off: what to press, the odds, and
+ * a pip for each try they have left. undefined when they are not hooked.
+ */
+export function hookEscapeView(me: SimPlayer, rules: Rules): { title: string; odds: string; pips: boolean[] } | undefined {
+  if (!me.onHook || me.eliminated) return undefined;
+  const left = triesLeft(me, rules);
+  const pips = Array.from({ length: rules.hookEscapeTries }, (_, i) => i < left);
+  return left > 0
+    ? { title: "press E to wriggle off the hook", odds: `${rules.hookEscapeChance}% a try`, pips }
+    : { title: "no tries left: hold on for a teammate", odds: "", pips };
 }

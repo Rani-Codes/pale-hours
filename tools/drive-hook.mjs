@@ -125,13 +125,22 @@ await a.screenshot({ path: `${prefix}-A-hooked.png` });
 
 const recoverTicksAll = await host.evaluate(() => paleSim.recoverTicks);
 
-// 3a. The chance to wriggle off. The luck is the sim's (its unit tests cover a win and a loss), so this
-// checks what a player sees and does: the offer, a try counted, and no tries left meaning none.
-const escapeOffer = /wriggle off the hook: \d+% a try, 2 tries left/.test(hookedHud);
+// 3a. The chance to wriggle off is a panel on A's screen: the prompt, the odds, a pip a try left, and a shake
+// and a note when a try fails. The luck is the sim's (its unit tests cover a win and a loss), so this checks
+// what A sees and does, with the tries set by hand so no run depends on a 10% chance.
+const panel = () =>
+  a.evaluate(() => {
+    const el = document.querySelector("#hook-escape");
+    return { shown: getComputedStyle(el).display !== "none", text: el.innerText, pipsLeft: el.querySelectorAll(".try.on").length, failed: el.classList.contains("failed") };
+  });
+const offered = await panel();
+await place({ [idA]: { hookTries: 1 } });
+await a.waitForTimeout(300);
+const afterFailedTry = await panel();
 await place({ [idA]: { hookTries: 2 } });
 await a.keyboard.press("KeyE");
 await settle(500);
-const noTries = { hud: await a.textContent("#hud"), hooked: (await everywhere(idA)).map((p) => p.onHook), tries: (await on(host, idA)).hookTries };
+const noTries = { panel: await panel(), hooked: (await everywhere(idA)).map((p) => p.onHook), tries: (await on(host, idA)).hookTries };
 await place({ [idA]: { hookTries: 0 } });
 
 // 3b. Hook skill checks. Setup brings the next check close instead of waiting up to 9 s.
@@ -275,8 +284,9 @@ const checks = {
   "neither A nor the killer gets the alert": !/TEAMMATE HOOKED/.test(alertHuds.A) && !/TEAMMATE HOOKED/.test(alertHuds.host),
   "the alert is gone after 3 s": !/TEAMMATE HOOKED/.test(alertAfter),
   "A is told the hook time": /on the hook: \d+ s left/.test(hookedHud),
-  "A is offered a chance to wriggle off the hook": escapeOffer,
-  "with no tries left, E does nothing and A says so": /no tries left to wriggle off/.test(noTries.hud) && noTries.hooked.every((h) => h > 0) && noTries.tries === 2,
+  "A is shown a panel to wriggle off, with both tries": offered.shown && /press E to wriggle off the hook/.test(offered.text) && /10% a try/.test(offered.text) && offered.pipsLeft === 2,
+  "a failed try spends a pip, shakes the panel and says so": afterFailedTry.pipsLeft === 1 && afterFailedTry.failed && /no luck: still hooked/.test(afterFailedTry.text),
+  "with no tries left, E does nothing and the panel says so": /no tries left/.test(noTries.panel.text) && noTries.panel.pipsLeft === 0 && noTries.hooked.every((h) => h > 0) && noTries.tries === 2,
   "B unhooks A injured, on every tab": all(results.rescued, "0/1"),
   "rescue keeps the hook time used": results.hookUsedKept,
   "health bar shows 1 square after a rescue": results.pipsRescued === 1,

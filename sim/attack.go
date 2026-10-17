@@ -56,13 +56,13 @@ func stepSwing(p *Player, in Input, hasInput bool) {
 
 // resolveSwing hits the nearest survivor in the killer's cone, checked
 // against where each survivor stood lagMs ago, and starts the recovery.
-func resolveSwing(k *Player, players []Player, now uint32, lagMs uint16) {
+func resolveSwing(k *Player, players []Player, pallets []Pallet, now uint32, lagMs uint16) {
 	best, bestD := -1, math.Inf(1)
 	for i, p := range players {
 		if p.Role != Survivor || p.Escaped || p.Eliminated || p.Health == Downed || p.Invuln > 0 {
 			continue
 		}
-		if d, ok := reach(k.Pos, k.Yaw, rewound(p, now, lagMs)); ok && d < bestD {
+		if d, ok := reach(k.Pos, k.Yaw, rewound(p, now, lagMs), pallets); ok && d < bestD {
 			best, bestD = i, d
 		}
 	}
@@ -94,7 +94,7 @@ func rewound(p Player, now uint32, lagMs uint16) Vec2 {
 // centred at target, and how far the nearest touching point is. The body is
 // sampled at its centre, corners and edge midpoints; a point counts when it
 // is in range, inside the cone, and no wall or generator stands in between.
-func reach(pos Vec2, yaw uint16, target Vec2) (float64, bool) {
+func reach(pos Vec2, yaw uint16, target Vec2, pallets []Pallet) (float64, bool) {
 	sin, cos := math.Sincos(float64(yaw) / 65536 * 2 * math.Pi)
 	best, ok := math.Inf(1), false
 	for _, ox := range [...]int32{-PlayerRadius, 0, PlayerRadius} {
@@ -109,7 +109,7 @@ func reach(pos Vec2, yaw uint16, target Vec2) (float64, bool) {
 			if d > 0 && dx*sin+dy*cos < d*attackCos {
 				continue
 			}
-			if blocked(pos, pt) {
+			if blocked(pos, pt, pallets) {
 				continue
 			}
 			best, ok = d, true
@@ -119,13 +119,19 @@ func reach(pos Vec2, yaw uint16, target Vec2) (float64, bool) {
 }
 
 // blocked reports whether the segment from a to b passes through the inside
-// of a wall or a generator. Grazing a face does not count.
-func blocked(a, b Vec2) bool {
-	for _, list := range [][]Box{Walls, Fences, Lanes} {
+// of a wall, a window, a dropped pallet or a generator: nothing reaches
+// across them, a swing or a pickup. Grazing a face does not count.
+func blocked(a, b Vec2, pallets []Pallet) bool {
+	for _, list := range [][]Box{Walls, Vaults, Fences, Lanes} {
 		for _, w := range list {
 			if crosses(a, b, w) {
 				return true
 			}
+		}
+	}
+	for i, p := range pallets {
+		if i < len(PalletSites) && p.State == PalletDown && crosses(a, b, PalletSites[i]) {
+			return true
 		}
 	}
 	for _, g := range GenSites {
@@ -161,7 +167,7 @@ func crosses(a, b Vec2, w Box) bool {
 
 // InReach is reach for the tools: whether a swing from pos facing yaw would
 // touch a survivor standing at target right now.
-func InReach(pos Vec2, yaw uint16, target Vec2) bool {
-	_, ok := reach(pos, yaw, target)
+func InReach(pos Vec2, yaw uint16, target Vec2, pallets []Pallet) bool {
+	_, ok := reach(pos, yaw, target, pallets)
 	return ok
 }

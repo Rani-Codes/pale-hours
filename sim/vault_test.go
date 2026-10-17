@@ -104,17 +104,3 @@ func TestVaultsBlockWalking(t *testing.T) {
 		}
 	}
 }
-
-// A vault is waist high: the killer's swing reaches over it.
-func TestSwingReachesOverAVault(t *testing.T) {
-	withVault(t)
-	s := State{Players: []Player{killerAt(west, 16384), target(2, vaultTo(true), Healthy)}}
-	east := uint16(16384)
-	s = Step(s, map[PlayerID]Input{1: {Attack: true, Yaw: east}})
-	for range AttackWindupTicks {
-		s = Step(s, map[PlayerID]Input{1: {Yaw: east}})
-	}
-	if s.Players[1].Health != Injured {
-		t.Error("the vault blocked the swing")
-	}
-}

@@ -302,7 +302,7 @@ func trail(p sim.Player) []any {
 // inReach(x, y, yaw, targetX, targetY) reports whether a swing from (x, y)
 // facing yaw would touch a survivor standing at the target right now. For the tools.
 func inReach(_ js.Value, a []js.Value) any {
-	return sim.InReach(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, uint16(a[2].Int()), sim.Vec2{X: int32(a[3].Int()), Y: int32(a[4].Int())})
+	return sim.InReach(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, uint16(a[2].Int()), sim.Vec2{X: int32(a[3].Int()), Y: int32(a[4].Int())}, state.Pallets)
 }
 
 // spawns(seed, survivors) returns [{x, y}, ...] in micrometers: the killer first, then each survivor.

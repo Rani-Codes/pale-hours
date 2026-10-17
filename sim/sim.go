@@ -225,7 +225,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 	}
 	for i := range next.Players {
 		if k := &next.Players[i]; k.Swing == SwingWindup && k.SwingTicks == 0 {
-			resolveSwing(k, next.Players, next.Tick, inputs[k.ID].ViewLagMs)
+			resolveSwing(k, next.Players, next.Pallets, next.Tick, inputs[k.ID].ViewLagMs)
 		}
 	}
 	for _, id := range helped {
@@ -234,7 +234,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		}
 	}
 	for _, i := range killerPresses {
-		killerAct(&next.Players[i], next.Players)
+		killerAct(&next.Players[i], next.Players, next.Pallets)
 	}
 	stepRescue(next.Players, inputs)
 	stepPalletBreak(next.Pallets, next.Players, killerPresses)

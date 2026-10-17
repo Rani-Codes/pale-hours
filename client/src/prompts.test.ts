@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { carryBanner, fullGeneratorPrompt, healthPips, killerPrompts, palletPrompt, repairLine, status, survivorPrompts } from "./prompts.ts";
+import { carryBanner, fullGeneratorPrompt, healthPips, hookEscapeView, killerPrompts, palletPrompt, repairLine, status, survivorPrompts } from "./prompts.ts";
 import { newPlayer } from "./sim.ts";
 
 const rules = {
@@ -121,13 +121,22 @@ test("the killer beside a dropped pallet is told to break it, then how long is l
   assert.equal(palletPrompt(k, [2], [0], w), "", "broken");
 });
 
-test("a hooked survivor is told they can try to wriggle off, and how many tries are left", () => {
+test("a hooked survivor gets the wriggle-off panel: a prompt, the odds and one pip a try left", () => {
   const me = survivor(2, 0, { health: 2, onHook: 1, hookTries: 0 });
-  assert.ok(survivorPrompts(me, [me], rules).includes("press E to wriggle off the hook: 10% a try, 2 tries left"));
+  assert.deepEqual(hookEscapeView(me, rules), { title: "press E to wriggle off the hook", odds: "10% a try", pips: [true, true] });
   const one = { ...me, hookTries: 1 };
-  assert.ok(survivorPrompts(one, [one], rules).includes("press E to wriggle off the hook: 10% a try, 1 try left"));
-  const none = { ...me, hookTries: 2 };
-  assert.ok(survivorPrompts(none, [none], rules).includes("no tries left to wriggle off the hook"));
+  assert.deepEqual(hookEscapeView(one, rules)?.pips, [true, false]);
+  assert.equal(hookEscapeView(one, rules)?.title, "press E to wriggle off the hook");
+});
+
+test("with no tries left the panel says to wait for a teammate", () => {
+  const none = survivor(2, 0, { health: 2, onHook: 1, hookTries: 2 });
+  assert.deepEqual(hookEscapeView(none, rules), { title: "no tries left: hold on for a teammate", odds: "", pips: [false, false] });
+});
+
+test("no panel unless hooked and still alive", () => {
+  assert.equal(hookEscapeView(survivor(2, 0), rules), undefined);
+  assert.equal(hookEscapeView(survivor(2, 0, { onHook: 1, eliminated: true }), rules), undefined);
 });
 
 test("the killer is told when the hunt begins, in seconds", () => {

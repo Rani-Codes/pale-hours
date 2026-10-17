@@ -29,6 +29,14 @@
       #check-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #c0392b; }
       #check-result { position: fixed; left: 50%; top: 62%; transform: translate(-50%, 24px); font: 13px ui-monospace, monospace; color: #d8d4c8; }
       #carry { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: none; padding: 8px 18px; background: rgba(8, 8, 10, 0.85); border: 2px solid #c0392b; color: #e8e2d4; font: 20px ui-monospace, monospace; letter-spacing: 0.04em; pointer-events: none; }
+      #hook-escape { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); display: none; min-width: 320px; padding: 10px 20px 8px; text-align: center; background: rgba(8, 8, 10, 0.88); border: 2px solid #c0392b; color: #e8e2d4; font: 18px ui-monospace, monospace; pointer-events: none; }
+      #hook-escape .odds { margin-top: 2px; font-size: 13px; opacity: 0.75; }
+      #hook-escape .pips { display: flex; justify-content: center; gap: 10px; margin: 8px 0 4px; }
+      #hook-escape .try { width: 28px; height: 28px; border: 2px solid #6a655c; box-sizing: border-box; }
+      #hook-escape .try.on { background: #e8e2d4; border-color: #e8e2d4; }
+      #hook-escape .result { min-height: 20px; color: #ff6a5a; font-size: 15px; }
+      #hook-escape.failed { border-color: #ff6a5a; animation: hook-shake 0.45s; }
+      @keyframes hook-shake { 0%, 100% { transform: translateX(-50%); } 20% { transform: translateX(calc(-50% - 12px)); } 40% { transform: translateX(calc(-50% + 12px)); } 60% { transform: translateX(calc(-50% - 7px)); } 80% { transform: translateX(calc(-50% + 7px)); } }
       #health { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; gap: 6px; }
       #health .pip { width: 26px; height: 26px; border: 2px solid #d8d4c8; box-sizing: border-box; }
       #health .pip.full { background: #c0392b; border-color: #c0392b; }
@@ -50,6 +58,7 @@
   <body>
     <canvas id="view"></canvas>
     <div id="carry"></div>
+    <div id="hook-escape"><div class="title"></div><div class="odds"></div><div class="pips"><span class="try"></span><span class="try"></span></div><div class="result"></div></div>
     <div id="hud">loading sim…</div>
     <div id="lobby">
       <label>Vol <input id="volume" type="range" min="0" max="100" step="5" /></label>

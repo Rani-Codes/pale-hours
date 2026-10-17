@@ -6,7 +6,7 @@
 //      side; host and guest agree exactly, with no corrections.
 //   2. Walking into the window without Space is blocked.
 //   3. The killer cannot walk through it, and Space does nothing for him.
-//   4. The killer's swing still reaches a survivor across it.
+//   4. The killer's swing does not reach a survivor across it.
 import { chromium } from "playwright-core";
 import { startMatch } from "./lib/lobby.mjs";
 
@@ -84,7 +84,7 @@ await host.keyboard.up("KeyW");
 await settle(300);
 const killer = await on(host, 1);
 
-// 4. A swing across the window.
+// 4. A swing across the window finds nothing: it is a wall to him, and he cannot pick someone up across it either.
 await place({ 1: { x: westX, y }, [id]: { x: eastLand, y, health: 0 } });
 await settle();
 await host.mouse.click(450, 300);
@@ -101,7 +101,7 @@ const checks = {
   "host and guest agree on the landing": landed.guest.x === landed.host.x && landed.guest.y === landed.host.y,
   "no corrections from the vault": corrections === 0,
   "the killer cannot get through": killer.x <= v.minX - 0.4 * M && killer.vaultTicks === 0,
-  "the swing reaches across the window, on both tabs": hit.host === 1 && hit.guest === 1,
+  "the swing does not reach across the window, on both tabs": hit.host === 0 && hit.guest === 0,
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);

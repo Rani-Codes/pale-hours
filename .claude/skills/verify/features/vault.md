@@ -1,6 +1,6 @@
 # Vaults
 
-Windows are waist-high walls that block walking. A survivor beside one sees "Space to vault" and goes over it in 0.6 s. The killer cannot vault and has to go around, but his swing reaches across.
+Windows are waist-high walls that block walking. A survivor beside one sees "Space to vault" and goes over it in 0.6 s. The killer cannot vault and has to go around, and his swing and pickups do not reach across it.
 
 ## Sub-features
 
@@ -8,7 +8,7 @@ Windows are waist-high walls that block walking. A survivor beside one sees "Spa
 - `vault-cross` lands the survivor just past the far face, host and guest agreeing exactly with no corrections.
 - `vault-block` stops a survivor who walks into a window without Space.
 - `vault-killer` stops the killer: he cannot walk through and Space does nothing.
-- `vault-swing` lets the killer's swing reach a survivor across the window.
+- `vault-swing` checks the killer's swing misses a survivor across the window (a pickup across it is covered by the sim's unit tests).
 
 ## How to get to it (user POV)
 
