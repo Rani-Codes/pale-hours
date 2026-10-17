@@ -165,7 +165,6 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   const lines = ["move: WASD or arrows"];
   const { gens, gates } = world;
   const me = players.find((p) => p.id === self);
-  if (me?.role === sim.roles.survivor) lines.push("mouse wheel: zoom the camera in or out");
   const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
   spectate.id = watching?.id;
   announce(players, !!world.over);
@@ -175,8 +174,8 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   }
   feed.style.display = world.over ? "none" : "";
   const hooked = hookAlerts.update(players, self, performance.now());
-  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked, look.zoom);
-  else renderer.draw(players, world, self, look.yaw, look.pitch, hooked, look.zoom);
+  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked);
+  else renderer.draw(players, world, self, look.yaw, look.pitch, hooked);
   const killer = players.find((p) => p.role === sim.roles.killer);
   // Only survivors hear it, and only while it can help them. The killer does not hear his own heart.
   const hears = me && killer && me.role !== sim.roles.killer && hearsHeartbeat(me) && !world.over;

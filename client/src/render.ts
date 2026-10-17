@@ -16,6 +16,7 @@ import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
 import type { HookAlert } from "./hookalert";
+import { clipCamera, rectsFrom, type Rect } from "./camera";
 import { palletHinge } from "./pallet";
 import { ExitModel, floor, GateModel, GeneratorFlash, GeneratorModel, hookModel, noiseBeam, PalletModel, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
@@ -64,6 +65,8 @@ export class Renderer {
   private readonly exits: ExitModel[] = [];
   private readonly gates: GateModel[] = [];
   private readonly pallets: PalletModel[] = [];
+  private readonly cameraWalls: Rect[];
+  private cameraLen = Infinity; // how far behind the player the survivor camera is, in metres
   private lastFrame = performance.now();
 
   constructor(
@@ -74,6 +77,7 @@ export class Renderer {
     this.gl.setClearColor(view.fog.color);
 
     const half = sim.mapHalfExtent / M;
+    this.cameraWalls = rectsFrom([...sim.walls, ...sim.vaults, ...sim.lanes]);
     this.scene.add(this.ambient, this.sun, this.lantern);
     this.sun.position.set(-20, 60, 30);
 
@@ -160,7 +164,7 @@ export class Renderer {
    * Draw one frame. self is this tab's player and yaw/pitch (radians) where
    * it looks, straight from the mouse so the view never waits on the network.
    */
-  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number, hooks: HookAlert[] = [], zoom = 1): void {
+  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number, hooks: HookAlert[] = []): void {
     this.resize();
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
@@ -230,8 +234,14 @@ export class Renderer {
       const height = me.crouching ? crouchHeight : view.survivor.height;
       this.eye.fov = fov;
       // Behind the player, a little to the right so the body does not cover the crosshair.
-      const back = distance * zoom;
-      this.eye.position.set(x - fx * back - fz * shoulder, height, z - fz * back + fx * shoulder);
+      // The camera never sits inside a wall: it stops short of the first one on its way back. It
+      // is pulled in at once but eases back out, so walking along a wall does not make it pop.
+      const wanted = { x: x - fx * distance - fz * shoulder, z: z - fz * distance + fx * shoulder };
+      const at = clipCamera({ x, z }, wanted, this.cameraWalls, view.survivor.cameraRadius, view.survivor.minDistance);
+      const len = Math.hypot(at.x - x, at.z - z);
+      this.cameraLen = len < this.cameraLen ? len : Math.min(len, this.cameraLen + view.survivor.cameraEase * dt);
+      const k = len > 0 ? this.cameraLen / len : 0;
+      this.eye.position.set(x + (at.x - x) * k, height, z + (at.z - z) * k);
     }
     this.lantern.position.copy(this.eye.position);
     this.eye.updateProjectionMatrix();

@@ -33,7 +33,7 @@ export const view = {
   mouseSensitivity: 0.0022, // radians per pixel of mouse movement
   maxPitch: 60,
   killer: { fov: 62, eyeHeight: 1.65 }, // narrow on purpose: the killer sees less than survivors
-  survivor: { fov: 82, distance: 3.6, height: 2.5, crouchHeight: 1.7, shoulder: 0.5 },
+  survivor: { fov: 82, distance: 3.6, height: 2.5, crouchHeight: 1.7, shoulder: 0.5, cameraRadius: 0.25, minDistance: 0.9, cameraEase: 6 }, // the camera stops cameraRadius short of walls, never nearer the player than minDistance, and eases back out at cameraEase m/s
   near: 0.1,
   far: 200,
   // Fog and darkness. Everything past fog.far is the fog colour, so the
