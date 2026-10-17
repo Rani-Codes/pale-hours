@@ -12,6 +12,16 @@ const (
 
 	PlayerRadius = 400_000 // half-width of the square collision body
 
+	// A survivor within PalletReach of a standing pallet can throw it down once.
+	// A killer within PalletStunRange of it then is stunned PalletStunTicks. A
+	// killer within PalletBreakReach of a dropped one breaks it by holding E
+	// for PalletBreakTicks.
+	PalletReach      = 1_500_000
+	PalletStunRange  = 3_000_000
+	PalletStunTicks  = 3 * TickRate
+	PalletBreakReach = 1_800_000
+	PalletBreakTicks = 3 * TickRate
+
 	// Where a match may place players. Every survivor starts at least
 	// SpawnKillerGap from the killer on x or on y, and SpawnSurvivorGap from
 	// each other. SpawnClearance keeps them off walls, SpawnEdgeMargin off the fence.

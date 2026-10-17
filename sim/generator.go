@@ -234,12 +234,16 @@ func gateNear(pos Vec2, gates []Gate) uint8 {
 	return 0
 }
 
-// shutTo is which gates block a player of this role: every gate for the
-// killer, who never leaves the map, and the gates not yet open for survivors.
-func shutTo(role Role, gates []Gate) []bool {
-	shut := make([]bool, len(gates))
+// blockersFor is what stops a player of this role: every gate for the killer,
+// who never leaves the map, the gates not yet open for survivors, and every
+// pallet lying dropped.
+func blockersFor(role Role, gates []Gate, pallets []Pallet) blockers {
+	b := blockers{gates: make([]bool, len(gates)), pallets: make([]bool, len(pallets))}
 	for i, g := range gates {
-		shut[i] = role == Killer || !g.Open()
+		b.gates[i] = role == Killer || !g.Open()
 	}
-	return shut
+	for i, p := range pallets {
+		b.pallets[i] = p.State == PalletDown
+	}
+	return b
 }

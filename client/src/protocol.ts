@@ -90,9 +90,9 @@ const isPlayer = (p: unknown): p is SimPlayer =>
 
 export function parseSnapshot(m: unknown): SnapshotMsg | undefined {
   if (!isObj(m) || m.t !== "snap" || !isInt(m.ack) || !isObj(m.state)) return undefined;
-  const { tick, players, gens, noise, gates } = m.state;
+  const { tick, players, gens, noise, gates, pallets, palletBreak } = m.state;
   if (!isInt(tick) || !Array.isArray(players) || !players.every(isPlayer)) return undefined;
-  for (const list of [gens, noise, gates]) if (!Array.isArray(list) || !list.every(isInt)) return undefined;
+  for (const list of [gens, noise, gates, pallets, palletBreak]) if (!Array.isArray(list) || !list.every(isInt)) return undefined;
   return m as unknown as SnapshotMsg;
 }
 

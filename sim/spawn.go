@@ -27,7 +27,7 @@ func drawCoord(state *uint32) int32 {
 // around them, touches no wall, vault, fence, lane or generator.
 func openGround(p Vec2) bool {
 	for _, d := range []Vec2{{0, 0}, {SpawnClearance, 0}, {-SpawnClearance, 0}, {0, SpawnClearance}, {0, -SpawnClearance}} {
-		if _, hit := hitWall(Vec2{p.X + d.X, p.Y + d.Y}, nil); hit {
+		if _, hit := hitWall(Vec2{p.X + d.X, p.Y + d.Y}, blockers{}); hit {
 			return false
 		}
 	}

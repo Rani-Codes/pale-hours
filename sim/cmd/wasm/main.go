@@ -44,6 +44,12 @@ func main() {
 		"concealed":        js.FuncOf(concealed),
 		"vaultTicks":       sim.VaultTicks,
 		"canVault":         js.FuncOf(canVault),
+		"palletSites":      boxes(sim.PalletSites),
+		"palletReach":      sim.PalletReach,
+		"playerRadius":     sim.PlayerRadius,
+		"palletBreakReach": sim.PalletBreakReach,
+		"palletBreakTicks": sim.PalletBreakTicks,
+		"palletStunTicks":  sim.PalletStunTicks,
 		"spawns":           js.FuncOf(spawns),
 		"hookSites":        sites(sim.HookSites),
 		"hookTicks":        sim.HookTicks,
@@ -134,11 +140,22 @@ func load(_ js.Value, args []js.Value) any {
 			gates[i].Progress = int32(gateList.Index(i).Int())
 		}
 	}
+	palletList, breakList := args[0].Get("pallets"), args[0].Get("palletBreak")
+	pallets := make([]sim.Pallet, len(sim.PalletSites))
+	for i := range pallets {
+		if i < palletList.Length() {
+			pallets[i].State = sim.PalletState(palletList.Index(i).Int())
+		}
+		if i < breakList.Length() {
+			pallets[i].Break = int16(breakList.Index(i).Int())
+		}
+	}
 	state = sim.State{
 		Tick:    uint32(args[0].Get("tick").Int()),
 		Players: players,
 		Gens:    gens,
 		Gates:   gates,
+		Pallets: pallets,
 		Over:    args[0].Get("over").Truthy(),
 	}
 	return nil
@@ -167,7 +184,7 @@ func step(_ js.Value, args []js.Value) any {
 	return nil
 }
 
-// state() returns {tick, players: [{id, role, x, y, yaw, ...repair fields}, ...], gens: [progress, ...], noise: [ticks, ...], gates: [progress, ...]}.
+// state() returns {tick, players: [{id, role, x, y, yaw, ...repair fields}, ...], gens: [progress, ...], noise: [ticks, ...], gates: [progress, ...], pallets: [state, ...], palletBreak: [ticks, ...]}.
 func snapshot(js.Value, []js.Value) any {
 	players := make([]any, len(state.Players))
 	for i, p := range state.Players {
@@ -226,7 +243,13 @@ func snapshot(js.Value, []js.Value) any {
 	for i, g := range state.Gates {
 		gates[i] = int(g.Progress)
 	}
-	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates, "over": state.Over}
+	pallets := make([]any, len(state.Pallets))
+	palletBreak := make([]any, len(state.Pallets))
+	for i, p := range state.Pallets {
+		pallets[i] = int(p.State)
+		palletBreak[i] = int(p.Break)
+	}
+	return map[string]any{"tick": int(state.Tick), "players": players, "gens": gens, "noise": noise, "gates": gates, "pallets": pallets, "palletBreak": palletBreak, "over": state.Over}
 }
 
 // numOr0 reads an optional number, so a player built before a field existed still loads.
@@ -273,7 +296,7 @@ func spawns(_ js.Value, a []js.Value) any {
 
 // canVault(x, y) reports whether a survivor standing there could vault now.
 func canVault(_ js.Value, a []js.Value) any {
-	return sim.CanVault(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())})
+	return sim.CanVault(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, state.Pallets)
 }
 
 // boxes returns [{minX, minY, maxX, maxY}, ...] in micrometers.

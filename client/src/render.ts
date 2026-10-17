@@ -16,7 +16,7 @@ import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
 import type { HookAlert } from "./hookalert";
-import { ExitModel, floor, GateModel, GeneratorFlash, GeneratorModel, hookModel, noiseBeam, vaultModel, wall } from "./art/world";
+import { ExitModel, floor, GateModel, GeneratorFlash, GeneratorModel, hookModel, noiseBeam, PalletModel, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
 const M = 1_000_000; // micrometers per meter
@@ -62,6 +62,7 @@ export class Renderer {
   private readonly hookBeams: Mesh[] = [];
   private readonly exits: ExitModel[] = [];
   private readonly gates: GateModel[] = [];
+  private readonly pallets: PalletModel[] = [];
   private lastFrame = performance.now();
 
   constructor(
@@ -85,6 +86,15 @@ export class Renderer {
       const mesh = vaultModel((v.maxX - v.minX) / M, WALL_HEIGHT, (v.maxY - v.minY) / M);
       mesh.position.set((v.minX + v.maxX) / 2 / M, 0, -(v.minY + v.maxY) / 2 / M);
       this.scene.add(mesh);
+    }
+    for (const b of sim.palletSites) {
+      const w = (b.maxX - b.minX) / M;
+      const d = (b.maxY - b.minY) / M;
+      const pallet = new PalletModel(Math.max(w, d), Math.min(w, d));
+      pallet.object.position.set((b.minX + b.maxX) / 2 / M, 0, -(b.minY + b.maxY) / 2 / M);
+      if (d > w) pallet.object.rotation.y = Math.PI / 2;
+      this.pallets.push(pallet);
+      this.scene.add(pallet.object);
     }
     for (const site of sim.genSites) {
       const gen = new GeneratorModel(sim.generatorHalf / M);
@@ -152,7 +162,8 @@ export class Renderer {
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
-    const { gens, noise, gates } = world;
+    const { gens, noise, gates, pallets, palletBreak } = world;
+    this.pallets.forEach((p, i) => p.set(pallets[i] ?? 0, (palletBreak[i] ?? 0) / this.sim.palletBreakTicks, dt));
     this.gens.forEach((g, i) => g.update(gens[i] ?? 0, this.sim.genTicks, dt, now / 1000));
     const powered = gens.filter((g) => g >= this.sim.genTicks).length >= this.sim.gensRequired;
     this.exits.forEach((e, i) => e.update(now / 1000, (gates[i] ?? 0) >= this.sim.gateTicks));

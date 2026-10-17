@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { carryBanner, healthPips, killerPrompts, repairLine, status, survivorPrompts } from "./prompts.ts";
+import { carryBanner, healthPips, killerPrompts, palletPrompt, repairLine, status, survivorPrompts } from "./prompts.ts";
 import { newPlayer } from "./sim.ts";
 
 const rules = {
@@ -74,4 +74,27 @@ test("a repairing survivor sees the progress of the generator beside them", () =
   assert.equal(repairLine({ ...me, repairing: false }, [2400, 600], world), "");
   assert.equal(repairLine({ ...me, opening: 1 }, [2400, 600], world), "");
   assert.equal(repairLine(survivor(2, 10_000_000, { repairing: true }), [2400, 600], world), "");
+});
+
+const palletWorld = { palletSites: [{ minX: -1_000_000, minY: -250_000, maxX: 1_000_000, maxY: 250_000 }], palletReach: 1_500_000, palletBreakReach: 1_800_000, palletBreakTicks: 90, playerRadius: 400_000, tickRate: 30, roles: { survivor: 0, killer: 1 }, health: { healthy: 0, injured: 1, downed: 2 } };
+const at = (x: number, y: number, extra = {}) => ({ ...newPlayer(2, 0, x, y, 1), ...extra });
+
+test("a survivor beside a standing pallet is told to throw it down", () => {
+  const w = palletWorld;
+  assert.equal(palletPrompt(at(0, -1_000_000), [0], [0], w), "Space to throw down the pallet");
+  assert.equal(palletPrompt(at(0, -5_000_000), [0], [0], w), "");
+  assert.equal(palletPrompt(at(0, -300_000), [0], [0], w), "", "standing in its footprint");
+  assert.equal(palletPrompt(at(0, -1_000_000, { health: 2 }), [0], [0], w), "");
+  assert.equal(palletPrompt(at(0, -1_000_000), [1], [0], w), "", "already thrown");
+});
+
+test("the killer beside a dropped pallet is told to break it, then how long is left", () => {
+  const w = palletWorld;
+  const k = { ...newPlayer(1, 1, 0, -1_000_000, 1) };
+  assert.equal(palletPrompt(k, [1], [0], w), "hold E to break the pallet");
+  assert.equal(palletPrompt(k, [1], [30], w), "breaking the pallet: 2 s");
+  assert.equal(palletPrompt(k, [0], [0], w), "", "a standing pallet is not his to break");
+  assert.equal(palletPrompt({ ...k, carrying: 2 }, [1], [0], w), "");
+  assert.equal(palletPrompt({ ...k, stun: 10 }, [1], [0], w), "");
+  assert.equal(palletPrompt(k, [2], [0], w), "", "broken");
 });

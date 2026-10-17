@@ -14,7 +14,7 @@ func TestSpawnsAreValid(t *testing.T) {
 					t.Fatalf("seed %d: got %d spawns, want %d", seed, len(got), tc.survivors+1)
 				}
 				for i, p := range got {
-					if _, hit := hitWall(p, nil); hit {
+					if _, hit := hitWall(p, blockers{}); hit {
 						t.Fatalf("seed %d: spawn %d at %v is inside an obstacle", seed, i, p)
 					}
 					if abs(p.X) > MapHalfExtent-SpawnEdgeMargin || abs(p.Y) > MapHalfExtent-SpawnEdgeMargin {

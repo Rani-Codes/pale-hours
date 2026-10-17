@@ -58,6 +58,19 @@ var Vaults = []Box{
 	vWall(-4, 4, 6),
 }
 
+// PalletSites are the wooden pallets: thin boxes standing upright in the
+// doorways of the two buildings and beside the loose cover, where a chase
+// ends up. A standing pallet is walked through; thrown down once by a
+// survivor it blocks everyone and can be vaulted, until the killer breaks it.
+var PalletSites = []Box{
+	hWall(-19, -17, 20), // building A, north doorway
+	hWall(-16, -14, 8),  // building A, south doorway
+	hWall(16, 18, -10),  // building B, north doorway
+	hWall(19, 21, -22),  // building B, south doorway
+	hWall(-8, -5, -14),  // north of the square cover at (-9, -19)
+	hWall(6, 9, 21),     // north of the square cover at (6, 16)
+}
+
 // GenSites are the generator positions. They block movement like walls.
 // Two are inside the buildings, the rest are in the open.
 var GenSites = []Vec2{
@@ -174,13 +187,22 @@ func block(x0, y0, x1, y1 int32) Box {
 	return Box{x0 * meter, y0 * meter, x1 * meter, y1 * meter}
 }
 
+// blockers are the movable obstacles for one role: gates[i] is set while gate
+// i is shut to them, pallets[i] while pallet i lies dropped.
+type blockers struct{ gates, pallets []bool }
+
 // hitWall returns the obstacle whose radius-grown box contains the player's
-// centre: a wall, a fence, a generator's body, or a gate i with shut[i] set.
-// Touching a face does not count.
-func hitWall(p Vec2, shut []bool) (Box, bool) {
+// centre: a wall, a fence, a generator's body, a shut gate or a dropped pallet
+// as b says. Touching a face does not count.
+func hitWall(p Vec2, b blockers) (Box, bool) {
 	for i, g := range GateSites {
-		if i < len(shut) && shut[i] && inGrown(p, gateLeaf(g)) {
+		if i < len(b.gates) && b.gates[i] && inGrown(p, gateLeaf(g)) {
 			return gateLeaf(g), true
+		}
+	}
+	for i, box := range PalletSites {
+		if i < len(b.pallets) && b.pallets[i] && inGrown(p, box) {
+			return box, true
 		}
 	}
 	for _, list := range [][]Box{Walls, Vaults, Fences, Lanes} {
@@ -205,6 +227,6 @@ func inGrown(p Vec2, w Box) bool {
 }
 
 func inWall(p Vec2) bool {
-	_, ok := hitWall(p, nil)
+	_, ok := hitWall(p, blockers{})
 	return ok
 }

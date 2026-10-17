@@ -5,7 +5,7 @@ import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
-import { healthPips, carryBanner, killerPrompts, repairLine, survivorPrompts } from "./prompts";
+import { healthPips, carryBanner, killerPrompts, palletPrompt, repairLine, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
 import { newlyDone } from "./genflash";
 import { HookAlerts } from "./hookalert";
@@ -187,7 +187,10 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   if (mine && mine.role === sim.roles.killer) {
     const s = sim.swing;
     lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : mine.carrying ? "" : "click to attack");
-    lines.push(...killerPrompts(mine, players, sim));
+    const carryPrompts = killerPrompts(mine, players, sim);
+    lines.push(...carryPrompts);
+    const breakPrompt = palletPrompt(mine, world.pallets, world.palletBreak, sim);
+    if (breakPrompt && carryPrompts.length === 0) lines.push(breakPrompt);
     // Where a missed skill check just went off, so the killer can find it even when it is out of view.
     world.noise.forEach((ticks, i) => {
       if (ticks > 0) lines.push(`NOISE generator ${i + 1}: ${bearing(mine, sim.genSites[i])}`);
@@ -202,6 +205,8 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
     const able = mine.health !== sim.health.downed && !mine.repairing && !mine.escaped && prompts.length === 0;
     if (mine.health === sim.health.injured && mine.boost > 0) lines.push("you are hit: run");
     lines.push(...prompts);
+    const throwPrompt = palletPrompt(mine, world.pallets, world.palletBreak, sim);
+    if (throwPrompt && prompts.length === 0) lines.push(throwPrompt);
     const inGrass = sim.grass.some((g) => mine.x > g.minX && mine.x < g.maxX && mine.y > g.minY && mine.y < g.maxY);
     if (mine.hideTicks >= sim.hideSettleTicks) lines.push("hidden: stay still, and the killer cannot see you unless he is close");
     else if (mine.crouching && inGrass) lines.push("hold still to hide in the grass...");

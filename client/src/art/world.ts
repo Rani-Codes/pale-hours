@@ -101,6 +101,69 @@ export function vaultModel(w: number, h: number, d: number): Group {
   return g;
 }
 
+/**
+ * A wooden pallet across a gap. Standing it is an open frame taller than a
+ * person that anyone walks through; thrown down it is a waist-high barricade
+ * of planks; broken it is splinters on the ground. length runs along local x.
+ */
+export class PalletModel {
+  readonly object = new Group();
+  private readonly standing = new Group();
+  private readonly down = new Group();
+  private readonly broken = new Group();
+  private state = -1;
+  private fell = 0; // seconds since it went down, for the slam
+  private home = { x: 0, z: 0 };
+
+  constructor(length: number, thick: number) {
+    const light = lambert(wood(), 0xe6c48e);
+    const dark = lambert(wood(), 0xb8935c);
+    const plank = (len: number, h: number, mat: MeshLambertMaterial, x: number, y: number) => {
+      const m = new Mesh(worldBox(len, h, thick, 0.8), mat);
+      m.position.set(x, y, 0);
+      return m;
+    };
+    const post = (h: number, x: number) => {
+      const m = new Mesh(worldBox(0.14, h, thick + 0.08, 0.8), dark);
+      m.position.set(x, h / 2, 0);
+      return m;
+    };
+    // Standing: two posts, a header and three thin rails, with air between.
+    const inner = length - 0.28;
+    this.standing.add(post(2.1, -length / 2 + 0.07), post(2.1, length / 2 - 0.07), plank(inner, 0.16, light, 0, 2.0));
+    for (const y of [0.35, 0.95, 1.55]) this.standing.add(plank(inner, 0.1, light, 0, y));
+    // Down: the frame laid over, a close run of planks waist high.
+    this.down.add(post(1.0, -length / 2 + 0.07), post(1.0, length / 2 - 0.07));
+    for (let i = 0; i < 5; i++) this.down.add(plank(inner, 0.16, i % 2 ? light : dark, 0, 0.1 + i * 0.2));
+    // Broken: a few planks flung about.
+    const bits: [number, number, number][] = [[-0.6, 0.15, 0.3], [0.1, -0.1, -0.5], [0.7, 0.2, 0.9], [-0.1, 0.0, 1.4]];
+    for (const [x, z, yaw] of bits) {
+      const m = new Mesh(worldBox(0.7, 0.06, 0.16, 0.8), dark);
+      m.position.set(x * (length / 2), 0.03, z);
+      m.rotation.y = yaw;
+      this.broken.add(m);
+    }
+    this.object.add(this.standing, this.down, this.broken);
+    this.set(0, 0, 0);
+  }
+
+  /** Show state (0 standing, 1 down, 2 broken); breaking is the killer's progress 0..1, which makes it shudder. */
+  set(state: number, breaking: number, dt: number) {
+    if (state !== this.state) {
+      if (state === 1) this.fell = 0.25;
+      this.state = state;
+      this.standing.visible = state === 0;
+      this.down.visible = state === 1;
+      this.broken.visible = state === 2;
+    }
+    this.fell = Math.max(0, this.fell - dt);
+    this.down.scale.y = 1 + this.fell * 1.2; // a slam as it lands
+    const shake = breaking > 0 ? 0.04 * Math.sin(performance.now() / 22) : 0;
+    this.down.position.x = shake;
+    this.down.rotation.z = shake * 0.8;
+  }
+}
+
 /** A generator: a rusted engine on a skid, pistons that pump while it is worked on, a lamp that lights when done. */
 export class GeneratorModel {
   readonly object = new Group();

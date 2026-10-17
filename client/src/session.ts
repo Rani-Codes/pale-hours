@@ -55,7 +55,7 @@ function blend(prev: SimState, curr: SimState, alpha: number): SimPlayer[] {
   });
 }
 
-const emptyWorld = (sim: PaleSim): World => ({ gens: sim.genSites.map(() => 0), noise: sim.genSites.map(() => 0), gates: sim.gateSites.map(() => 0), over: false });
+const emptyWorld = (sim: PaleSim): World => ({ gens: sim.genSites.map(() => 0), noise: sim.genSites.map(() => 0), gates: sim.gateSites.map(() => 0), pallets: sim.palletSites.map(() => 0), palletBreak: sim.palletSites.map(() => 0), over: false });
 
 /** Not in a room yet: nothing runs, the map is shown from above behind the lobby panel. */
 export class IdleSession implements Session {
@@ -399,7 +399,7 @@ export class GuestSession implements Session {
   }
 
   view(now: number, alpha: number) {
-    const fallback = this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [], over: false };
+    const fallback = this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [], pallets: [], palletBreak: [], over: false };
     if (!this.started) return { players: [], world: fallback };
     const remote = this.remote.sample(now);
     const others = remote.filter((p) => p.id !== this.selfId);

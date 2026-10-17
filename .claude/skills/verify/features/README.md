@@ -37,6 +37,7 @@ Each feature file starts with an H1 title and one paragraph describing the behav
 - [Look](./look.md) covers the PS1 render, the modeled world, and character animation, proven by screenshots.
 - [Exit gates](./gates.md) covers the shut gate blocking, opening with skill checks, and walking out down the exit lane.
 - [Vaults](./vault.md) covers survivors vaulting windows, walking into them, and the killer being stopped by them.
+- [Pallets](./pallet.md) covers throwing a pallet down, the 3 s killer stun, breaking it with E, and vaulting it.
 - [Crouch and tall grass](./crouch.md) covers crouching, hiding in grass from a far killer, the reveal range, and slow crouched walking.
 - [Live site](./live-site.md) covers the deployed page at palehours.ranisaro.com, its same-origin signaling, and the source link.
 - [Killer attack](./attack.md) covers the swing, injured and downed, crawling, lag-compensated hits, and the survivor's hit flash.

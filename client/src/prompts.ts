@@ -84,3 +84,31 @@ export function repairLine(me: SimPlayer, gens: number[], world: Pick<PaleSim, "
   });
   return best < 0 ? "" : `generator ${pct(gens[best], world.genTicks)}`;
 }
+
+const distToBox = (p: { x: number; y: number }, b: { minX: number; minY: number; maxX: number; maxY: number }) =>
+  Math.hypot(Math.max(b.minX - p.x, 0, p.x - b.maxX), Math.max(b.minY - p.y, 0, p.y - b.maxY));
+
+/**
+ * The pallet prompt for whoever is beside one: a survivor next to a standing
+ * pallet is told to throw it down; the killer next to a dropped one, empty
+ * handed and on his feet, is told to break it and then how long is left.
+ * states and breaks are World.pallets and World.palletBreak.
+ */
+export function palletPrompt(
+  me: SimPlayer,
+  states: number[],
+  breaks: number[],
+  rules: Pick<PaleSim, "palletSites" | "palletReach" | "palletBreakReach" | "palletBreakTicks" | "playerRadius" | "tickRate" | "roles" | "health">,
+): string {
+  const killer = me.role === rules.roles.killer;
+  if (killer ? me.carrying || me.stun : me.health === rules.health.downed || me.carried || me.onHook || me.checkActive || me.escaped || me.eliminated) return "";
+  for (const [i, box] of rules.palletSites.entries()) {
+    if (killer && states[i] === 1 && distToBox(me, box) <= rules.palletBreakReach) {
+      const left = Math.ceil((rules.palletBreakTicks - (breaks[i] ?? 0)) / rules.tickRate);
+      return breaks[i] ? `breaking the pallet: ${left} s` : "hold E to break the pallet";
+    }
+    const inside = me.x > box.minX - rules.playerRadius && me.x < box.maxX + rules.playerRadius && me.y > box.minY - rules.playerRadius && me.y < box.maxY + rules.playerRadius;
+    if (!killer && states[i] === 0 && !inside && distToBox(me, box) <= rules.palletReach) return "Space to throw down the pallet";
+  }
+  return "";
+}

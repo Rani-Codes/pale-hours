@@ -98,6 +98,8 @@ type State struct {
 	Gens []Generator
 	// Gates runs parallel to GateSites.
 	Gates []Gate
+	// Pallets runs parallel to PalletSites.
+	Pallets []Pallet
 	// Over is set once every survivor has escaped or been eliminated. From
 	// then on the match is frozen: only Tick moves.
 	Over bool
@@ -106,7 +108,7 @@ type State struct {
 // Step advances the state by one tick. A player with no entry in inputs
 // stands still. The input state is not modified.
 func Step(s State, inputs map[PlayerID]Input) State {
-	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players)), Gens: append([]Generator(nil), s.Gens...), Gates: append([]Gate(nil), s.Gates...), Over: s.Over}
+	next := State{Tick: s.Tick + 1, Players: make([]Player, len(s.Players)), Gens: append([]Generator(nil), s.Gens...), Gates: append([]Gate(nil), s.Gates...), Pallets: append([]Pallet(nil), s.Pallets...), Over: s.Over}
 	if s.Over {
 		copy(next.Players, s.Players)
 		return next
@@ -115,8 +117,9 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		next.Gens[i].Noise = max(next.Gens[i].Noise-1, 0)
 	}
 	powered := gensDone(s.Gens) >= GensRequired
-	shut := [...][]bool{Survivor: shutTo(Survivor, s.Gates), Killer: shutTo(Killer, s.Gates)}
+	shut := [...]blockers{Survivor: blockersFor(Survivor, s.Gates, s.Pallets), Killer: blockersFor(Killer, s.Gates, s.Pallets)}
 	var helped []PlayerID
+	var thrown []int
 	var killerPresses []int
 	for i, p := range s.Players {
 		if p.Escaped || p.Eliminated {
@@ -139,8 +142,14 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		if p.Crouching {
 			in.Act, skillPress = false, false
 		}
-		if p.VaultTicks == 0 && skillPress && startVault(&p) {
-			skillPress = false
+		if p.VaultTicks == 0 && skillPress {
+			if i := dropPallet(&p, next.Pallets); i >= 0 {
+				next.Pallets[i].State = PalletDown
+				thrown = append(thrown, i)
+				skillPress = false
+			} else if startVault(&p, next.Pallets) {
+				skillPress = false
+			}
 		}
 		before := p.Pos
 		switch {
@@ -190,6 +199,9 @@ func Step(s State, inputs map[PlayerID]Input) State {
 	}
 	// Everything that reaches across players happens once everyone has
 	// moved, so it never depends on the order players are stored in.
+	for _, i := range thrown {
+		landPallet(PalletSites[i], next.Players)
+	}
 	for i := range next.Players {
 		if k := &next.Players[i]; k.Swing == SwingWindup && k.SwingTicks == 0 {
 			resolveSwing(k, next.Players, next.Tick, inputs[k.ID].ViewLagMs)
@@ -204,6 +216,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		killerAct(&next.Players[i], next.Players)
 	}
 	stepRescue(next.Players, inputs)
+	stepPalletBreak(next.Pallets, next.Players, killerPresses)
 	for i := range next.Players {
 		k := &next.Players[i]
 		if k.Carrying == 0 {
@@ -266,9 +279,9 @@ func speed(p Player) int64 {
 	return roleSpeed[p.Role]
 }
 
-// move walks pos along in at speed, stopped by walls and by each gate i
-// with shut[i] set.
-func move(pos Vec2, in Input, speed int64, shut []bool) Vec2 {
+// move walks pos along in at speed, stopped by walls and by whatever b
+// shuts.
+func move(pos Vec2, in Input, speed int64, shut blockers) Vec2 {
 	dx, dy := int64(in.MoveX), int64(in.MoveY)
 	// Clients can send any int8, including diagonals longer than full speed
 	// and -128, so cap the direction's length at MaxAxis.

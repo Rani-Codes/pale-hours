@@ -69,12 +69,16 @@ export interface SimState {
   noise: number[];
   /** Hand-opening progress in ticks, one per gate site. */
   gates: number[];
+  /** 0 standing, 1 thrown down, 2 broken: one per pallet site. */
+  pallets: number[];
+  /** Ticks the killer has held E on each dropped pallet. */
+  palletBreak: number[];
   /** Every survivor has escaped or died. The match is frozen. */
   over?: boolean;
 }
 
 /** The part of the state that is not a player. */
-export type World = Pick<SimState, "gens" | "noise" | "gates" | "over">;
+export type World = Pick<SimState, "gens" | "noise" | "gates" | "pallets" | "palletBreak" | "over">;
 
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
@@ -142,6 +146,13 @@ export interface PaleSim {
   stunTicks: number;
   /** Waist-high walls survivors can vault and the killer cannot. */
   vaults: Wall[];
+  /** Where the wooden pallets stand, as boxes in micrometers. */
+  palletSites: Wall[];
+  palletReach: number;
+  playerRadius: number;
+  palletBreakReach: number;
+  palletBreakTicks: number;
+  palletStunTicks: number;
   /** Tall grass: a survivor crouched in it hides from the killer. */
   grass: Wall[];
   hideSettleTicks: number;
