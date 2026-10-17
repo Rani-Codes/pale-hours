@@ -68,6 +68,19 @@ for (const page of [host, a, b]) await page.waitForFunction(() => paleSession.ro
 await host.waitForFunction(() => paleSim.state().tick > 30);
 const idA = (await room(a)).you;
 const roles = await host.evaluate(() => Object.fromEntries(paleSim.state().players.map((p) => [p.id, p.role])));
+const spawnGaps = await host.evaluate((killer) => {
+  const { players } = paleSim.state();
+  const k = players.find((p) => p.id === killer);
+  return players.filter((p) => p.id !== killer).map((p) => Math.max(Math.abs(p.x - k.x), Math.abs(p.y - k.y)) / 1e6);
+}, idA);
+await host.evaluate((killer) => {
+  const s = paleSim.state();
+  let side = 0;
+  for (const p of s.players) Object.assign(p, p.id === killer ? { x: -10e6, y: 0, trail: undefined } : { x: 10e6, y: 4e6 * side++, trail: undefined });
+  paleSim.load(s);
+}, idA);
+await host.waitForTimeout(700);
+const placedCorrections = await a.evaluate(() => paleSession.stats().corrections); // paleSim.load moves count
 const panelHidden = !(await visible(a, "#room"));
 
 // 3. A late joiner.
@@ -115,7 +128,7 @@ await host.keyboard.up("KeyD");
 const hostAfter = await host.evaluate(() => paleSim.state().players.find((p) => p.id === 1));
 await browser.close();
 
-console.log(JSON.stringify({ startBefore, bKillerDisabled, bRole, startEnabled, roles, refused, killerMoved: (killerWalk.host.y - killerBefore.y) / M, killerCorrections: killerWalk.guest.corrections, swing: swing && { hit: swing.hit, viewLagMs: swing.viewLagMs }, health }));
+console.log(JSON.stringify({ startBefore, bKillerDisabled, bRole, startEnabled, roles, refused, killerMoved: (killerWalk.host.y - killerBefore.y) / M, killerCorrections: killerWalk.guest.corrections - placedCorrections, swing: swing && { hit: swing.hit, viewLagMs: swing.viewLagMs }, health }));
 console.log(`errors: ${errors.length ? errors.join(" | ") : "none"}`);
 const checks = {
   "Start shows only on the host, disabled at first": startBefore.host && !startBefore.A && startBefore.disabled,
@@ -125,9 +138,10 @@ const checks = {
   "Start enables once the lobby is valid": startEnabled,
   "the match starts with the picked roles": roles[idA] === 1 && roles[1] === 0 && roles[idB] === 0,
   "the panel goes away in the match": panelHidden,
+  "every survivor spawns at least 5 m from the killer, on x or y": spawnGaps.length === 2 && spawnGaps.every((g) => g >= 5),
   "a late joiner is refused with a reason": refused,
   "the guest killer moves": killerWalk.host.y - killerBefore.y > 2e6,
-  "the guest killer's prediction needed no corrections": killerWalk.guest.corrections === 0,
+  "the guest killer's prediction needed no corrections": killerWalk.guest.corrections === placedCorrections,
   "the guest killer's swing lands on the host survivor": swing?.hit === true,
   "every tab agrees the host survivor is injured": health.host === 1 && health.A === 1 && health.B === 1,
   "the host survivor moves on its own keys": hostAfter.x - hostBefore.x > 1e6,

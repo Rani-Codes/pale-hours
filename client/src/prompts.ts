@@ -39,7 +39,7 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
   const lines: string[] = [];
   if (me.health === rules.health.downed) {
     const helper = players.some((p) => p.helping === me.id);
-    lines.push(helper ? "a teammate is getting you up" : `you are down: crawl away. Getting up on your own ${pct(me.recover, rules.recoverTicks)}`);
+    lines.push(helper ? "a teammate is getting you up" : `you are down: crawl away. Getting up on your own...`);
     return lines;
   }
   if (me.helping) return ["helping them up: hit the skill check"];

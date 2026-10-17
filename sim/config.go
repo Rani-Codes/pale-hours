@@ -12,6 +12,14 @@ const (
 
 	PlayerRadius = 400_000 // half-width of the square collision body
 
+	// Where a match may place players. Every survivor starts at least
+	// SpawnKillerGap from the killer on x or on y, and SpawnSurvivorGap from
+	// each other. SpawnClearance keeps them off walls, SpawnEdgeMargin off the fence.
+	SpawnKillerGap   = 5_000_000
+	SpawnSurvivorGap = 2_000_000
+	SpawnClearance   = 1_000_000
+	SpawnEdgeMargin  = 2_000_000
+
 	GeneratorCount = 5
 	GeneratorHalf  = 500_000       // half the side of a generator's square body
 	RepairRange    = 1_800_000     // centre to centre, so you can stand at any face

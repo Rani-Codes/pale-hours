@@ -44,6 +44,7 @@ func main() {
 		"concealed":        js.FuncOf(concealed),
 		"vaultTicks":       sim.VaultTicks,
 		"canVault":         js.FuncOf(canVault),
+		"spawns":           js.FuncOf(spawns),
 		"hookSites":        sites(sim.HookSites),
 		"hookTicks":        sim.HookTicks,
 		"hookRange":        sim.HookRange,
@@ -263,6 +264,11 @@ func trail(p sim.Player) []any {
 // facing yaw would touch a survivor standing at the target right now. For the tools.
 func inReach(_ js.Value, a []js.Value) any {
 	return sim.InReach(sim.Vec2{X: int32(a[0].Int()), Y: int32(a[1].Int())}, uint16(a[2].Int()), sim.Vec2{X: int32(a[3].Int()), Y: int32(a[4].Int())})
+}
+
+// spawns(seed, survivors) returns [{x, y}, ...] in micrometers: the killer first, then each survivor.
+func spawns(_ js.Value, a []js.Value) any {
+	return sites(sim.Spawns(uint32(a[0].Int()), a[1].Int()))
 }
 
 // canVault(x, y) reports whether a survivor standing there could vault now.

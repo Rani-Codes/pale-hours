@@ -1,4 +1,4 @@
-import { net, spawns } from "./config";
+import { net } from "./config";
 import { InputQueue, type Move } from "./inputqueue";
 import { lerpYaw, SnapshotBuffer } from "./interp";
 import { arrows, readActions, readIntent, wasd } from "./keys";
@@ -41,7 +41,7 @@ export interface RoomView {
 export interface Session {
   tick(): void;
   flush?(): void;
-  view(now: number, alpha: number): { players: SimPlayer[]; hud: string[]; self?: number; world: World };
+  view(now: number, alpha: number): { players: SimPlayer[]; self?: number; world: World };
   room?(): RoomView;
   pick?(role: Role): void;
   setName?(name: string): void;
@@ -65,7 +65,7 @@ export class IdleSession implements Session {
   }
   tick() {}
   view() {
-    return { players: [], hud: [], world: this.world };
+    return { players: [], world: this.world };
   }
 }
 
@@ -192,11 +192,12 @@ export class HostSession implements Session {
     const s = this.sim;
     const { killer, survivors } = lineup(this.seats.filter((seat) => seat.id === HOST_ID || this.guests.has(seat.id)));
     this.killerId = killer;
+    const places = s.spawns(this.seed, survivors.length);
     s.load({
       tick: this.curr.tick,
       players: [
-        newPlayer(killer, s.roles.killer, spawns.killer.x * M, spawns.killer.y * M, playerRng(this.seed, killer)),
-        ...survivors.map((id, i) => newPlayer(id, s.roles.survivor, spawns.survivors[i].x * M, spawns.survivors[i].y * M, playerRng(this.seed, id))),
+        newPlayer(killer, s.roles.killer, places[0].x, places[0].y, playerRng(this.seed, killer)),
+        ...survivors.map((id, i) => newPlayer(id, s.roles.survivor, places[i + 1].x, places[i + 1].y, playerRng(this.seed, id))),
       ],
       ...emptyWorld(s),
     });
@@ -274,13 +275,10 @@ export class HostSession implements Session {
   }
 
   view(_now: number, alpha: number) {
-    if (!this.started) return { players: [], hud: [], world: this.curr };
-    const role = this.killerId === HOST_ID ? "killer" : "survivor";
-    const hud = [`hosting   tick ${this.curr.tick}   you: ${role}`];
-    for (const [id, g] of this.guests) hud.push(`guest ${id}: input queue ${g.queue.depth}, dropped ${g.queue.dropped}`);
+    if (!this.started) return { players: [], world: this.curr };
     this.drawnTick = this.prev.tick + (this.curr.tick - this.prev.tick) * alpha;
     this.drawn = blend(this.prev, this.curr, alpha);
-    return { players: this.drawn, hud, self: HOST_ID, world: this.curr };
+    return { players: this.drawn, self: HOST_ID, world: this.curr };
   }
 
   stats() {
@@ -314,7 +312,6 @@ export class GuestSession implements Session {
   private prev: SimState | undefined;
   private curr: SimState | undefined;
   private corrections = 0;
-  private lastCorrectionM = 0;
 
   constructor(sim: PaleSim, link: Link, name = "") {
     this.name = name;
@@ -394,7 +391,6 @@ export class GuestSession implements Session {
     const after = this.self(this.curr);
     if (before && after && (before.x !== after.x || before.y !== after.y)) {
       this.corrections++;
-      this.lastCorrectionM = Math.hypot(after.x - before.x, after.y - before.y) / M;
     }
   }
 
@@ -404,18 +400,16 @@ export class GuestSession implements Session {
 
   view(now: number, alpha: number) {
     const fallback = this.curr ?? this.newest?.state ?? { gens: [], noise: [], gates: [], over: false };
-    if (!this.started) return { players: [], hud: [], world: fallback };
+    if (!this.started) return { players: [], world: fallback };
     const remote = this.remote.sample(now);
     const others = remote.filter((p) => p.id !== this.selfId);
     let self = this.prev && this.curr ? blend(this.prev, this.curr, alpha).filter((p) => p.id === this.selfId) : [];
     // Carried, the guest goes where the killer goes, so draw it on the same clock as the killer.
     if (self[0]?.carried) self = remote.filter((p) => p.id === this.selfId);
-    const role = self[0]?.role === this.sim.roles.killer ? "killer" : "survivor";
     return {
       players: [...others, ...self],
       self: this.selfId,
       world: fallback,
-      hud: [`${role} ${this.selfId}   move: WASD or arrows`, `unacked inputs ${this.unacked.length}   corrections ${this.corrections} (last ${this.lastCorrectionM.toFixed(3)} m)`],
     };
   }
 

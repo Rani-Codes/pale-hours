@@ -13,7 +13,7 @@ The killer left-clicks to swing. The killer's arm goes up for 0.2 s, then the ho
 
 ## How to get to it (user POV)
 
-- Host in one tab, join from another. On the host, walk the killer up to the survivor and left-click the game view. The HUD names each survivor's health; the killer's HUD says `swinging...`, then `HIT` or `missed`.
+- Host in one tab, join from another. On the host, walk the killer up to the survivor and left-click the game view. The killer's HUD says `swinging...`, then `HIT` or `missed`.
 
 ## Driving it with Playwright
 

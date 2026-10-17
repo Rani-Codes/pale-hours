@@ -98,14 +98,3 @@ export const lagSim = {
   jitterMs: Number(params.get("jitter") ?? 0),
   loss: Number(params.get("loss") ?? 0),
 };
-
-// Spawn points in meters. The killer hosts and is always player 1; guests take 2 to 5.
-export const spawns = {
-  killer: { x: -10, y: 0 },
-  survivors: [
-    { x: 10, y: 0 },
-    { x: 10, y: 4 },
-    { x: 10, y: -4 },
-    { x: 14, y: 0 },
-  ],
-};

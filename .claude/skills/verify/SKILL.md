@@ -48,7 +48,7 @@ PALE_APP_PORT=5273 PALE_SIGNAL_PORT=8887 PALE_EVIDENCE_DIR=<evidence-dir>/matrix
 Each prints `PASS` / `FAIL` lines and exits nonzero on failure. Stable handles for a new driver:
 
 - Lobby: `#host` button, `#code` input, `#join` button. Status text in `#netstatus` reads `hosting room ABCD`, `connecting: <ice stage> (n.n s)`, `connected to <peer>`, then `rtt reliable … ms   unreliable … ms`.
-- HUD text in `#hud` names the mode and every player's position in meters.
+- HUD text in `#hud` holds only directions and prompts (`move: WASD or arrows`, `generators N/5 done`, action prompts). It carries no positions, ticks, percentages, gate state or network numbers, so read state from `paleSim.state()` and `paleSession.stats()`. `#netstatus` is hidden once a match starts.
 - `globalThis.paleSim.state()` is the sim state in this tab. On the host it is authoritative. On a guest it is the guest's prediction.
 - `globalThis.paleSession.stats()` exists for host and guest sessions. The host reports `{tick, guests: [{id, ack, depth, dropped}]}`. The guest reports `{selfId, seq, unacked, corrections, predicted, renderTick, starved, newestTick}`.
 - `paleSession.view(performance.now(), 0).players` is what the tab would draw this frame.

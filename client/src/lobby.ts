@@ -66,6 +66,7 @@ let entryNote = "";
 /** Show the room as the session sees it. Called every frame; hides the panel once the match is on. */
 export function renderRoom(view: RoomView | undefined) {
   panel.root.hidden = !!view?.started;
+  status.hidden = !!view?.started; // latency numbers are for setup, not play
   if (view?.started) return;
   const inRoom = !!view && view.you !== 0 && !view.refused;
   panel.entry.hidden = inRoom;

@@ -151,6 +151,8 @@ export interface PaleSim {
   vaultTicks: number;
   /** Whether a survivor standing at (x, y) could vault right now. */
   canVault(x: number, y: number): boolean;
+  /** Where a match puts everyone, in micrometers: the killer first, then one per survivor. */
+  spawns(seed: number, survivors: number): { x: number; y: number }[];
   hookSites: { x: number; y: number }[];
   hookTicks: number;
   hookRange: number;

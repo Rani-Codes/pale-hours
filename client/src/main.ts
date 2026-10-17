@@ -1,11 +1,11 @@
 import { initLobby, renderRoom } from "./lobby";
-import { MAX_NAME, nameOf } from "./room";import { GuestSession, HostSession, IdleSession, type Session } from "./session";
+import { nameOf } from "./room";import { GuestSession, HostSession, IdleSession, type Session } from "./session";
 import { audio, view } from "./config";
 import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
-import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts";
+import { healthPips, killerPrompts, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
 import { newlyDone } from "./genflash";
 import { HookAlerts } from "./hookalert";
@@ -85,8 +85,8 @@ function frame(now: number) {
   }
   session.flush?.();
   renderRoom(session.room?.());
-  const { players, hud: lines, self, world } = session.view(now, carry / tickMs);
-  draw(players, lines, self, world);
+  const { players, self, world } = session.view(now, carry / tickMs);
+  draw(players, self, world);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -160,7 +160,8 @@ const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 let checkAtGen = false; // whether the current or last skill check was a generator's
 let checkEndedAt: number | undefined; // when the last skill check ended, for its result
 
-function draw(players: SimPlayer[], lines: string[], self: number | undefined, world: World) {
+function draw(players: SimPlayer[], self: number | undefined, world: World) {
+  const lines = ["move: WASD or arrows"];
   const { gens, gates } = world;
   const me = players.find((p) => p.id === self);
   const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
@@ -178,21 +179,10 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   // Only survivors hear it, and only while it can help them. The killer does not hear his own heart.
   const hears = me && killer && me.role !== sim.roles.killer && hearsHeartbeat(me) && !world.over;
   heartbeat.update(hears ? Math.hypot(killer.x - me.x, killer.y - me.y) / m : undefined);
-  lines = [...lines, `volume ${volume.value}%` + (heartbeat.current.bpm > 0 ? `   heartbeat ${heartbeat.current.bpm.toFixed(0)} bpm` : "")];
-  for (const p of players) {
-    // The killer's list must not give away a survivor his screen cannot see.
-    const unseen = me?.role === sim.roles.killer && p.role === sim.roles.survivor && sim.concealed(Math.round(me.x), Math.round(me.y), Math.round(p.x), Math.round(p.y), p.hideTicks);
-    if (unseen) {
-      lines.push(`${nameOfId(p.id).padEnd(MAX_NAME)} survivor out of sight`);
-      continue;
-    }
-    lines.push(`${nameOfId(p.id).padEnd(MAX_NAME)} ${p.role === sim.roles.killer ? "killer  " : "survivor"} ${fmt(p)}` + (p.role === sim.roles.survivor ? `   ${status(p, sim)}` : ""));
-  }
   const done = gens.filter((g) => g >= sim.genTicks).length;
-  lines.push(`generators ${done}/${gens.length} done   ` + gens.map((g) => `${Math.floor((100 * Math.min(g, sim.genTicks)) / sim.genTicks)}%`).join(" "));
+  lines.push(`generators ${done}/${gens.length} done`);
   const mine = players.find((p) => p.id === self);
   const powered = done >= sim.gensRequired;
-  lines.push(powered ? "gates powered: " + gates.map((g) => (g >= sim.gateTicks ? "OPEN" : `${Math.floor((100 * g) / sim.gateTicks)}%`)).join(" ") : `gates need ${sim.gensRequired} generators`);
   if (mine && mine.role === sim.roles.killer) {
     const s = sim.swing;
     lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : mine.carrying ? "" : "click to attack");
@@ -205,7 +195,6 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
   if (mine && mine.role === sim.roles.survivor) {
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);
     const atGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange && gates[i] < sim.gateTicks);
-    const byOpenGate = sim.gateSites.some((s, i) => Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.gateRange * 2 && gates[i] >= sim.gateTicks);
     for (const h of hooked) lines.push(`TEAMMATE HOOKED: ${nameOfId(h.id)}, ${bearing(mine, sim.hookSites[h.hook])}`);
     showHit(mine);
     const prompts = survivorPrompts(mine, players, sim, sim.canVault(Math.round(mine.x), Math.round(mine.y)));
@@ -220,7 +209,6 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.opening && !mine.checkActive) lines.push("opening the gate...");
     else if (mine.repairing && !mine.checkActive) lines.push("working...");
-    else if (byOpenGate && !mine.escaped) lines.push("the gate is open: walk out through it");
   }
   // Two squares: full health, one when injured, none when down.
   healthBar.style.display = mine?.role === sim.roles.survivor && !isOut(mine) ? "flex" : "none";
@@ -268,6 +256,3 @@ function bearing(p: SimPlayer, site: { x: number; y: number }): string {
   return `${(Math.hypot(dx, dy) / m).toFixed(0)} m, ${Math.abs(rel)}° ${rel < 0 ? "left" : "right"}`;
 }
 
-function fmt(p: SimPlayer): string {
-  return `x ${(p.x / m).toFixed(2).padStart(6)} m   y ${(p.y / m).toFixed(2).padStart(6)} m`;
-}

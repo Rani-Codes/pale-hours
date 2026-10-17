@@ -42,7 +42,7 @@ const joinStart = Date.now();
 await guest.click("#join");
 await guest.waitForFunction(() => /connected/.test(document.querySelector("#netstatus").textContent), null, { timeout: 15000 });
 const linkedMs = Date.now() - joinStart;
-await startMatch(host, [guest]); // joinMs below includes picking roles and Start
+const [placedCorrections] = await startMatch(host, [guest]); // joinMs below includes picking roles, Start and the 1.5 s the layout takes to settle
 await guest.waitForFunction(() => paleSession.stats?.().predicted, null, { timeout: 15000 });
 metrics.joinMs = Date.now() - joinStart;
 console.log(`join: link open after ${linkedMs} ms, playing after ${metrics.joinMs} ms`);
@@ -79,7 +79,7 @@ check(
   hostSelf.x === g1.predicted.x && hostSelf.y === g1.predicted.y,
   `host x ${hostSelf.x}, guest x ${g1.predicted.x}`,
 );
-check("guest needed no corrections", g1.corrections === 0, `${g1.corrections} corrections`);
+check("guest needed no corrections", g1.corrections === placedCorrections, `${g1.corrections - placedCorrections} corrections`);
 // Inputs flow every tick even when idle, so about one round trip of them is always in flight.
 const inFlight = Math.ceil((2 * delayMs + jitterMs) / (1000 / 30)) + 4;
 check("host acks keep up with the guest", g1.unacked <= inFlight, `${g1.unacked} unacked, at most ${inFlight} expected`);
@@ -153,7 +153,7 @@ const gs = await guestStats();
 const behind = hs.tick - gs.renderTick;
 console.log(`host tick ${hs.tick}, guest renders host tick ${gs.renderTick.toFixed(1)} (${behind.toFixed(1)} ticks behind), ${gs.starved} starved frames`);
 console.log(`host input queue ${JSON.stringify(hs.guests)}`);
-Object.assign(metrics, { corrections: gs.corrections, starved: gs.starved, dropped: hs.guests[0].dropped });
+Object.assign(metrics, { corrections: gs.corrections - placedCorrections, starved: gs.starved, dropped: hs.guests[0].dropped });
 console.log(`room ${code}  host: ${(await host.textContent("#netstatus")).replace(/\n/g, " | ")}`);
 console.log(`guest: ${(await guest.textContent("#netstatus")).replace(/\n/g, " | ")}`);
 

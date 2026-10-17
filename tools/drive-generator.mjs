@@ -29,7 +29,7 @@ const linked = () => /rtt reliable/.test(document.querySelector("#netstatus").te
 await host.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
-await startMatch(host, [guest]);
+const [placedCorrections] = await startMatch(host, [guest]);
 await guest.bringToFront();
 
 const GEN = 2; // the site at (0, 5) m
@@ -96,7 +96,7 @@ await browser.close();
 console.log(`parked at (${parked.x / 1e6}, ${parked.y / 1e6}) m`);
 console.log(`check 1 zone ${first.checkZone}..${first.checkZone + 6}, result ${hit.checkResult}, progress ${beforeHit} -> hit`);
 console.log(`check 2 result ${miss.checkResult}, progress ${beforeMiss} -> ${afterMiss}`);
-console.log(`host gen ${hostGen}, guest gen ${guestGen}; corrections ${stats.corrections}`);
+console.log(`host gen ${hostGen}, guest gen ${guestGen}; corrections ${stats.corrections - placedCorrections}`);
 console.log(`errors: ${errors.length ? errors.join(" | ") : "none"}`);
 console.log(`result text "${hitText}", 1.2 s later "${hitTextLater}"`);
 const checks = {
@@ -109,7 +109,7 @@ const checks = {
   "the killer HUD names the noise": /NOISE generator 3: \d+ m, \d+° (left|right)/.test(hostHud),
   "host and guest agree on progress": hostGen === guestGen,
   "host and guest agree on the last check": hostP.checkResult === guestP.checkResult && hostP.checkAge === guestP.checkAge,
-  "no corrections": stats.corrections === 0,
+  "no corrections": stats.corrections === placedCorrections,
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);

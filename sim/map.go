@@ -11,8 +11,8 @@ const (
 )
 
 // Walls is the gray-box layout: two walled buildings with doorways and
-// windows to loop around, plus loose cover. The killer spawns at (-10, 0) m
-// and survivors east of (10, 0) m, all in open ground. Collision lives here,
+// windows to loop around, plus loose cover. Players spawn at random in open ground
+// (see Spawns). Collision lives here,
 // not in the client, because the host decides where players end up.
 var Walls = []Box{
 	// Building A, north west. Doorways at the north and south, a window

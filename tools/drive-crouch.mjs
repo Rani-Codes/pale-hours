@@ -46,7 +46,14 @@ const place = (changes) =>
   }, changes);
 const on = (page, pid) => page.evaluate((pid) => paleSim.state().players.find((p) => p.id === pid), pid);
 const settle = (ms = 700) => host.waitForTimeout(ms);
-const hostHud = () => host.textContent("#hud");
+// What the killer's screen can hide: the sim's own rule, read straight from the host's state.
+const concealed = () =>
+  host.evaluate((pid) => {
+    const { players } = paleSim.state();
+    const k = players.find((p) => p.id === 1);
+    const t = players.find((p) => p.id === pid);
+    return paleSim.concealed(Math.round(k.x), Math.round(k.y), Math.round(t.x), Math.round(t.y), t.hideTicks);
+  }, id);
 const settleTicks = await host.evaluate(() => paleSim.hideSettleTicks);
 const corrections = () => guest.evaluate(() => paleSession.stats().corrections);
 
@@ -55,13 +62,13 @@ await host.evaluate(() => (paleLook.yaw = -0.588));
 await place({ 1: { x: 13 * M, y: 2 * M }, [id]: { x: 7 * M, y: 11 * M } });
 await settle();
 const before = await corrections();
-const seenStanding = /survivor x/.test(await hostHud());
+const seenStanding = !(await concealed());
 
 // 1 and 2. Crouch in the grass.
 await guest.keyboard.down("KeyC");
 await settle(1200);
 const hid = { host: await on(host, id), guest: await on(guest, id) };
-const unseen = /out of sight/.test(await hostHud());
+const unseen = await concealed();
 const hint = await guest.textContent("#hud");
 await host.screenshot({ path: `${prefix}-killer-far.png` });
 await guest.screenshot({ path: `${prefix}-survivor-hidden.png` });
@@ -70,15 +77,15 @@ const afterCrouch = await corrections();
 // Moving in the grass shows them; keeping still hides them again.
 await guest.keyboard.down("KeyW");
 await settle(300);
-const seenMoving = /survivor x/.test(await hostHud());
+const seenMoving = !(await concealed());
 await guest.keyboard.up("KeyW");
 await settle(1000);
-const hidAgain = /out of sight/.test(await hostHud());
+const hidAgain = await concealed();
 
 // 3. The killer walks up.
 await place({ 1: { x: 10 * M, y: 8 * M } });
 await settle();
-const seenClose = /survivor x/.test(await hostHud());
+const seenClose = !(await concealed());
 await host.screenshot({ path: `${prefix}-killer-close.png` });
 await place({ 1: { x: 13 * M, y: 2 * M } });
 await settle();
@@ -87,7 +94,7 @@ await settle();
 await guest.keyboard.up("KeyC");
 await settle(500);
 const up = await on(host, id);
-const seenUp = /survivor x/.test(await hostHud());
+const seenUp = !(await concealed());
 
 // 5. In the open: no cover, and slow.
 await place({ [id]: { x: 16 * M, y: -8 * M } });

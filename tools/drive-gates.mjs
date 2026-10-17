@@ -32,7 +32,7 @@ const linked = () => /rtt reliable/.test(document.querySelector("#netstatus").te
 await host.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(linked, null, { timeout: 15000 });
 await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
-await startMatch(host, [guest]);
+const [startCorrections] = await startMatch(host, [guest]);
 await guest.bringToFront();
 
 const me = () => guest.evaluate(() => paleSession.stats().predicted);
@@ -122,7 +122,7 @@ const guestPlayer = await me();
 const hostPlayer = await host.evaluate(() => paleSim.state().players.find((p) => p.id === 2));
 const { gateTicks: ticksNeeded, mapHalfExtent: edge, exitDepth } = await host.evaluate(() => paleSim);
 const stats = await guest.evaluate(() => paleSession.stats());
-const corrections = corrOpen + stats.corrections - corrPlaced; // everything but the setup teleport
+const corrections = corrOpen - startCorrections + stats.corrections - corrPlaced; // everything but the setup teleports
 await host.screenshot({ path: `${prefix}-host.png` });
 await guest.screenshot({ path: `${prefix}-guest.png` });
 await browser.close();

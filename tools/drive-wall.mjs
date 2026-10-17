@@ -34,6 +34,7 @@ await guest.waitForFunction(() => globalThis.paleSession?.stats?.().selfId);
 
 const selfId = await guest.evaluate(() => paleSession.stats().selfId);
 await startMatch(host, [guest]);
+const placedCorrections = await guest.evaluate(() => paleSession.stats().corrections); // paleSim.load moves count
 await guest.bringToFront();
 await guest.keyboard.down("KeyD");
 await guest.waitForTimeout(1000);
@@ -54,13 +55,13 @@ await browser.close();
 const wantY = -9_350_000;
 console.log(`host  player ${selfId}: x ${h.x} y ${h.y}`);
 console.log(`guest player ${selfId}: x ${g.x} y ${g.y}`);
-console.log(`corrections ${stats.corrections}`);
+console.log(`corrections ${stats.corrections - placedCorrections}`);
 console.log(`errors: ${errors.length ? errors.join(" | ") : "none"}`);
 const checks = {
   "host and guest agree": h.x === g.x && h.y === g.y,
   "stopped at the wall face": h.y === wantY,
   "passed the starting x": h.x > 13_000_000,
-  "no corrections": stats.corrections === 0,
+  "no corrections": stats.corrections === placedCorrections,
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);

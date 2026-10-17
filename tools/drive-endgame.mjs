@@ -142,7 +142,7 @@ const checks = {
   "only the host gets Rematch": rematchShown.host && !rematchShown.A,
   "a finished match is frozen": frozenTo.y === frozenFrom.y,
   "Rematch starts a fresh match on every tab": fresh.every(inPlay) && freshShown.every((v) => !v),
-  "the killer is back at his spawn": killerAt.x === -10 * M && killerAt.y === 0,
+  "the rematch spawns every survivor at least 5 m from the killer, on x or y": fresh[0].players.filter((p) => p.id !== 1).every((p) => Math.max(Math.abs(p.x - killerAt.x), Math.abs(p.y - killerAt.y)) >= 5 * M),
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);
