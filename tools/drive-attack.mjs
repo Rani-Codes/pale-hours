@@ -63,12 +63,18 @@ const click = () => host.mouse.click(450, 300);
 const settle = () => host.waitForTimeout(1300); // whiff recovery plus windup, and time for snapshots to land
 
 // 1. Two hits on a survivor standing still.
-await place({ 1: { x: KILLER.x, y: KILLER.y, yaw: 0 }, 2: { x: KILLER.x, y: ROW, health: 0, boost: 0 } });
+await place({ 1: { x: KILLER.x, y: KILLER.y, yaw: 0 }, 2: { x: KILLER.x, y: ROW, health: 0, boost: 0, invuln: 0 } });
 await guest.waitForFunction((row) => Math.abs(paleSession.stats().predicted.y - row) < 1000, ROW, { timeout: 5000 });
 await click();
 await settle();
 const afterOne = { host: (await hostSurvivor()).health, guest: (await guestSelf()).health };
-await place({ 2: { x: KILLER.x, y: ROW, boost: 0 } }); // the boost ran them off; put them back
+const invulnAfterOne = (await hostSurvivor()).invuln;
+await place({ 2: { x: KILLER.x, y: ROW, boost: 0 } }); // the boost ran them off; put them back, still invincible
+await guest.waitForTimeout(400);
+await click();
+await settle();
+const whileInvincible = (await hostSurvivor()).health;
+await place({ 2: { x: KILLER.x, y: ROW, boost: 0, invuln: 0 } }); // now let the two seconds pass
 await guest.waitForTimeout(400);
 await click();
 await settle();
@@ -94,7 +100,7 @@ const crawled = (crawlTo.y - crawlFrom.y) / M;
 
 // 3. Sweep across the cone edge while the killer swings.
 const swingsBefore = (await swings()).length;
-await place({ 1: { x: KILLER.x, y: KILLER.y, yaw: 0 }, 2: { x: KILLER.x - 3.2 * M, y: ROW, health: 0, boost: 0 } });
+await place({ 1: { x: KILLER.x, y: KILLER.y, yaw: 0 }, 2: { x: KILLER.x - 3.2 * M, y: ROW, health: 0, boost: 0, invuln: 0 } });
 await guest.waitForTimeout(600);
 const SWEEP = 3.2 * M; // the survivor turns around this far either side of the killer
 const SWINGS = 24;
@@ -159,7 +165,7 @@ for (let i = 0; i < SWINGS; i++) {
   await host.waitForTimeout(500);
   if (last.hit) {
     guestHits++;
-    await place({ 2: { health: 0, boost: 0 } });
+    await place({ 2: { health: 0, boost: 0, invuln: 0 } });
   }
   // The next click only counts once the recovery is over (1.2 to 1.4 s).
   await host.waitForFunction((id) => paleSim.state().players.find((p) => p.id === id).swing === 0, 1, { timeout: 4000, polling: 20 });
@@ -205,6 +211,7 @@ console.log(`guest flashes ${flashes}, host hits on the guest ${guestHits}; end 
 console.log(`errors: ${errors.length ? errors.join(" | ") : "none"}`);
 const checks = {
   "first hit injures, on both tabs": afterOne.host === 1 && afterOne.guest === 1,
+  "a freshly hit survivor is invincible for a while": invulnAfterOne > 0 && whileInvincible === 1,
   "second hit downs, on both tabs": afterTwo.host === 2 && afterTwo.guest === 2,
   "a downed survivor takes no hit": downedHit === 2,
   "downed crawls slowly (0.5-0.9 m/s)": crawled > 0.5 && crawled < 0.9,

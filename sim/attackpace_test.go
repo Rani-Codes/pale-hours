@@ -66,3 +66,48 @@ func TestAHitSurvivorGetsClearOfAChasingKiller(t *testing.T) {
 		t.Fatalf("when the boost ends the survivor is %d µm ahead, want at least 5 m", gap)
 	}
 }
+
+// swingsAt has the killer click as fast as the sim lets him, and returns the
+// ticks (from the start) at which each survivor's health changed.
+func hitTicks(s State, ticks int) []int {
+	var at []int
+	for i := 0; i < ticks; i++ {
+		before := s.Players[1].Health
+		s = Step(s, map[PlayerID]Input{1: {Attack: i%2 == 0}})
+		if s.Players[1].Health != before {
+			at = append(at, i)
+		}
+	}
+	return at
+}
+
+func TestAHitSurvivorCannotBeHitAgainForTwoSeconds(t *testing.T) {
+	withMap(t, nil, nil)
+	// standing right in front of him the whole time, so only invincibility saves them
+	s := State{Players: []Player{killerAt(Vec2{}, 0), target(2, Vec2{0, 1_200_000}, Healthy)}}
+	at := hitTicks(s, 6*TickRate)
+	if len(at) != 2 {
+		t.Fatalf("hits at ticks %v, want two in 6 s", at)
+	}
+	if gap := at[1] - at[0]; gap < 2*TickRate {
+		t.Fatalf("second hit %d ticks after the first, want at least 2 s (%d)", gap, 2*TickRate)
+	}
+}
+
+func TestInvincibilityEndsAndOnlyCoversTheHitSurvivor(t *testing.T) {
+	withMap(t, nil, nil)
+	hit := target(2, Vec2{0, 1_200_000}, Injured)
+	hit.Invuln = HitInvulnTicks
+	other := target(3, Vec2{0, 1_500_000}, Healthy)
+	s := State{Players: []Player{killerAt(Vec2{}, 0), hit, other}}
+	s = Step(s, map[PlayerID]Input{1: {Attack: true}})
+	for range AttackWindupTicks {
+		s = Step(s, map[PlayerID]Input{1: {}})
+	}
+	if byID(s, 2).Health != Injured || byID(s, 3).Health != Injured {
+		t.Fatalf("health %d and %d: want the invincible one untouched and the one behind them hit", byID(s, 2).Health, byID(s, 3).Health)
+	}
+	if byID(s, 2).Invuln >= HitInvulnTicks {
+		t.Fatalf("invulnerability did not count down: %d", byID(s, 2).Invuln)
+	}
+}

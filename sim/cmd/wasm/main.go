@@ -99,6 +99,7 @@ func load(_ js.Value, args []js.Value) any {
 
 			Health:      sim.Health(p.Get("health").Int()),
 			Boost:       int16(p.Get("boost").Int()),
+			Invuln:      int16(numOr0(p.Get("invuln"))),
 			AttackHeld:  p.Get("attackHeld").Bool(),
 			Swing:       sim.SwingPhase(p.Get("swing").Int()),
 			SwingTicks:  int16(p.Get("swingTicks").Int()),
@@ -219,6 +220,7 @@ func snapshot(js.Value, []js.Value) any {
 
 			"health":      int(p.Health),
 			"boost":       int(p.Boost),
+			"invuln":      int(p.Invuln),
 			"attackHeld":  p.AttackHeld,
 			"swing":       int(p.Swing),
 			"swingTicks":  int(p.SwingTicks),

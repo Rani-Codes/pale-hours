@@ -63,6 +63,7 @@ type Player struct {
 
 	Health  Health
 	Boost   int16 // ticks of shove left after being hit
+	Invuln  int16 // ticks a freshly hit survivor cannot be hit again
 	Recover int16 // ticks spent downed and left alone; reaching DownedRecoverTicks stands them up
 
 	// Helping is the downed teammate this survivor is getting up, or 0.
@@ -177,6 +178,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		p.Trail[next.Tick%TrailLen] = p.Pos
 		stepHide(&p, p.Pos != before)
 		p.Boost = max(p.Boost-1, 0)
+		p.Invuln = max(p.Invuln-1, 0)
 		if p.Health == Downed {
 			in.Act = false
 		}

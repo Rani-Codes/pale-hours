@@ -87,7 +87,9 @@ const (
 	HitBoostSpeed    = 7_500_000
 	HitBoostTicks    = 60 // 2 s
 	HitBoostDistance = HitBoostSpeed * HitBoostTicks / TickRate
-	CrawlSpeed       = 700_000 // a downed survivor
+	// And for HitInvulnTicks after a hit the killer's swing passes through them.
+	HitInvulnTicks = 2 * TickRate
+	CrawlSpeed     = 700_000 // a downed survivor
 
 	// Downed. Left alone long enough, a survivor gets back up injured. The
 	// timer keeps running on the killer's shoulder; if it fills there they

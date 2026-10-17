@@ -59,7 +59,7 @@ func stepSwing(p *Player, in Input, hasInput bool) {
 func resolveSwing(k *Player, players []Player, now uint32, lagMs uint16) {
 	best, bestD := -1, math.Inf(1)
 	for i, p := range players {
-		if p.Role != Survivor || p.Escaped || p.Eliminated || p.Health == Downed {
+		if p.Role != Survivor || p.Escaped || p.Eliminated || p.Health == Downed || p.Invuln > 0 {
 			continue
 		}
 		if d, ok := reach(k.Pos, k.Yaw, rewound(p, now, lagMs)); ok && d < bestD {
@@ -74,7 +74,7 @@ func resolveSwing(k *Player, players []Player, now uint32, lagMs uint16) {
 	v := &players[best]
 	v.Health++
 	if v.Health == Injured {
-		v.Boost = HitBoostTicks
+		v.Boost, v.Invuln = HitBoostTicks, HitInvulnTicks
 	}
 }
 
