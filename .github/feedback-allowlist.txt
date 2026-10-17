@@ -1,0 +1,2 @@
+# GitHub usernames whose feedback issues are accepted, one per line.
+# The repository owner is always accepted. This file is public.

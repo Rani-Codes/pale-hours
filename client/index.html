@@ -23,7 +23,8 @@
       #room-code-text { font-size: inherit; font-weight: bold; color: #d8d4c8; cursor: pointer; user-select: all; }
       #room-seats { white-space: pre; color: #d8d4c8; }
       #room[hidden], #room [hidden] { display: none; }
-      #source { align-self: flex-end; font-size: 11px; color: #5c5c66; }
+      #links { justify-content: space-between; font-size: 11px; }
+      #links a { color: #5c5c66; }
       #check { position: fixed; left: 50%; top: 62%; width: 320px; margin-left: -160px; height: 16px; background: #16161a; border: 1px solid #2a2a33; display: none; }
       #check-zone { position: absolute; top: 0; bottom: 0; background: #d8d4c8; }
       #check-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #c0392b; }
@@ -73,7 +74,10 @@
       </div>
       <button id="start" hidden>Start</button>
       <div id="room-status"></div>
-      <a id="source" href="https://github.com/Rani-Codes/pale-hours" target="_blank" rel="noopener">source code (AGPL-3.0)</a>
+      <div class="row" id="links">
+        <a id="feedback" href="https://github.com/Rani-Codes/pale-hours/issues/new?template=feedback.yml" target="_blank" rel="noopener">send feedback</a>
+        <a id="source" href="https://github.com/Rani-Codes/pale-hours" target="_blank" rel="noopener">source code (AGPL-3.0)</a>
+      </div>
     </div>
     <div id="check"><div id="check-zone"></div><div id="check-needle"></div></div>
     <div id="check-result"></div>

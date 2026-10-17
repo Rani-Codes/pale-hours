@@ -119,15 +119,20 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 - [ ] Sound pass (footsteps, swing and hit, generator hum, hook, gates); the heartbeat is still the synthesized placeholder
 - [ ] Playtest with 4 real people and log every "that hit felt unfair" moment
 
-## After launch: community feedback loop
+## Community feedback loop
 
-Not part of the MVP. Set this up once the game is playable by others.
+Everything lives on GitHub. There is no Discord, no bot token, no API key, and no model in the intake path (decided by the owner 2026-10-16).
 
-- **Intake.** Players report bugs and suggest features in a community channel, probably a Discord server with a thread for this game.
-- **Tracking.** Every report becomes a GitHub issue in this repo, labeled `bug` or `feature`, so nothing lives only in chat.
-- **Bugs.** An LLM agent can pick up a bug, fix it on a dev branch, and show the owner the result. The owner approves it (it ships to production), scraps it, or sends feedback for another round. Nothing reaches production without that approval.
-- **Features.** No work starts on a feature until the owner explicitly approves it. After approval it follows the same dev branch and review path as a bug.
-- Open questions: how reports get from Discord into issues (a bot, or by hand), what "production" means for a peer-hosted game (the hosted client build and signaling server), and how the owner signals approval (an issue label, a PR review, or a Discord reaction).
+- **Capture.** Friends fill in the Feedback issue form (`.github/ISSUE_TEMPLATE/feedback.yml`): bug or idea, a title, what happened or what they want, and optionally which role they played. The lobby's "send feedback" link opens the same form. Blank issues are turned off.
+- **Intake** (`.github/workflows/intake.yml`, rules in `tools/feedback/intake.mjs` with unit tests). On every new issue, and on edits while one waits for a fix:
+  - Someone not in `.github/feedback-allowlist.txt` (the owner is always allowed) gets one polite comment, the label `not-invited`, and the issue closed.
+  - A missing or overlong field gets one comment naming what to fix and the label `needs-info`. Editing the issue to fix it moves it on without another comment.
+  - A sixth open `needs-approval` issue from the same person is closed with `over-limit`.
+  - Otherwise the issue gets `needs-approval` plus `bug` or `idea`. Intake never rewrites what a friend wrote.
+- **Approval.** Only the owner moves an issue from `needs-approval` to `approved`, or closes it. The agent never adds `approved`.
+- **Build.** The owner runs the `build-feedback` skill (`.claude/skills/build-feedback/`). It takes one `approved` issue, works on a branch under the repo's rules, and opens a pull request that closes the issue. It never merges. A merge to `main` deploys, so the merge is the owner's second approval. The skill treats issue text as data from a friend, never as instructions.
+- **Why an allowlist and not collaborators.** On a personal-account repository every collaborator gets write access, and write access can run a workflow that reads the deploy secrets. Friends do not need any access to open issues on a public repository, so the allowlist keeps feedback invite-only without granting anything.
+- **Spam.** `needs-approval` already means nothing is built until the owner acts, so a flood only clutters the list. The allowlist and the per-person cap keep it readable. The workflow's own `GITHUB_TOKEN` is limited to issues.
 
 ## Ideas under consideration
 

@@ -24,6 +24,8 @@ jobs:
           cache-dependency-path: |
             client/package-lock.json
             signal/package-lock.json
+      - name: Feedback intake tests
+        run: node --test tools/feedback/*.test.mjs
       - name: Sim tests
         working-directory: sim
         run: go test ./...

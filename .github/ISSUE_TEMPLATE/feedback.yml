@@ -1,0 +1,32 @@
+name: Feedback
+description: Report a bug or suggest an idea for Pale Hours.
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for playing. Every report is read before anything gets built.
+  - type: dropdown
+    id: type
+    attributes:
+      label: Bug or idea
+      options:
+        - Bug
+        - Idea
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened, or what you want
+      description: For a bug, what you did and what went wrong. For an idea, what you would like and why.
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Which role were you playing?
+      options:
+        - Killer
+        - Survivor
+        - Not in a match
+    validations:
+      required: false
