@@ -113,7 +113,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 
 ### Phase 4: playable with friends
 - [x] Lobby with room codes, 5 players: role picks, Start at two or more, any role on any tab, guest killers lag-compensated from `seen` (see Netcode)
-- [ ] Public site at https://palehours.ranisaro.com, deployed from `main` by GitHub Actions after the tests pass (see Hosting)
+- [x] Public site at https://palehours.ranisaro.com, deployed from `main` by GitHub Actions after the tests pass (see Hosting)
 - [ ] TURN fallback
 - [x] Low-poly art pass, all built in code (`client/src/art/`): PS1 look (240-row render, banded color with ordered dither, vertex snapping; `view.retro`), painted textures, brick walls, generators, gallows hooks, portcullis gates, animated survivor and killer models with a first-person cleaver, fence, treeline, rocks and grass. Done 2026-10-15, before the lobby, at the owner's request.
 - [ ] Sound pass (footsteps, swing and hit, generator hum, hook, gates); the heartbeat is still the synthesized placeholder
