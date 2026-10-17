@@ -8,6 +8,7 @@
 //   3. A dropped pallet blocks the killer; holding E breaks it in 3 s (the
 //      prompt counts it down), after which he walks through.
 //   4. A pallet is thrown once: a broken one stays broken and Space does nothing.
+//   6. Space throws it from 2.6 m out and from standing in the doorway.
 //   5. The survivor vaults a dropped pallet and lands on the far side, host
 //      and guest agreeing, with no corrections.
 import { chromium } from "playwright-core";
@@ -140,6 +141,20 @@ await settle(1200);
 const landed = { host: await on(host, id), guest: await on(guest, id) };
 const vaultCorrections = (await corrections()) - c0;
 await guest.screenshot({ path: `${prefix}-survivor-vaulted.png` });
+// 6. A generous reach: Space from 2.6 m out throws it, standing in the doorway throws it too.
+await setPallet(1, 0);
+await place({ 1: far, [id]: { x: midX, y: southOf(2.6) } });
+await settle();
+const farPrompt = await guest.textContent("#hud");
+await guest.keyboard.press("Space");
+await settle(500);
+const farThrow = (await pallets(host))[1];
+await setPallet(1, 0);
+await place({ 1: far, [id]: { x: midX, y: (door.minY + door.maxY) / 2 } });
+await settle();
+await guest.keyboard.press("Space");
+await settle(500);
+const inThrow = { state: (await pallets(host))[1], pos: await on(host, id) };
 await browser.close();
 
 console.log(JSON.stringify({ through: through.y / M, wall: door.maxY / M, down, stun: stunned.stun, stillStunned: stillStunned.stun, blocked: blocked.y / M, progress, broken, afterBreak: afterBreak.y / M, again, landedY: landed.host.y / M, afterDrop, vaultCorrections }));
@@ -162,6 +177,9 @@ const checks = {
   "the survivor vaults it and lands past it": landed.host.y > north.maxY + 0.4 * M,
   "host and guest agree on the landing": landed.guest.x === landed.host.x && landed.guest.y === landed.host.y,
   "no corrections from the vault": vaultCorrections === 0,
+  "the prompt shows from 2.6 m out": /Space to throw down the pallet/.test(farPrompt),
+  "Space throws it from 2.6 m out": farThrow === 1,
+  "Space throws it from standing in the doorway, and pushes them out": inThrow.state === 1 && (inThrow.pos.y <= door.minY - 0.4 * M || inThrow.pos.y >= door.maxY + 0.4 * M),
   "no errors": errors.length === 0,
 };
 for (const [name, pass] of Object.entries(checks)) console.log(`${pass ? "PASS" : "FAIL"} ${name}`);

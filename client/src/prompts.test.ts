@@ -55,9 +55,9 @@ test("a downed survivor is told how many seconds until they get up on their own"
   assert.deepEqual(survivorPrompts(later, [later], rules), ["you are down: crawl away and hide. Getting up on your own in 2 s"]);
 });
 
-test("a carried survivor is told how many seconds until they break free", () => {
+test("a carried survivor is told to alternate E and Q, and how many seconds until they break free", () => {
   const me = survivor(2, 0, { health: 2, carried: true, recover: 1800 - 45 });
-  assert.deepEqual(survivorPrompts(me, [me], rules), ["you are being carried: breaking free in 2 s"]);
+  assert.deepEqual(survivorPrompts(me, [me], rules), ["you are being carried: press E then Q, again and again, to wriggle free. 2 s left"]);
 });
 
 test("the killer gets a banner naming who is on his shoulder", () => {
@@ -76,14 +76,15 @@ test("a repairing survivor sees the progress of the generator beside them", () =
   assert.equal(repairLine(survivor(2, 10_000_000, { repairing: true }), [2400, 600], world), "");
 });
 
-const palletWorld = { palletSites: [{ minX: -1_000_000, minY: -250_000, maxX: 1_000_000, maxY: 250_000 }], palletReach: 1_500_000, palletBreakReach: 1_800_000, palletBreakTicks: 90, playerRadius: 400_000, tickRate: 30, roles: { survivor: 0, killer: 1 }, health: { healthy: 0, injured: 1, downed: 2 } };
+const palletWorld = { palletSites: [{ minX: -1_000_000, minY: -250_000, maxX: 1_000_000, maxY: 250_000 }], palletReach: 3_000_000, palletBreakReach: 1_800_000, palletBreakTicks: 90, playerRadius: 400_000, tickRate: 30, roles: { survivor: 0, killer: 1 }, health: { healthy: 0, injured: 1, downed: 2 } };
 const at = (x: number, y: number, extra = {}) => ({ ...newPlayer(2, 0, x, y, 1), ...extra });
 
 test("a survivor beside a standing pallet is told to throw it down", () => {
   const w = palletWorld;
   assert.equal(palletPrompt(at(0, -1_000_000), [0], [0], w), "Space to throw down the pallet");
-  assert.equal(palletPrompt(at(0, -5_000_000), [0], [0], w), "");
-  assert.equal(palletPrompt(at(0, -300_000), [0], [0], w), "", "standing in its footprint");
+  assert.equal(palletPrompt(at(0, -3_000_000), [0], [0], w), "Space to throw down the pallet", "a generous reach");
+  assert.equal(palletPrompt(at(0, -4_500_000), [0], [0], w), "");
+  assert.equal(palletPrompt(at(0, -300_000), [0], [0], w), "Space to throw down the pallet", "even standing in its footprint");
   assert.equal(palletPrompt(at(0, -1_000_000, { health: 2 }), [0], [0], w), "");
   assert.equal(palletPrompt(at(0, -1_000_000), [1], [0], w), "", "already thrown");
 });

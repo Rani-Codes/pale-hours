@@ -1,6 +1,6 @@
 # Pallets
 
-Six wooden pallets, each hinged to a brick wall, stand in the building doorways and at the ends of two loose walls. Thrown down, a pallet tips over sideways across the gap. A survivor within 1.5 m presses Space to throw one down, once. It blocks everyone and survivors can vault it. A killer within 3 m when it falls is stunned for 3 s. The killer breaks a dropped pallet by holding E beside it for 3 s.
+Six wooden pallets, each hinged to a brick wall, stand in the building doorways and at the ends of two loose walls. Thrown down, a pallet tips over sideways across the gap. A survivor within 3 m presses Space to throw one down, once. It blocks everyone and survivors can vault it. A killer within 3 m when it falls is stunned for 3 s. The killer breaks a dropped pallet by holding E beside it for 3 s.
 
 ## Sub-features
 
@@ -23,5 +23,5 @@ Six wooden pallets, each hinged to a brick wall, stand in the building doorways 
 ## Gotchas
 
 - Unit tests use `withPallets` in `sim/pallet_test.go`, which swaps `PalletSites`; `withMap` does not touch them.
-- A vault needs the survivor within a metre of the pallet; throwing works from 1.5 m.
+- A vault needs the survivor within a metre of the pallet; throwing works from 3 m, even from inside the doorway.
 - A killer who pressed E the same tick spent it on the press, so breaking starts the tick after.

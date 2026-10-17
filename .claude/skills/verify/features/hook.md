@@ -6,7 +6,7 @@ A downed survivor lies on the ground. A teammate holding E beside them gets a sk
 
 - `hook-help` stands a downed survivor up injured when a teammate hits the help check, on every tab.
 - `hook-health-bar` shows 2, 1 or 0 filled squares (`#health .pip.full`) for healthy, injured, and downed, carried or hooked.
-- `hook-carry` picks a downed survivor up with E; they ride at the killer's position on every tab. The killer's own camera pulls back to third person while he carries (`render.ts` `firstPerson`) and a `#carry` banner names who is on his shoulder. The downed survivor's HUD counts down the seconds until they get up on their own.
+- `hook-carry` picks a downed survivor up with E; they ride at the killer's position on every tab. The killer's own camera pulls back to third person while he carries (`render.ts` `firstPerson`) and a `#carry` banner names who is on his shoulder. A carried survivor alternating E and Q (real keys) takes 1 s off per press; `hook-struggle` checks mashing one key does nothing, alternating frees them in seconds with the killer stunned 1.5 s. The downed survivor's HUD counts down the seconds until they get up on their own.
 - `hook-hang` hangs the carried survivor on a free hook in range with a second E.
 - `hook-alert` shows the other survivor `TEAMMATE HOOKED` with distance and bearing, and a red beam over the hook, for 3 s; the hooked survivor and the killer get nothing.
 - `hook-checks` gives a hooked survivor skill checks: a timeout costs exactly 5 s of hook time, a good press costs nothing, and the guest agrees.

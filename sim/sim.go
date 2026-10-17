@@ -25,6 +25,9 @@ type Input struct {
 	// killer's swing; the sim only counts the tick each goes down, so
 	// holding one does nothing.
 	Act, Skill, Attack bool
+	// Alt is the second struggle key (Q): a survivor on the killer's shoulder
+	// alternates it with Act to wriggle free faster.
+	Alt bool
 	// Crouch is held to get low. A crouched survivor walks slowly, cannot
 	// repair, open a gate or vault, and hides in tall grass.
 	Crouch bool
@@ -67,14 +70,18 @@ type Player struct {
 	Helping PlayerID
 
 	// Carry and hook. Carrying is on the killer, the rest on the survivor.
-	ActHeld    bool // E was down last tick; the killer acts on presses
-	Carrying   PlayerID
-	Carried    bool
-	OnHook     uint8 // 0, or the index into HookSites plus one
-	HookUsed   int16 // ticks spent on hooks, ever; at HookTicks they are eliminated
-	Rescue     int16 // ticks a teammate has held E to unhook them, this hold
-	Eliminated bool  // died on a hook; out of play
-	Stun       int16 // ticks the killer is stunned: no moving, swinging or E
+	ActHeld bool // E was down last tick; the killer acts on presses
+	AltHeld bool // Q was down last tick
+	// StruggleLast is the key (1 E, 2 Q, 0 neither) of the last counted press
+	// while carried; the next must be the other one.
+	StruggleLast uint8
+	Carrying     PlayerID
+	Carried      bool
+	OnHook       uint8 // 0, or the index into HookSites plus one
+	HookUsed     int16 // ticks spent on hooks, ever; at HookTicks they are eliminated
+	Rescue       int16 // ticks a teammate has held E to unhook them, this hold
+	Eliminated   bool  // died on a hook; out of play
+	Stun         int16 // ticks the killer is stunned: no moving, swinging or E
 
 	// A vault in progress: ticks left, and the straight line it follows.
 	VaultTicks         int16
@@ -133,10 +140,12 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		}
 		actPress := ok && in.Act && !p.ActHeld
 		skillPress := ok && in.Skill && !p.SkillHeld
+		altPress := ok && in.Alt && !p.AltHeld
 		if ok {
 			p.Yaw = in.Yaw
-			p.ActHeld, p.SkillHeld = in.Act, in.Skill
+			p.ActHeld, p.SkillHeld, p.AltHeld = in.Act, in.Skill, in.Alt
 		}
+		stepStruggle(&p, actPress, altPress)
 		// Low to the ground, hands off everything: no repairing, opening, or vaulting.
 		p.Crouching = ok && in.Crouch && canCrouch(p)
 		if p.Crouching {

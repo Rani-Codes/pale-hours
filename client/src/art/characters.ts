@@ -165,11 +165,14 @@ export class SurvivorModel {
       // Face down over the killer's shoulder, head behind him; the renderer turns the root to face his back.
       r.body.rotation.x = -Math.PI / 2;
       r.body.position.set(0.28, 1.62, r.hipHeight);
-      r.head.rotation.x = 0.4;
-      r.armL.set(0.3 + 0.2 * Math.sin(t * 6), 0.2);
-      r.armR.set(0.3 + 0.2 * Math.sin(t * 6 + 1), 0.2);
-      r.legL.set(-0.4, 0.8);
-      r.legR.set(-0.2, 1.0);
+      // Thrashing to get loose: arms flung wide, legs kicking, the whole body bucking.
+      r.head.rotation.x = 0.4 + 0.3 * Math.sin(t * 17);
+      r.body.position.y += 0.05 * Math.sin(t * 23);
+      r.body.rotation.z = 0.25 * Math.sin(t * 13);
+      r.armL.set(0.9 + 0.9 * Math.sin(t * 15), 0.2 + 0.5 * Math.sin(t * 11));
+      r.armR.set(0.9 + 0.9 * Math.sin(t * 15 + 2.4), 0.2 + 0.5 * Math.sin(t * 11 + 1.3));
+      r.legL.set(-0.4 + 0.8 * Math.sin(t * 16), 0.8 + 0.4 * Math.sin(t * 16 + 1));
+      r.legR.set(-0.2 + 0.8 * Math.sin(t * 16 + Math.PI), 1.0 + 0.4 * Math.sin(t * 16 + 2.5));
       return;
     }
     if (state.downed) {

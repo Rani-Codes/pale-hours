@@ -61,8 +61,10 @@ func TestSurvivorDropsAPalletBesideIt(t *testing.T) {
 	}{
 		{"beside it", south, nil, PalletDown},
 		{"from the north side too", north, nil, PalletDown},
-		{"too far", Vec2{0, -4 * m}, nil, PalletUp},
-		{"standing in its footprint", Vec2{0, -300_000}, nil, PalletUp},
+		{"a generous reach", Vec2{0, -2_800_000}, nil, PalletDown},
+		{"just out of reach", Vec2{0, -3_400_000}, nil, PalletUp},
+		{"too far", Vec2{0, -6 * m}, nil, PalletUp},
+		{"standing in its footprint", Vec2{0, -300_000}, nil, PalletDown},
 		{"downed", south, func(p *Player) { p.Health = Downed }, PalletUp},
 		{"carried", south, func(p *Player) { p.Carried = true }, PalletUp},
 		{"mid skill check", south, func(p *Player) { p.CheckActive = true }, PalletUp},
@@ -280,5 +282,16 @@ func TestPalletSitesFitTheMap(t *testing.T) {
 				t.Errorf("pallets %d and %d are on top of each other", j, i)
 			}
 		}
+	}
+}
+
+func TestDroppingFromInsideTheFootprintPushesTheThrowerOut(t *testing.T) {
+	withPallets(t, testPallet)
+	s := Step(palletState(surv(2, Vec2{0, -300_000})), press)
+	if _, in := hitWall(s.Players[0].Pos, blockers{pallets: []bool{true}}); in {
+		t.Fatalf("thrower left inside the pallet at %v", s.Players[0].Pos)
+	}
+	if s.Players[0].Pos.Y >= 0 {
+		t.Fatalf("thrower pushed across to %v, want out on their own side", s.Players[0].Pos)
 	}
 }

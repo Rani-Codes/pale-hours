@@ -104,8 +104,8 @@ export function vaultModel(w: number, h: number, d: number): Group {
 /**
  * A wooden pallet hinged to a brick wall. Standing, it is a tall board frame
  * flush against the wall's end and the gap is open. Thrown down it tips over
- * sideways about its bottom edge, away from the wall, and lies slanted across
- * the gap as a barricade; broken, it is splinters on the ground. Local x runs
+ * sideways about its bottom edge, away from the wall, and rests steeply slanted
+ * across the gap, chest high at its top, as a barricade; broken, it is splinters on the ground. Local x runs
  * along the gap, hinge is -1 when the wall is at the low end and 1 at the high end.
  */
 export class PalletModel {
@@ -119,20 +119,21 @@ export class PalletModel {
   constructor(length: number, hinge: -1 | 1) {
     const light = lambert(wood(), 0xe6c48e);
     const dark = lambert(wood(), 0xb8935c);
-    const depth = 1.2; // across the gap's width, kept inside the blocked footprint
-    const board = 0.12;
+    const depth = 1.3; // along the passage, about the width of the blocked footprint
+    const board = 0.14;
+    const tall = length * 1.2; // taller than the gap is wide, so it falls to a ramp too high to step over
     this.lean = -hinge;
     this.pivot.position.set((hinge * length) / 2, 0, 0);
     // Posts at both edges and the middle, rails across them, all against the wall.
     const frame = new Group();
     frame.position.x = (-hinge * board) / 2;
     for (const z of [-depth / 2 + 0.07, 0, depth / 2 - 0.07]) {
-      const post = new Mesh(worldBox(board, length, 0.14, 0.8), dark);
-      post.position.set(0, length / 2, z);
+      const post = new Mesh(worldBox(board, tall, 0.16, 0.8), dark);
+      post.position.set(0, tall / 2, z);
       frame.add(post);
     }
-    for (const y of [0.25, 0.7, 1.15, 1.6, length - 0.1]) {
-      const rail = new Mesh(worldBox(board + 0.02, 0.12, depth, 0.8), light);
+    for (const y of [0.25, 0.75, 1.25, 1.75, tall - 0.12]) {
+      const rail = new Mesh(worldBox(board + 0.02, 0.16, depth, 0.8), light);
       rail.position.set(0, y, 0);
       frame.add(rail);
     }
@@ -160,7 +161,7 @@ export class PalletModel {
     }
     if (state === 1) this.fall = Math.min(1, this.fall + dt / 0.3);
     // Gravity: it starts slowly and slams down.
-    const tilt = 1.26 * this.fall * this.fall;
+    const tilt = 0.9 * this.fall * this.fall;
     const shake = state === 1 && breaking > 0 ? 0.03 * Math.sin(performance.now() / 22) : 0;
     this.pivot.rotation.z = -this.lean * tilt + shake;
   }

@@ -12,11 +12,12 @@ const (
 
 	PlayerRadius = 400_000 // half-width of the square collision body
 
-	// A survivor within PalletReach of a standing pallet can throw it down once.
+	// A survivor within PalletReach of a standing pallet, on either side of it or
+	// even standing in it, can throw it down once.
 	// A killer within PalletStunRange of it then is stunned PalletStunTicks. A
 	// killer within PalletBreakReach of a dropped one breaks it by holding E
 	// for PalletBreakTicks.
-	PalletReach      = 1_500_000
+	PalletReach      = 3_000_000
 	PalletStunRange  = 3_000_000
 	PalletStunTicks  = 3 * TickRate
 	PalletBreakReach = 1_800_000
@@ -92,7 +93,8 @@ const (
 	// beside them gets a skill check almost at once; a good one stands them
 	// up injured.
 	DownedRecoverTicks = 60 * TickRate
-	StunTicks          = 1 * TickRate
+	StunTicks          = 3 * TickRate / 2 // the killer's stun when a carried survivor breaks free
+	StruggleTicks      = 1 * TickRate     // each alternating E or Q press takes this much off a carry
 	ReviveRange        = 1_500_000
 	ReviveCheckDelay   = 6 // ticks of holding E before each help check
 

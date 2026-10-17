@@ -36,7 +36,7 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
       `press Space on each skill check: a miss costs ${rules.hookCheckPenalty / rules.tickRate} s`,
     ];
   }
-  if (me.carried) return [`you are being carried: breaking free in ${secondsLeft(me.recover, rules)} s`];
+  if (me.carried) return [`you are being carried: press E then Q, again and again, to wriggle free. ${secondsLeft(me.recover, rules)} s left`];
   const lines: string[] = [];
   if (me.health === rules.health.downed) {
     const helper = players.some((p) => p.helping === me.id);
@@ -98,7 +98,7 @@ export function palletPrompt(
   me: SimPlayer,
   states: number[],
   breaks: number[],
-  rules: Pick<PaleSim, "palletSites" | "palletReach" | "palletBreakReach" | "palletBreakTicks" | "playerRadius" | "tickRate" | "roles" | "health">,
+  rules: Pick<PaleSim, "palletSites" | "palletReach" | "palletBreakReach" | "palletBreakTicks" | "tickRate" | "roles" | "health">,
 ): string {
   const killer = me.role === rules.roles.killer;
   if (killer ? me.carrying || me.stun : me.health === rules.health.downed || me.carried || me.onHook || me.checkActive || me.escaped || me.eliminated) return "";
@@ -107,8 +107,7 @@ export function palletPrompt(
       const left = Math.ceil((rules.palletBreakTicks - (breaks[i] ?? 0)) / rules.tickRate);
       return breaks[i] ? `breaking the pallet: ${left} s` : "hold E to break the pallet";
     }
-    const inside = me.x > box.minX - rules.playerRadius && me.x < box.maxX + rules.playerRadius && me.y > box.minY - rules.playerRadius && me.y < box.maxY + rules.playerRadius;
-    if (!killer && states[i] === 0 && !inside && distToBox(me, box) <= rules.palletReach) return "Space to throw down the pallet";
+    if (!killer && states[i] === 0 && distToBox(me, box) <= rules.palletReach) return "Space to throw down the pallet";
   }
   return "";
 }

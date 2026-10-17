@@ -34,6 +34,9 @@ export interface SimPlayer {
   /** The downed teammate this survivor is getting up, or 0. */
   helping: number;
   actHeld: boolean;
+  altHeld: boolean;
+  /** The key of the last counted struggle press while carried: 1 E, 2 Q, 0 none. */
+  struggleLast: number;
   /** On the killer: the survivor being carried, or 0. */
   carrying: number;
   carried: boolean;
@@ -83,7 +86,7 @@ export type World = Pick<SimState, "gens" | "noise" | "gates" | "pallets" | "pal
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
   return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, opening: 0, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
-    recover: 0, helping: 0, actHeld: false, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, crouching: false, hideTicks: 0, stun: 0,
+    recover: 0, helping: 0, actHeld: false, altHeld: false, struggleLast: 0, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, crouching: false, hideTicks: 0, stun: 0,
     vaultTicks: 0, vaultFromX: 0, vaultFromY: 0, vaultToX: 0, vaultToY: 0 };
 }
 
@@ -96,6 +99,8 @@ export interface SimInput {
   skill: boolean;
   /** Held to crouch. */
   crouch?: boolean;
+  /** Held: the second struggle key (Q), alternated with act while carried. */
+  alt?: boolean;
   /** The killer's attack button, edge-triggered in the sim. */
   attack?: boolean;
   /** How far behind this tick the attacker's screen showed everyone else. The host measures it. */

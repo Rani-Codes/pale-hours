@@ -202,12 +202,42 @@ const stunStart = await on(host, 1);
 await host.keyboard.down("KeyD");
 await host.waitForTimeout(500);
 const stuckPos = await on(host, 1);
-await host.waitForTimeout(1000);
+await host.waitForTimeout(1900); // the stun is 1.5 s
 await host.keyboard.up("KeyD");
 const freedPos = await on(host, 1);
 await settle();
 results.brokeFree = (await everywhere(idB)).map((p) => `${p.carried}/${p.health}`);
 results.pipsBrokeFree = await pips(b);
+
+// 5c. Struggling on the shoulder: E then Q, alternating. Mashing one key does nothing.
+await place({ 1: { x: HOOK.x + 8 * M, y: HOOK.y - 6 * M, stun: 0, carrying: 0 }, [idB]: { x: HOOK.x + 8 * M, y: HOOK.y - 5 * M, health: 2, recover: 300, carried: false } });
+await settle(400);
+await host.keyboard.press("KeyE");
+await host.waitForFunction((id) => paleSim.state().players.find((p) => p.id === id).carried, idB, { timeout: 2000, polling: 5 });
+await b.waitForTimeout(400); // the carry has to reach B's tab
+const struggleHud = await b.textContent("#hud");
+const r0 = (await on(host, idB)).recover;
+for (let i = 0; i < 8; i++) {
+  await b.keyboard.press("KeyE");
+  await b.waitForTimeout(60);
+}
+const r1 = (await on(host, idB)).recover;
+for (let i = 0; i < 16; i++) {
+  await b.keyboard.press(i % 2 ? "KeyE" : "KeyQ");
+  await b.waitForTimeout(60);
+}
+const r2 = (await on(host, idB)).recover;
+const struggleStart = Date.now();
+let presses = 0;
+while ((await on(host, idB)).carried && presses < 120) {
+  await b.keyboard.press(presses % 2 ? "KeyQ" : "KeyE");
+  await b.waitForTimeout(60);
+  presses++;
+}
+const struggleMs = Date.now() - struggleStart;
+const struggleStun = (await on(host, 1)).stun;
+results.struggled = { mash: r1 - r0, alternated: r2 - r1, freeAfterMs: struggleMs, carried: (await on(host, idB)).carried, health: (await on(host, idB)).health, stun: struggleStun };
+await settle();
 
 // 6. B goes down alone, a second from getting up.
 const recoverTicks = recoverTicksAll;
@@ -250,6 +280,11 @@ const checks = {
   "held too long, B breaks free and stuns the killer": stunned && /STUNNED/.test(killerHudStunned),
   "B is free and injured on every tab": all(results.brokeFree, "false/1"),
   "health bar shows 1 square after breaking free": results.pipsBrokeFree === 1,
+  "the carried survivor is told to alternate E and Q": /press E then Q/.test(struggleHud),
+  "mashing one key barely helps": results.struggled.mash <= 60,
+  "alternating E and Q takes a second off per press": results.struggled.alternated >= 14 * 30,
+  "a quick survivor is off the shoulder in seconds, not a minute": !results.struggled.carried && results.struggled.freeAfterMs < 10000,
+  "struggling free injures them and stuns the killer for 1.5 s": results.struggled.health === 1 && results.struggled.stun >= 40,
   "a stunned killer cannot move, then can": Math.abs(stuckPos.x - stunStart.x) < 1000 && freedPos.x - stuckPos.x > 1e6,
   "no errors": errors.length === 0,
 };

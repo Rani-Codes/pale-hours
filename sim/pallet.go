@@ -27,15 +27,16 @@ func distToBoxSq(pos Vec2, b Box) int64 {
 }
 
 // dropPallet is the index of the standing pallet p throws down, or -1: a
-// survivor on their feet, with no skill check waiting for the key and not
-// standing in the pallet's own footprint, within PalletReach of it.
+// survivor on their feet, with no skill check waiting for the key, within
+// PalletReach of it. Even standing in its footprint will do; they are pushed
+// out to their own side when it lands.
 func dropPallet(p *Player, pallets []Pallet) int {
 	if p.Role != Survivor || p.Health == Downed || p.Carried || p.OnHook != 0 || p.CheckActive {
 		return -1
 	}
 	best, bestD := -1, int64(PalletReach)*int64(PalletReach)+1
 	for i, pl := range pallets {
-		if i >= len(PalletSites) || pl.State != PalletUp || inGrown(p.Pos, PalletSites[i]) {
+		if i >= len(PalletSites) || pl.State != PalletUp {
 			continue
 		}
 		if d := distToBoxSq(p.Pos, PalletSites[i]); d < bestD {
