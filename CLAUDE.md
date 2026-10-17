@@ -45,7 +45,7 @@ Fill these in as they get created. Keep this section accurate.
 - Check the live site: `cd tools && node drive-link.mjs https://palehours.ranisaro.com/ live-link` (no `?signal=`; the page signals to its own origin)
 - Run sim tests: `cd sim && go test ./...`
 - Run feedback intake tests: `node --test tools/feedback/*.test.mjs` (from the repo root; the rules for new issues, see `SPEC.md` Community feedback loop)
-- Invite a friend to send feedback: add their GitHub username to `.github/feedback-allowlist.txt` and push. They use the lobby's "send feedback" link or https://github.com/Rani-Codes/pale-hours/issues/new?template=feedback.yml
+- File feedback: friends post in the owner's Discord channel; the owner copies what is worth tracking into https://github.com/Rani-Codes/pale-hours/issues/new?template=feedback.yml. To let someone file directly, add their GitHub username to `.github/feedback-allowlist.txt` and push
 - Build approved feedback: run the `build-feedback` skill (`.claude/skills/build-feedback/`). One `approved` issue becomes one pull request; the owner merges
 
 ## Hard rules

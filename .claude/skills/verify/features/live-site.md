@@ -8,7 +8,6 @@ Anyone can open https://palehours.ranisaro.com and play. The page and the room-c
 - `live-signal` answers the room API on the same origin: joining a missing room returns 404.
 - `live-link` connects two tabs through the live signaling.
 - `live-source` shows `source code (AGPL-3.0)` in the lobby panel, linking to https://github.com/Rani-Codes/pale-hours.
-- `live-feedback` shows `send feedback` in the lobby panel, opening the Feedback issue form on GitHub.
 - `live-deploy` runs the CI workflow on a push to `main` and deploys only after the test job passes.
 
 ## How to get to it (user POV)
@@ -24,7 +23,7 @@ Preconditions:
 
 - **Page and API.** Run `curl -sI https://palehours.ranisaro.com/sim.wasm | head -1` for `HTTP/2 200`, and `curl -s -o /dev/null -w '%{http_code}' -X POST https://palehours.ranisaro.com/rooms/0000/join` for `404`.
 - **Link.** Run `node drive-link.mjs https://palehours.ranisaro.com/ <dir>/live-link | tee <dir>/live-link.log` from `tools/`. The log shows a room code, `connected to` with an rtt line on both tabs, and `errors: none`.
-- **Source and feedback links.** Check `<dir>/live-link-host.png` for both links at the bottom of the lobby panel, or read `document.querySelector("#source").href` and `document.querySelector("#feedback").href`.
+- **Source link.** Check `<dir>/live-link-host.png` for the link at the bottom of the lobby panel, or read `document.querySelector("#source").href`.
 - **Deploy gate.** Read `gh run view <id>`. `deploy` lists `needs: test` and did not run on a run where `test` failed.
 
 ## Gotchas

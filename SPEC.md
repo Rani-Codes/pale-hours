@@ -121,9 +121,9 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 
 ## Community feedback loop
 
-Everything lives on GitHub. There is no Discord, no bot token, no API key, and no model in the intake path (decided by the owner 2026-10-16).
+Feedback is collected on Discord and tracked on GitHub. There is no bot token, no API key, and no model in the intake path.
 
-- **Capture.** Friends fill in the Feedback issue form (`.github/ISSUE_TEMPLATE/feedback.yml`): bug or idea, a title, what happened or what they want, and optionally which role they played. The lobby's "send feedback" link opens the same form. Blank issues are turned off.
+- **Capture.** Friends post feedback in a channel on the owner's Discord server. The owner copies what is worth tracking into the Feedback issue form (`.github/ISSUE_TEMPLATE/feedback.yml`): bug or idea, a title, what happened or what they want, and optionally which role they played. Nothing connects Discord to GitHub; copying is by hand (decided 2026-10-17). Blank issues are turned off.
 - **Intake** (`.github/workflows/intake.yml`, rules in `tools/feedback/intake.mjs` with unit tests). On every new issue, and on edits while one waits for a fix:
   - Someone not in `.github/feedback-allowlist.txt` (the owner is always allowed) gets one polite comment, the label `not-invited`, and the issue closed.
   - A missing or overlong field gets one comment naming what to fix and the label `needs-info`. Editing the issue to fix it moves it on without another comment.

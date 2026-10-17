@@ -13,6 +13,20 @@ Peer to peer. The killer's browser hosts the match, so there's no server to pay 
 - **Networking:** WebRTC data channels
 - **Hosting:** one Cloudflare Worker serves the page and the room-code signaling at https://palehours.ranisaro.com
 
+## Issues
+
+**How it works**
+
+1. Friends post bugs and ideas in the Discord feedback channel.
+2. The owner copies the good ones into a GitHub issue using the [Feedback form](https://github.com/Rani-Codes/pale-hours/issues/new?template=feedback.yml).
+3. The issue gets the `needs-approval` label on its own.
+4. The owner changes the label to `approved` (or closes the issue).
+5. Claude Code builds it and opens a pull request. Merging it puts the change live.
+
+**How to set it up**
+
+Nothing to install. To build approved issues, open Claude Code in this repo and run `/build-feedback`.
+
 ## License
 
 Code is licensed under AGPL-3.0. See `LICENSE`.
