@@ -35,6 +35,10 @@ export interface SimPlayer {
   helping: number;
   actHeld: boolean;
   altHeld: boolean;
+  /** Ticks the killer must stand still at the start of a match. */
+  freeze: number;
+  /** Wriggle-off tries a hooked survivor has used since they were hung. */
+  hookTries: number;
   /** The key of the last counted struggle press while carried: 1 E, 2 Q, 0 none. */
   struggleLast: number;
   /** On the killer: the survivor being carried, or 0. */
@@ -86,7 +90,7 @@ export type World = Pick<SimState, "gens" | "noise" | "gates" | "pallets" | "pal
 /** A player as they spawn: nothing repaired, no check pending. */
 export function newPlayer(id: number, role: number, x: number, y: number, rng: number): SimPlayer {
   return { id, role, x, y, yaw: 0, repairing: false, skillHeld: false, checkActive: false, checkResult: 0, checkZone: 0, checkAge: 0, checkIn: 0, rng, escaped: false, opening: 0, health: 0, boost: 0, attackHeld: false, swing: 0, swingTicks: 0, swingResult: 0,
-    recover: 0, helping: 0, actHeld: false, altHeld: false, struggleLast: 0, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, crouching: false, hideTicks: 0, stun: 0,
+    recover: 0, helping: 0, actHeld: false, altHeld: false, struggleLast: 0, freeze: 0, hookTries: 0, carrying: 0, carried: false, onHook: 0, hookUsed: 0, rescue: 0, eliminated: false, crouching: false, hideTicks: 0, stun: 0,
     vaultTicks: 0, vaultFromX: 0, vaultFromY: 0, vaultToX: 0, vaultToY: 0 };
 }
 
@@ -154,6 +158,9 @@ export interface PaleSim {
   /** Where the wooden pallets stand, as boxes in micrometers. */
   palletSites: Wall[];
   palletReach: number;
+  spawnFreezeTicks: number;
+  hookEscapeChance: number;
+  hookEscapeTries: number;
   playerRadius: number;
   palletBreakReach: number;
   palletBreakTicks: number;

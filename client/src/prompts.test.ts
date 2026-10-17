@@ -16,6 +16,8 @@ const rules = {
   pickupRange: 1_500_000,
   recoverTicks: 1800,
   hookCheckPenalty: 150,
+  hookEscapeChance: 10,
+  hookEscapeTries: 2,
 };
 const survivor = (id: number, x: number, extra = {}) => ({ ...newPlayer(id, 0, x, 0, 1), ...extra });
 
@@ -98,4 +100,20 @@ test("the killer beside a dropped pallet is told to break it, then how long is l
   assert.equal(palletPrompt({ ...k, carrying: 2 }, [1], [0], w), "");
   assert.equal(palletPrompt({ ...k, stun: 10 }, [1], [0], w), "");
   assert.equal(palletPrompt(k, [2], [0], w), "", "broken");
+});
+
+test("a hooked survivor is told they can try to wriggle off, and how many tries are left", () => {
+  const me = survivor(2, 0, { health: 2, onHook: 1, hookTries: 0 });
+  assert.ok(survivorPrompts(me, [me], rules).includes("press E to wriggle off the hook: 10% a try, 2 tries left"));
+  const one = { ...me, hookTries: 1 };
+  assert.ok(survivorPrompts(one, [one], rules).includes("press E to wriggle off the hook: 10% a try, 1 try left"));
+  const none = { ...me, hookTries: 2 };
+  assert.ok(survivorPrompts(none, [none], rules).includes("no tries left to wriggle off the hook"));
+});
+
+test("the killer is told when the hunt begins, in seconds", () => {
+  const killer = { ...newPlayer(1, 1, 0, 0, 1), freeze: 150 };
+  assert.deepEqual(killerPrompts(killer, [killer], rules), ["the hunt begins in 5 s"]);
+  assert.deepEqual(killerPrompts({ ...killer, freeze: 31 }, [killer], rules), ["the hunt begins in 2 s"]);
+  assert.deepEqual(killerPrompts({ ...killer, freeze: 0 }, [killer], rules), []);
 });

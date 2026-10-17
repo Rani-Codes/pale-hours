@@ -23,7 +23,7 @@ export async function startMatch(host, guests, { killer = host, randomSpawns = f
     let next = 0;
     for (const p of s.players.slice().sort((a, b) => a.id - b.id)) {
       const spot = p.role === paleSim.roles.killer ? { x: -10, y: 0 } : at[next++];
-      Object.assign(p, { x: spot.x * 1e6, y: spot.y * 1e6, trail: undefined });
+      Object.assign(p, { x: spot.x * 1e6, y: spot.y * 1e6, freeze: 0, trail: undefined });
     }
     paleSim.load(s);
   });

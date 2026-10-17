@@ -186,7 +186,7 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   const powered = done >= sim.gensRequired;
   if (mine && mine.role === sim.roles.killer) {
     const s = sim.swing;
-    lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : mine.carrying ? "" : "click to attack");
+    lines.push(mine.swing === s.windup ? "swinging..." : mine.swing === s.recover ? (mine.swingResult === s.hit ? "HIT" : "missed") : mine.carrying || mine.freeze ? "" : "click to attack");
     const carryPrompts = killerPrompts(mine, players, sim);
     lines.push(...carryPrompts);
     const breakPrompt = palletPrompt(mine, world.pallets, world.palletBreak, sim);

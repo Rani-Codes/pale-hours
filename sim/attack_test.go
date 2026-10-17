@@ -122,7 +122,7 @@ func TestSwingHits(t *testing.T) {
 		{"in front and in range", nil, nil, north, target(2, Vec2{0, 1500_000}, Healthy), Injured},
 		{"touching", nil, nil, north, target(2, Vec2{0, 800_000}, Healthy), Injured},
 		{"out of range", nil, nil, north, target(2, Vec2{0, 2700_000}, Healthy), Healthy},
-		{"centre out of range but body in", nil, nil, north, target(2, Vec2{0, 2500_000}, Healthy), Injured},
+		{"centre out of range but body in", nil, nil, north, target(2, Vec2{0, 2100_000}, Healthy), Injured},
 		{"behind", nil, nil, north, target(2, Vec2{0, -1500_000}, Healthy), Healthy},
 		{"to the side", nil, nil, north, target(2, Vec2{2 * m, 0}, Healthy), Healthy},
 		{"inside the cone edge", nil, nil, north, target(2, Vec2{1500_000, 1500_000}, Healthy), Injured},

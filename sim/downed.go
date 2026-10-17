@@ -103,7 +103,7 @@ func killerAct(k *Player, players []Player) {
 	v.Carried = false
 	v.Pos = k.Pos
 	if h := freeHook(k.Pos, players); h >= 0 {
-		v.OnHook, v.Pos, v.Rescue = uint8(h+1), HookSites[h], 0
+		v.OnHook, v.Pos, v.Rescue, v.HookTries = uint8(h+1), HookSites[h], 0, 0
 	}
 }
 
@@ -148,6 +148,19 @@ func stepRescue(players []Player, inputs map[PlayerID]Input) {
 			v.OnHook, v.Health, v.Rescue, v.Recover = 0, Injured, 0, 0
 			v.CheckActive = false // a hook check in progress just ends
 		}
+	}
+}
+
+// tryHookEscape is a hooked survivor pressing E to wriggle off: one try per
+// press, HookEscapeTries each hanging, HookEscapeChance percent each. Luck
+// takes them down injured with their hook time kept, as a rescue would.
+func tryHookEscape(p *Player, press bool) {
+	if !press || p.HookTries >= HookEscapeTries {
+		return
+	}
+	p.HookTries++
+	if rand(&p.Rng)%100 < HookEscapeChance {
+		p.OnHook, p.Health, p.Rescue, p.Recover, p.CheckActive, p.HookTries = 0, Injured, 0, 0, false, 0
 	}
 }
 

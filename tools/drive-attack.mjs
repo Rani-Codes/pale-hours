@@ -161,7 +161,9 @@ for (let i = 0; i < SWINGS; i++) {
     guestHits++;
     await place({ 2: { health: 0, boost: 0 } });
   }
-  await host.waitForTimeout(500 + ((i * 137) % 400)); // vary the phase against the sweep
+  // The next click only counts once the recovery is over (1.2 to 1.4 s).
+  await host.waitForFunction((id) => paleSim.state().players.find((p) => p.id === id).swing === 0, 1, { timeout: 4000, polling: 20 });
+  await host.waitForTimeout((i * 137) % 400); // vary the phase against the sweep
 }
 sweeping = false;
 await sweep;

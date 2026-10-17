@@ -125,6 +125,15 @@ await a.screenshot({ path: `${prefix}-A-hooked.png` });
 
 const recoverTicksAll = await host.evaluate(() => paleSim.recoverTicks);
 
+// 3a. The chance to wriggle off. The luck is the sim's (its unit tests cover a win and a loss), so this
+// checks what a player sees and does: the offer, a try counted, and no tries left meaning none.
+const escapeOffer = /wriggle off the hook: \d+% a try, 2 tries left/.test(hookedHud);
+await place({ [idA]: { hookTries: 2 } });
+await a.keyboard.press("KeyE");
+await settle(500);
+const noTries = { hud: await a.textContent("#hud"), hooked: (await everywhere(idA)).map((p) => p.onHook), tries: (await on(host, idA)).hookTries };
+await place({ [idA]: { hookTries: 0 } });
+
 // 3b. Hook skill checks. Setup brings the next check close instead of waiting up to 9 s.
 const penalty = await host.evaluate(() => paleSim.hookCheckPenalty);
 const snapA = () => host.evaluate((id) => {
@@ -266,6 +275,8 @@ const checks = {
   "neither A nor the killer gets the alert": !/TEAMMATE HOOKED/.test(alertHuds.A) && !/TEAMMATE HOOKED/.test(alertHuds.host),
   "the alert is gone after 3 s": !/TEAMMATE HOOKED/.test(alertAfter),
   "A is told the hook time": /on the hook: \d+ s left/.test(hookedHud),
+  "A is offered a chance to wriggle off the hook": escapeOffer,
+  "with no tries left, E does nothing and A says so": /no tries left to wriggle off/.test(noTries.hud) && noTries.hooked.every((h) => h > 0) && noTries.tries === 2,
   "B unhooks A injured, on every tab": all(results.rescued, "0/1"),
   "rescue keeps the hook time used": results.hookUsedKept,
   "health bar shows 1 square after a rescue": results.pipsRescued === 1,

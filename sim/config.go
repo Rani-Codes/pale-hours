@@ -73,16 +73,17 @@ const (
 
 	// The killer's attack: a visible windup, one tick to resolve, then a
 	// recovery before the next swing that is longer on a whiff, so missing
-	// costs something. He moves at full speed throughout.
+	// costs something. A double hit is at least a second and a half apart. He
+	// moves at full speed throughout.
 	AttackWindupTicks      = 6  // 0.2 s
-	AttackRecoverHitTicks  = 18 // 0.6 s
-	AttackRecoverMissTicks = 30 // 1.0 s
-	AttackRange            = 2_200_000
+	AttackRecoverHitTicks  = 36 // 1.2 s
+	AttackRecoverMissTicks = 42 // 1.4 s
+	AttackRange            = 1_760_000
 	AttackHalfAngleDeg     = 50 // the cone is twice this wide
 
 	// A hit shoves the survivor forward: a short burst that carries a
 	// running survivor HitBoostDistance.
-	HitBoostDistance = 2_200_000
+	HitBoostDistance = 3_000_000
 	HitBoostTicks    = 10
 	HitBoostSpeed    = HitBoostDistance * TickRate / HitBoostTicks
 	CrawlSpeed       = 700_000 // a downed survivor
@@ -112,6 +113,15 @@ const (
 	// A hooked survivor gets skill checks on the generator schedule; each
 	// miss costs this much hook time.
 	HookCheckPenalty = 5 * TickRate
+	// A hooked survivor can press E to wriggle off: HookEscapeChance percent
+	// a try, HookEscapeTries tries each time they are hung. They come down
+	// injured with their hook time kept, as if rescued.
+	HookEscapeChance = 10
+	HookEscapeTries  = 2
+
+	// The killer stands still for this long when a match starts, so
+	// survivors can scatter.
+	SpawnFreezeTicks = 5 * TickRate
 
 	// Vaults: a survivor beside one presses Space to go over it in
 	// VaultTicks; the killer has to go around. VaultReach is how far from

@@ -82,6 +82,8 @@ type Player struct {
 	Rescue       int16 // ticks a teammate has held E to unhook them, this hold
 	Eliminated   bool  // died on a hook; out of play
 	Stun         int16 // ticks the killer is stunned: no moving, swinging or E
+	Freeze       int16 // ticks he must stand still at the start of a match; like a stun, but not one
+	HookTries    uint8 // wriggle-off tries used since they were hung
 
 	// A vault in progress: ticks left, and the straight line it follows.
 	VaultTicks         int16
@@ -134,6 +136,10 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			continue
 		}
 		in, ok := inputs[p.ID]
+		if p.Freeze > 0 {
+			p.Freeze--
+			in = Input{Yaw: in.Yaw}
+		}
 		if p.Stun > 0 {
 			p.Stun--
 			in = Input{Yaw: in.Yaw} // he can still look around
@@ -177,6 +183,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		switch {
 		case p.OnHook != 0:
 			stepHookCheck(&p, skillPress)
+			tryHookEscape(&p, actPress)
 		case p.Health == Downed:
 			// Letting go of everything: an active skill check counts as a miss.
 			stepGate(&p, in, ok, false, next.Gens, next.Gates, powered)

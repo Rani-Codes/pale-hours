@@ -73,10 +73,18 @@ const spawnGaps = await host.evaluate((killer) => {
   const k = players.find((p) => p.id === killer);
   return players.filter((p) => p.id !== killer).map((p) => Math.max(Math.abs(p.x - k.x), Math.abs(p.y - k.y)) / 1e6);
 }, idA);
+// The killer stands still for the first seconds: he is told, and W goes nowhere.
+const frozen = (await host.evaluate((k) => paleSim.state().players.find((p) => p.id === k).freeze, idA)) > 0;
+const huntHud = await a.textContent("#hud");
+const killerStart = await host.evaluate((k) => paleSim.state().players.find((p) => p.id === k), idA);
+await a.keyboard.down("KeyW");
+await a.waitForTimeout(500);
+await a.keyboard.up("KeyW");
+const killerStill = await host.evaluate((k) => paleSim.state().players.find((p) => p.id === k), idA);
 await host.evaluate((killer) => {
   const s = paleSim.state();
   let side = 0;
-  for (const p of s.players) Object.assign(p, p.id === killer ? { x: -10e6, y: 0, trail: undefined } : { x: 10e6, y: 4e6 * side++, trail: undefined });
+  for (const p of s.players) Object.assign(p, p.id === killer ? { x: -10e6, y: 0, freeze: 0, trail: undefined } : { x: 10e6, y: 4e6 * side++, trail: undefined });
   paleSim.load(s);
 }, idA);
 await host.waitForTimeout(1500);
@@ -138,6 +146,7 @@ const checks = {
   "Start enables once the lobby is valid": startEnabled,
   "the match starts with the picked roles": roles[idA] === 1 && roles[1] === 0 && roles[idB] === 0,
   "the panel goes away in the match": panelHidden,
+  "the killer starts frozen, is told, and cannot move": frozen && /the hunt begins in \d s/.test(huntHud) && killerStill.x === killerStart.x && killerStill.y === killerStart.y,
   "every survivor spawns at least 5 m from the killer, on x or y": spawnGaps.length === 2 && spawnGaps.every((g) => g >= 5),
   "a late joiner is refused with a reason": refused,
   "the guest killer moves": killerWalk.host.y - killerBefore.y > 2e6,

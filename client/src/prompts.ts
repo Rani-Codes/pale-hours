@@ -2,7 +2,7 @@ import type { PaleSim, SimPlayer } from "./sim";
 
 type Rules = Pick<
   PaleSim,
-  "health" | "tickRate" | "hookTicks" | "hookSites" | "hookRange" | "rescueTicks" | "rescueRange" | "reviveRange" | "pickupRange" | "recoverTicks" | "hookCheckPenalty" | "roles"
+  "health" | "tickRate" | "hookTicks" | "hookSites" | "hookRange" | "rescueTicks" | "rescueRange" | "reviveRange" | "pickupRange" | "recoverTicks" | "hookCheckPenalty" | "hookEscapeChance" | "hookEscapeTries" | "roles"
 >;
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -24,6 +24,7 @@ export function status(p: SimPlayer, rules: Rules): string {
 }
 
 const secondsLeft = (recover: number, rules: Rules) => Math.ceil((rules.recoverTicks - recover) / rules.tickRate);
+const triesLeft = (p: SimPlayer, rules: Rules) => Math.max(0, rules.hookEscapeTries - p.hookTries);
 const hookLeft = (p: SimPlayer, rules: Rules) => Math.ceil((rules.hookTicks - p.hookUsed) / rules.tickRate);
 
 /** What a survivor is going through and what they can do about it. */
@@ -34,6 +35,9 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
     return [
       `on the hook: ${hookLeft(me, rules)} s left. A teammate can hold E beside you to free you` + (me.rescue ? ` (${pct(me.rescue, rules.rescueTicks)})` : ""),
       `press Space on each skill check: a miss costs ${rules.hookCheckPenalty / rules.tickRate} s`,
+      triesLeft(me, rules) > 0
+        ? `press E to wriggle off the hook: ${rules.hookEscapeChance}% a try, ${triesLeft(me, rules)} ${triesLeft(me, rules) === 1 ? "try" : "tries"} left`
+        : "no tries left to wriggle off the hook",
     ];
   }
   if (me.carried) return [`you are being carried: press E then Q, again and again, to wriggle free. ${secondsLeft(me.recover, rules)} s left`];
@@ -55,6 +59,7 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
 
 /** The killer's carry and hook prompts. */
 export function killerPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules): string[] {
+  if (me.freeze) return [`the hunt begins in ${Math.ceil(me.freeze / rules.tickRate)} s`];
   if (me.stun) return ["STUNNED"];
   if (me.carrying) {
     const v = players.find((p) => p.id === me.carrying);

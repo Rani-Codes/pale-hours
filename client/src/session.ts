@@ -196,7 +196,7 @@ export class HostSession implements Session {
     s.load({
       tick: this.curr.tick,
       players: [
-        newPlayer(killer, s.roles.killer, places[0].x, places[0].y, playerRng(this.seed, killer)),
+        { ...newPlayer(killer, s.roles.killer, places[0].x, places[0].y, playerRng(this.seed, killer)), freeze: s.spawnFreezeTicks },
         ...survivors.map((id, i) => newPlayer(id, s.roles.survivor, places[i + 1].x, places[i + 1].y, playerRng(this.seed, id))),
       ],
       ...emptyWorld(s),
