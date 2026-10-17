@@ -213,9 +213,9 @@ function draw(players: SimPlayer[], lines: string[], self: number | undefined, w
     if (mine.health === sim.health.injured && mine.boost > 0) lines.push("you are hit: run");
     lines.push(...prompts);
     const inGrass = sim.grass.some((g) => mine.x > g.minX && mine.x < g.maxX && mine.y > g.minY && mine.y < g.maxY);
-    if (mine.hideTicks >= sim.hideSettleTicks) lines.push("hidden: the killer cannot see you unless he is close");
-    else if (mine.crouching && inGrass) lines.push("settling into the grass...");
-    else if (inGrass && able && !mine.boost) lines.push("hold C to crouch and hide in the grass");
+    if (mine.hideTicks >= sim.hideSettleTicks) lines.push("hidden: stay still, and the killer cannot see you unless he is close");
+    else if (mine.crouching && inGrass) lines.push("hold still to hide in the grass...");
+    else if (inGrass && able && !mine.boost) lines.push("hold C to crouch, then stay still, to hide in the grass");
     if (near && able) lines.push("hold E to repair");
     else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.opening && !mine.checkActive) lines.push("opening the gate...");

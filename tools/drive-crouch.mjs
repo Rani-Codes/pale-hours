@@ -3,6 +3,7 @@
 // x 4..10, y 8..14 through paleSim.load; the rest is real keys.
 //   1. Holding C in grass settles into hiding: host and guest agree, no corrections.
 //   2. The killer, far off, no longer sees the survivor: his HUD list says so.
+//      Moving shows them again; keeping still hides them again.
 //   3. Within reach of the reveal range the survivor shows again.
 //   4. Letting go of C stands them up and shows them.
 //   5. Crouching in the open hides nobody; crouched walking is slow.
@@ -66,6 +67,14 @@ await host.screenshot({ path: `${prefix}-killer-far.png` });
 await guest.screenshot({ path: `${prefix}-survivor-hidden.png` });
 const afterCrouch = await corrections();
 
+// Moving in the grass shows them; keeping still hides them again.
+await guest.keyboard.down("KeyW");
+await settle(300);
+const seenMoving = /survivor x/.test(await hostHud());
+await guest.keyboard.up("KeyW");
+await settle(1000);
+const hidAgain = /out of sight/.test(await hostHud());
+
 // 3. The killer walks up.
 await place({ 1: { x: 10 * M, y: 8 * M } });
 await settle();
@@ -109,8 +118,10 @@ const checks = {
   "holding C in grass hides the survivor on the host": hid.host.crouching && hid.host.hideTicks >= settleTicks,
   "the guest predicts the same": hid.guest.crouching && hid.guest.hideTicks === hid.host.hideTicks,
   "no corrections from crouching": afterCrouch - before === 0,
-  "the survivor is told they are hidden": /hidden: the killer/.test(hint),
+  "the survivor is told they are hidden": /hidden: stay still/.test(hint),
   "the far killer cannot see them": unseen,
+  "moving in the grass shows them": seenMoving,
+  "keeping still hides them again": hidAgain,
   "the close killer can": seenClose,
   "standing up shows them": !up.crouching && up.hideTicks === 0 && seenUp,
   "crouching in the open hides nobody": open1.crouching && open1.hideTicks === 0,

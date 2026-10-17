@@ -32,19 +32,55 @@ func TestCrouchSlowsAndHidesInGrass(t *testing.T) {
 	if !s.Players[0].Hidden() {
 		t.Fatal("not hidden after settling in grass")
 	}
-	// Walking crouched is slow, and still hidden.
+	// Walking crouched is slow, and shows them the moment they move.
 	before := s.Players[0].Pos
-	s = crouchFor(s, 2, TickRate, Input{MoveX: MaxAxis})
+	s = crouchFor(s, 2, 1, Input{MoveX: MaxAxis})
+	if s.Players[0].Hidden() {
+		t.Error("moving did not show them")
+	}
+	s = crouchFor(s, 2, TickRate-1, Input{MoveX: MaxAxis})
 	if got := int64(s.Players[0].Pos.X - before.X); got < CrouchSpeed*99/100 || got > CrouchSpeed {
 		t.Errorf("crouched a second at %d um, want about %d", got, CrouchSpeed)
 	}
+	if s.Players[0].Hidden() {
+		t.Error("walking crouched in grass kept them hidden")
+	}
+	// Stopping hides them again, after settling anew.
+	s = crouchFor(s, 2, HideSettleTicks-1, Input{})
+	if s.Players[0].Hidden() {
+		t.Error("hidden before settling again")
+	}
+	s = crouchFor(s, 2, 1, Input{})
 	if !s.Players[0].Hidden() {
-		t.Error("walking crouched in grass revealed them")
+		t.Error("not hidden after stopping and settling")
+	}
+	// Walking again shows them again.
+	s = crouchFor(s, 2, 1, Input{MoveY: MaxAxis})
+	if s.Players[0].Hidden() {
+		t.Error("walking north kept them hidden")
 	}
 	// Standing up reveals at once.
 	s = Step(s, map[PlayerID]Input{2: {}})
 	if p := s.Players[0]; p.Crouching || p.Hidden() {
 		t.Errorf("after standing: %+v", p)
+	}
+}
+
+// Hiding is only about what the killer sees: his swing still lands on a hidden survivor.
+func TestHiddenSurvivorCanBeHit(t *testing.T) {
+	withMap(t, nil, nil)
+	withGrass(t, patch)
+	s := State{Players: []Player{
+		settled(Player{ID: 1, Role: Killer, Pos: Vec2{0, -AttackRange / 2}}),
+		target(2, Vec2{}, Healthy),
+	}}
+	s = crouchFor(s, 2, HideSettleTicks, Input{})
+	if !s.Players[1].Hidden() {
+		t.Fatal("setup: not hidden")
+	}
+	s = swing(s, 0)
+	if p := s.Players[1]; p.Health != Injured || p.Hidden() || p.Crouching {
+		t.Errorf("after the hit: %+v", p)
 	}
 }
 

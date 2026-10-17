@@ -142,6 +142,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		if p.VaultTicks == 0 && skillPress && startVault(&p) {
 			skillPress = false
 		}
+		before := p.Pos
 		switch {
 		case p.VaultTicks > 0:
 			stepVault(&p)
@@ -150,7 +151,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			p.Pos = move(p.Pos, in, speed(p), shut[p.Role])
 		}
 		p.Trail[next.Tick%TrailLen] = p.Pos
-		stepHide(&p)
+		stepHide(&p, p.Pos != before)
 		p.Boost = max(p.Boost-1, 0)
 		if p.Health == Downed {
 			in.Act = false

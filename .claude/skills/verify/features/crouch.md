@@ -1,11 +1,12 @@
 # Crouch and tall grass
 
-Hold C to crouch. A crouched survivor walks slowly and cannot repair, open a gate, help or vault. Crouched inside one of the six tall grass patches for half a second, they are hidden: the killer's screen does not draw them and his HUD list says "out of sight", unless he is within 5 m. A hit, being downed, carried or hooked, or standing up ends it.
+Hold C to crouch. A crouched survivor walks slowly and cannot repair, open a gate, help or vault. Crouched and still inside one of the six tall grass patches for half a second, they are hidden (moving shows them at once): the killer's screen does not draw them and his HUD list says "out of sight", unless he is within 5 m. A hit, being downed, carried or hooked, or standing up ends it.
 
 ## Sub-features
 
 - `crouch-hide` settles a crouched survivor in grass into hiding, host and guest agreeing with no corrections, and tells them "hidden".
 - `crouch-far` hides them from a killer 10 m off: his HUD says "out of sight".
+- `crouch-move` shows them the moment they move in the grass, and hides them again after half a second still.
 - `crouch-close` shows them to a killer within 5 m.
 - `crouch-stand` shows them again once C is released.
 - `crouch-open` hides nobody crouched outside grass.
