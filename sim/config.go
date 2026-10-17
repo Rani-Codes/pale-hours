@@ -81,11 +81,12 @@ const (
 	AttackRange            = 1_760_000
 	AttackHalfAngleDeg     = 50 // the cone is twice this wide
 
-	// A hit shoves the survivor forward: a short burst that carries a
-	// running survivor HitBoostDistance.
-	HitBoostDistance = 3_000_000
-	HitBoostTicks    = 10
-	HitBoostSpeed    = HitBoostDistance * TickRate / HitBoostTicks
+	// A hit sends the survivor sprinting: HitBoostSpeed for HitBoostTicks
+	// while they run, enough to leave a chasing killer several metres behind
+	// (his speed is 4.6 m/s, theirs 4.0).
+	HitBoostSpeed    = 7_500_000
+	HitBoostTicks    = 60 // 2 s
+	HitBoostDistance = HitBoostSpeed * HitBoostTicks / TickRate
 	CrawlSpeed       = 700_000 // a downed survivor
 
 	// Downed. Left alone long enough, a survivor gets back up injured. The

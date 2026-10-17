@@ -38,8 +38,31 @@ func TestADoubleHitTakesLonger(t *testing.T) {
 	}
 }
 
-func TestAHitShovesFasterThanBefore(t *testing.T) {
-	if HitBoostSpeed < 8_500_000 {
-		t.Fatalf("the shove runs at %d µm/s, want at least 8.5 m/s (it was 6.6)", HitBoostSpeed)
+// A hit survivor and the killer both run straight ahead. The shove has to
+// leave them well clear when it ends, or the killer is on them again at once.
+func TestAHitSurvivorGetsClearOfAChasingKiller(t *testing.T) {
+	withMap(t, nil, nil)
+	s := State{Players: []Player{killerAt(Vec2{}, 0), target(2, Vec2{0, 1_200_000}, Healthy)}}
+	run := map[PlayerID]Input{1: {MoveY: 127}, 2: {MoveY: 127}}
+	press := map[PlayerID]Input{1: {MoveY: 127, Attack: true}, 2: {MoveY: 127}}
+	s = Step(s, press)
+	var gap int32
+	boosted := false
+	for ticks := 0; ticks < 6*TickRate; ticks++ {
+		s = Step(s, run)
+		if s.Players[1].Boost > 0 {
+			boosted = true
+		}
+		if boosted && s.Players[1].Boost == 0 {
+			gap = s.Players[1].Pos.Y - s.Players[0].Pos.Y
+			break
+		}
+	}
+	if !boosted {
+		t.Fatal("the survivor was never hit")
+	}
+	t.Logf("the survivor is %.1f m ahead when the boost ends", float64(gap)/1e6)
+	if gap < 5_000_000 {
+		t.Fatalf("when the boost ends the survivor is %d µm ahead, want at least 5 m", gap)
 	}
 }
