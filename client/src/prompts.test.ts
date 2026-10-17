@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { healthPips, killerPrompts, status, survivorPrompts } from "./prompts.ts";
+import { carryBanner, healthPips, killerPrompts, repairLine, status, survivorPrompts } from "./prompts.ts";
 import { newPlayer } from "./sim.ts";
 
 const rules = {
@@ -46,4 +46,32 @@ test("the killer is prompted to pick up, then to hang by a free hook", () => {
   assert.deepEqual(killerPrompts(carrying, [carrying, held], rules), ["press E to hang them on the hook. They break free in 3 s."]);
   assert.deepEqual(killerPrompts(carrying, [carrying, held, survivor(3, 0, { onHook: 1 })], rules), ["carrying: find a hook, or press E to drop them. They break free in 3 s."]);
   assert.deepEqual(killerPrompts({ ...killer, stun: 10 }, [killer], rules), ["STUNNED"]);
+});
+
+test("a downed survivor is told how many seconds until they get up on their own", () => {
+  const me = survivor(2, 0, { health: 2, recover: 0 });
+  assert.deepEqual(survivorPrompts(me, [me], rules), ["you are down: crawl away and hide. Getting up on your own in 60 s"]);
+  const later = { ...me, recover: 1800 - 45 };
+  assert.deepEqual(survivorPrompts(later, [later], rules), ["you are down: crawl away and hide. Getting up on your own in 2 s"]);
+});
+
+test("a carried survivor is told how many seconds until they break free", () => {
+  const me = survivor(2, 0, { health: 2, carried: true, recover: 1800 - 45 });
+  assert.deepEqual(survivorPrompts(me, [me], rules), ["you are being carried: breaking free in 2 s"]);
+});
+
+test("the killer gets a banner naming who is on his shoulder", () => {
+  const killer = { ...newPlayer(1, 1, 0, 0, 1), carrying: 2 };
+  assert.equal(carryBanner(killer, (id) => `Wren${id}`), "Wren2 is on your shoulder");
+  assert.equal(carryBanner({ ...killer, carrying: 0 }, (id) => `Wren${id}`), "");
+});
+
+test("a repairing survivor sees the progress of the generator beside them", () => {
+  const sites = [{ x: 20_000_000, y: 0 }, { x: 0, y: 0 }];
+  const world = { genSites: sites, repairRange: 1_800_000, genTicks: 2400 };
+  const me = survivor(2, 500_000, { repairing: true });
+  assert.equal(repairLine(me, [2400, 600], world), "generator 25%");
+  assert.equal(repairLine({ ...me, repairing: false }, [2400, 600], world), "");
+  assert.equal(repairLine({ ...me, opening: 1 }, [2400, 600], world), "");
+  assert.equal(repairLine(survivor(2, 10_000_000, { repairing: true }), [2400, 600], world), "");
 });

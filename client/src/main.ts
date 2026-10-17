@@ -5,7 +5,7 @@ import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
-import { healthPips, killerPrompts, survivorPrompts } from "./prompts";
+import { healthPips, carryBanner, killerPrompts, repairLine, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
 import { newlyDone } from "./genflash";
 import { HookAlerts } from "./hookalert";
@@ -154,6 +154,7 @@ toLobby.addEventListener("click", () => {
   toLobby.blur();
 });
 
+const carryBox = document.querySelector<HTMLDivElement>("#carry")!;
 const healthBar = document.querySelector<HTMLDivElement>("#health")!;
 const pips = [...healthBar.querySelectorAll<HTMLDivElement>(".pip")];
 
@@ -208,8 +209,12 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
     if (near && able) lines.push("hold E to repair");
     else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.opening && !mine.checkActive) lines.push("opening the gate...");
-    else if (mine.repairing && !mine.checkActive) lines.push("working...");
+    const repair = repairLine(mine, gens, sim);
+    if (repair) lines.push(repair);
   }
+  const banner = mine?.role === sim.roles.killer ? carryBanner(mine, nameOfId) : "";
+  carryBox.textContent = banner;
+  carryBox.style.display = banner ? "block" : "none";
   // Two squares: full health, one when injured, none when down.
   healthBar.style.display = mine?.role === sim.roles.survivor && !isOut(mine) ? "flex" : "none";
   const filled = mine ? healthPips(mine, sim) : 0;

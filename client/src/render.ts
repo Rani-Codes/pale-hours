@@ -191,12 +191,15 @@ export class Renderer {
       this.gl.render(this.scene, this.overhead);
       return;
     }
-    // Your own body stays out of your first-person view.
+    // Your own body stays out of your first-person view. The killer sees through
+    // his own eyes except while he carries someone: then the camera pulls back
+    // behind him like a survivor's, so he sees them on his shoulder.
     const killer = me.role === this.sim.roles.killer;
+    const firstPerson = killer && me.carrying === 0;
     for (const [id, a] of this.actors) {
       const p = players.find((q) => q.id === id);
       // The killer's own body, and whoever he carries, would sit inside his camera.
-      a.model.object.visible = !(killer && (id === self || p?.carried)) && !gone(p) && !this.hiddenFrom(me, p);
+      a.model.object.visible = !(firstPerson && (id === self || p?.carried)) && !gone(p) && !this.hiddenFrom(me, p);
     }
     this.beams.forEach((b, i) => (b.visible = (noise[i] ?? 0) > 0));
 
@@ -205,7 +208,7 @@ export class Renderer {
     const fx = Math.sin(yaw);
     const fz = -Math.cos(yaw);
     this.eye.rotation.set(-pitch, -yaw, 0);
-    if (killer) {
+    if (firstPerson) {
       this.eye.fov = view.killer.fov;
       this.eye.position.set(x, view.killer.eyeHeight, z);
     } else {
@@ -217,11 +220,11 @@ export class Renderer {
     }
     this.lantern.position.copy(this.eye.position);
     this.eye.updateProjectionMatrix();
-    if (killer) {
+    if (firstPerson) {
       const a = this.actors.get(me.id)!;
       this.viewModel.update(this.eye, this.swingView(me, a, now), a.phase, Math.min(1, a.speed / 4));
     }
-    this.retro.render(this.gl, this.scene, this.eye, killer && me.stun === 0 ? this.viewModel.scene : undefined);
+    this.retro.render(this.gl, this.scene, this.eye, firstPerson && me.stun === 0 ? this.viewModel.scene : undefined);
   }
 
   /** Whether the killer viewing cannot see this survivor: crouched in grass, and he is not close. */

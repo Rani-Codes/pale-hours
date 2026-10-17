@@ -28,6 +28,7 @@
       #check-zone { position: absolute; top: 0; bottom: 0; background: #d8d4c8; }
       #check-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #c0392b; }
       #check-result { position: fixed; left: 50%; top: 62%; transform: translate(-50%, 24px); font: 13px ui-monospace, monospace; color: #d8d4c8; }
+      #carry { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: none; padding: 8px 18px; background: rgba(8, 8, 10, 0.85); border: 2px solid #c0392b; color: #e8e2d4; font: 20px ui-monospace, monospace; letter-spacing: 0.04em; pointer-events: none; }
       #health { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; gap: 6px; }
       #health .pip { width: 26px; height: 26px; border: 2px solid #d8d4c8; box-sizing: border-box; }
       #health .pip.full { background: #c0392b; border-color: #c0392b; }
@@ -48,6 +49,7 @@
   </head>
   <body>
     <canvas id="view"></canvas>
+    <div id="carry"></div>
     <div id="hud">loading sim…</div>
     <div id="lobby">
       <label>Vol <input id="volume" type="range" min="0" max="100" step="5" /></label>

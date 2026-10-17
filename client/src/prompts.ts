@@ -23,6 +23,7 @@ export function status(p: SimPlayer, rules: Rules): string {
   return ["healthy", "injured", "downed"][p.health] ?? "";
 }
 
+const secondsLeft = (recover: number, rules: Rules) => Math.ceil((rules.recoverTicks - recover) / rules.tickRate);
 const hookLeft = (p: SimPlayer, rules: Rules) => Math.ceil((rules.hookTicks - p.hookUsed) / rules.tickRate);
 
 /** What a survivor is going through and what they can do about it. */
@@ -35,11 +36,11 @@ export function survivorPrompts(me: SimPlayer, players: SimPlayer[], rules: Rule
       `press Space on each skill check: a miss costs ${rules.hookCheckPenalty / rules.tickRate} s`,
     ];
   }
-  if (me.carried) return [`you are being carried: breaking free ${pct(me.recover, rules.recoverTicks)}`];
+  if (me.carried) return [`you are being carried: breaking free in ${secondsLeft(me.recover, rules)} s`];
   const lines: string[] = [];
   if (me.health === rules.health.downed) {
     const helper = players.some((p) => p.helping === me.id);
-    lines.push(helper ? "a teammate is getting you up" : `you are down: crawl away. Getting up on your own...`);
+    lines.push(helper ? "a teammate is getting you up" : `you are down: crawl away and hide. Getting up on your own in ${secondsLeft(me.recover, rules)} s`);
     return lines;
   }
   if (me.helping) return ["helping them up: hit the skill check"];
@@ -57,7 +58,7 @@ export function killerPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules)
   if (me.stun) return ["STUNNED"];
   if (me.carrying) {
     const v = players.find((p) => p.id === me.carrying);
-    const freeIn = v ? ` They break free in ${Math.ceil((rules.recoverTicks - v.recover) / rules.tickRate)} s.` : "";
+    const freeIn = v ? ` They break free in ${secondsLeft(v.recover, rules)} s.` : "";
     const taken = new Set(players.map((p) => p.onHook).filter(Boolean));
     const hook = rules.hookSites.some((h, i) => !taken.has(i + 1) && dist(h, me) <= rules.hookRange);
     return [(hook ? "press E to hang them on the hook." : "carrying: find a hook, or press E to drop them.") + freeIn];
@@ -66,4 +67,20 @@ export function killerPrompts(me: SimPlayer, players: SimPlayer[], rules: Rules)
     (p) => p.role === rules.roles.survivor && p.health === rules.health.downed && !p.carried && !p.onHook && !p.eliminated && !p.escaped && dist(p, me) <= rules.pickupRange,
   );
   return downed ? ["press E to pick them up"] : [];
+}
+
+/** The big banner for the killer once a survivor is on his shoulder, or "" when his arms are empty. */
+export function carryBanner(me: SimPlayer, nameOf: (id: number) => string): string {
+  return me.carrying ? `${nameOf(me.carrying)} is on your shoulder` : "";
+}
+
+/** How far along the generator a repairing survivor stands beside is, or "" when they are not repairing one. */
+export function repairLine(me: SimPlayer, gens: number[], world: Pick<PaleSim, "genSites" | "repairRange" | "genTicks">): string {
+  if (!me.repairing || me.opening || me.helping || me.onHook) return "";
+  let best = -1;
+  world.genSites.forEach((s, i) => {
+    const d = dist(s, me);
+    if (d <= world.repairRange && (best < 0 || d < dist(world.genSites[best], me))) best = i;
+  });
+  return best < 0 ? "" : `generator ${pct(gens[best], world.genTicks)}`;
 }
