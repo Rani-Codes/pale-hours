@@ -79,7 +79,7 @@ await host.evaluate((killer) => {
   for (const p of s.players) Object.assign(p, p.id === killer ? { x: -10e6, y: 0, trail: undefined } : { x: 10e6, y: 4e6 * side++, trail: undefined });
   paleSim.load(s);
 }, idA);
-await host.waitForTimeout(700);
+await host.waitForTimeout(1500);
 const placedCorrections = await a.evaluate(() => paleSession.stats().corrections); // paleSim.load moves count
 const panelHidden = !(await visible(a, "#room"));
 

@@ -102,40 +102,42 @@ export function vaultModel(w: number, h: number, d: number): Group {
 }
 
 /**
- * A wooden pallet across a gap. Standing it is an open frame taller than a
- * person that anyone walks through; thrown down it is a waist-high barricade
- * of planks; broken it is splinters on the ground. length runs along local x.
+ * A wooden pallet hinged to a brick wall. Standing, it is a tall board frame
+ * flush against the wall's end and the gap is open. Thrown down it tips over
+ * sideways about its bottom edge, away from the wall, and lies slanted across
+ * the gap as a barricade; broken, it is splinters on the ground. Local x runs
+ * along the gap, hinge is -1 when the wall is at the low end and 1 at the high end.
  */
 export class PalletModel {
   readonly object = new Group();
-  private readonly standing = new Group();
-  private readonly down = new Group();
+  private readonly pivot = new Group(); // at the wall, the frame turns about its bottom edge
   private readonly broken = new Group();
+  private readonly lean: number; // which way x it falls: away from the wall
   private state = -1;
-  private fell = 0; // seconds since it went down, for the slam
-  private home = { x: 0, z: 0 };
+  private fall = 0; // 0 standing, 1 fully down
 
-  constructor(length: number, thick: number) {
+  constructor(length: number, hinge: -1 | 1) {
     const light = lambert(wood(), 0xe6c48e);
     const dark = lambert(wood(), 0xb8935c);
-    const plank = (len: number, h: number, mat: MeshLambertMaterial, x: number, y: number) => {
-      const m = new Mesh(worldBox(len, h, thick, 0.8), mat);
-      m.position.set(x, y, 0);
-      return m;
-    };
-    const post = (h: number, x: number) => {
-      const m = new Mesh(worldBox(0.14, h, thick + 0.08, 0.8), dark);
-      m.position.set(x, h / 2, 0);
-      return m;
-    };
-    // Standing: two posts, a header and three thin rails, with air between.
-    const inner = length - 0.28;
-    this.standing.add(post(2.1, -length / 2 + 0.07), post(2.1, length / 2 - 0.07), plank(inner, 0.16, light, 0, 2.0));
-    for (const y of [0.35, 0.95, 1.55]) this.standing.add(plank(inner, 0.1, light, 0, y));
-    // Down: the frame laid over, a close run of planks waist high.
-    this.down.add(post(1.0, -length / 2 + 0.07), post(1.0, length / 2 - 0.07));
-    for (let i = 0; i < 5; i++) this.down.add(plank(inner, 0.16, i % 2 ? light : dark, 0, 0.1 + i * 0.2));
-    // Broken: a few planks flung about.
+    const depth = 1.2; // across the gap's width, kept inside the blocked footprint
+    const board = 0.12;
+    this.lean = -hinge;
+    this.pivot.position.set((hinge * length) / 2, 0, 0);
+    // Posts at both edges and the middle, rails across them, all against the wall.
+    const frame = new Group();
+    frame.position.x = (-hinge * board) / 2;
+    for (const z of [-depth / 2 + 0.07, 0, depth / 2 - 0.07]) {
+      const post = new Mesh(worldBox(board, length, 0.14, 0.8), dark);
+      post.position.set(0, length / 2, z);
+      frame.add(post);
+    }
+    for (const y of [0.25, 0.7, 1.15, 1.6, length - 0.1]) {
+      const rail = new Mesh(worldBox(board + 0.02, 0.12, depth, 0.8), light);
+      rail.position.set(0, y, 0);
+      frame.add(rail);
+    }
+    this.pivot.add(frame);
+    // Broken: a few planks flung about the gap.
     const bits: [number, number, number][] = [[-0.6, 0.15, 0.3], [0.1, -0.1, -0.5], [0.7, 0.2, 0.9], [-0.1, 0.0, 1.4]];
     for (const [x, z, yaw] of bits) {
       const m = new Mesh(worldBox(0.7, 0.06, 0.16, 0.8), dark);
@@ -143,24 +145,24 @@ export class PalletModel {
       m.rotation.y = yaw;
       this.broken.add(m);
     }
-    this.object.add(this.standing, this.down, this.broken);
+    this.object.add(this.pivot, this.broken);
     this.set(0, 0, 0);
   }
 
   /** Show state (0 standing, 1 down, 2 broken); breaking is the killer's progress 0..1, which makes it shudder. */
   set(state: number, breaking: number, dt: number) {
     if (state !== this.state) {
-      if (state === 1) this.fell = 0.25;
+      // One that is already down when first seen (a match joined late) simply lies there.
+      this.fall = state === 1 && this.state !== -1 ? 0 : state === 1 ? 1 : 0;
       this.state = state;
-      this.standing.visible = state === 0;
-      this.down.visible = state === 1;
+      this.pivot.visible = state < 2;
       this.broken.visible = state === 2;
     }
-    this.fell = Math.max(0, this.fell - dt);
-    this.down.scale.y = 1 + this.fell * 1.2; // a slam as it lands
-    const shake = breaking > 0 ? 0.04 * Math.sin(performance.now() / 22) : 0;
-    this.down.position.x = shake;
-    this.down.rotation.z = shake * 0.8;
+    if (state === 1) this.fall = Math.min(1, this.fall + dt / 0.3);
+    // Gravity: it starts slowly and slams down.
+    const tilt = 1.26 * this.fall * this.fall;
+    const shake = state === 1 && breaking > 0 ? 0.03 * Math.sin(performance.now() / 22) : 0;
+    this.pivot.rotation.z = -this.lean * tilt + shake;
   }
 }
 
@@ -415,9 +417,9 @@ export class ExitModel {
   }
 }
 
-/** The tall beam over a generator whose skill check was just missed, or over a hook a teammate was just hung on. Seen through walls and fog. */
-export function noiseBeam(color = 0xffd27a): Mesh {
-  const beam = new Mesh(new BoxGeometry(0.5, 60, 0.5), new MeshBasicMaterial({ color, transparent: true, opacity: 0.55, fog: false, depthTest: false }));
+/** The tall beam over a generator whose skill check was just missed (bright white), or over a hook a teammate was just hung on (its own colour). Seen through walls and fog. */
+export function noiseBeam(color = 0xffffff, opacity = 0.95): Mesh {
+  const beam = new Mesh(new BoxGeometry(0.7, 60, 0.7), new MeshBasicMaterial({ color, transparent: true, opacity, fog: false, depthTest: false }));
   beam.position.y = 30;
   beam.renderOrder = 10;
   beam.visible = false;

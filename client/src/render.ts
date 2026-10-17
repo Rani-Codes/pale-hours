@@ -16,6 +16,7 @@ import { KillerModel, SurvivorModel, type SwingView } from "./art/characters";
 import { RetroPass } from "./art/retro";
 import { ViewModel } from "./art/viewmodel";
 import type { HookAlert } from "./hookalert";
+import { palletHinge } from "./pallet";
 import { ExitModel, floor, GateModel, GeneratorFlash, GeneratorModel, hookModel, noiseBeam, PalletModel, vaultModel, wall } from "./art/world";
 import type { PaleSim, SimPlayer, World } from "./sim";
 
@@ -90,7 +91,9 @@ export class Renderer {
     for (const b of sim.palletSites) {
       const w = (b.maxX - b.minX) / M;
       const d = (b.maxY - b.minY) / M;
-      const pallet = new PalletModel(Math.max(w, d), Math.min(w, d));
+      // The map hinges every pallet to a wall; the sim's tests keep it so.
+      const { hinge = -1 } = palletHinge(b, sim.walls) ?? {};
+      const pallet = new PalletModel(Math.max(w, d), hinge);
       pallet.object.position.set((b.minX + b.maxX) / 2 / M, 0, -(b.minY + b.maxY) / 2 / M);
       if (d > w) pallet.object.rotation.y = Math.PI / 2;
       this.pallets.push(pallet);
@@ -126,7 +129,7 @@ export class Renderer {
       const hook = hookModel();
       hook.position.set(site.x / M, 0, -site.y / M);
       // Flagged for the other survivors for a moment when someone is hung here.
-      const beam = noiseBeam(view.hookAlert.color);
+      const beam = noiseBeam(view.hookAlert.color, 0.55);
       beam.position.set(site.x / M, beam.position.y, -site.y / M);
       this.hookBeams.push(beam);
       this.scene.add(hook, beam);

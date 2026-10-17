@@ -191,10 +191,6 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
     lines.push(...carryPrompts);
     const breakPrompt = palletPrompt(mine, world.pallets, world.palletBreak, sim);
     if (breakPrompt && carryPrompts.length === 0) lines.push(breakPrompt);
-    // Where a missed skill check just went off, so the killer can find it even when it is out of view.
-    world.noise.forEach((ticks, i) => {
-      if (ticks > 0) lines.push(`NOISE generator ${i + 1}: ${bearing(mine, sim.genSites[i])}`);
-    });
   }
   if (mine && mine.role === sim.roles.survivor) {
     const near = sim.genSites.some((s, i) => gens[i] < sim.genTicks && Math.hypot(s.x - mine.x, s.y - mine.y) <= sim.repairRange);

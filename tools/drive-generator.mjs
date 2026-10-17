@@ -106,7 +106,7 @@ const checks = {
   "letting it time out is a miss": miss.checkResult === 2,
   "a miss costs progress": afterMiss < beforeMiss,
   "a miss makes the generator loud on the host": loud,
-  "the killer HUD names the noise": /NOISE generator 3: \d+ m, \d+° (left|right)/.test(hostHud),
+  "the killer gets the light, not a bearing or distance": !/NOISE|\d+ m, \d+°/.test(hostHud),
   "host and guest agree on progress": hostGen === guestGen,
   "host and guest agree on the last check": hostP.checkResult === guestP.checkResult && hostP.checkAge === guestP.checkAge,
   "no corrections": stats.corrections === placedCorrections,

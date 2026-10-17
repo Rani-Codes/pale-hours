@@ -223,6 +223,39 @@ func TestKillerBreaksADroppedPallet(t *testing.T) {
 	})
 }
 
+// abutsAWall reports whether one end of b touches a wall: the pallet is hinged
+// to it, so it never stands alone in open ground.
+func abutsAWall(b Box) bool {
+	acrossX := b.MaxX-b.MinX < b.MaxY-b.MinY
+	ends := [2]Box{b, b}
+	if acrossX {
+		ends[0].MaxY, ends[1].MinY = b.MinY, b.MaxY
+		ends[0].MinY, ends[1].MaxY = b.MinY-wallThick, b.MaxY+wallThick
+	} else {
+		ends[0].MaxX, ends[1].MinX = b.MinX, b.MaxX
+		ends[0].MinX, ends[1].MaxX = b.MinX-wallThick, b.MaxX+wallThick
+	}
+	for _, e := range ends {
+		for _, w := range Walls {
+			if e.MinX <= w.MaxX && w.MinX <= e.MaxX && e.MinY <= w.MaxY && w.MinY <= e.MaxY {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestEveryPalletIsHingedToAWall(t *testing.T) {
+	for i, b := range PalletSites {
+		if !abutsAWall(b) {
+			t.Errorf("pallet %d at %v touches no wall at either end", i, b)
+		}
+	}
+	if abutsAWall(Box{40 * m, 40 * m, 42 * m, 40*m + wallThick}) {
+		t.Fatal("a pallet far from every wall counted as attached")
+	}
+}
+
 func TestPalletSitesFitTheMap(t *testing.T) {
 	if n := len(PalletSites); n < 4 || n > 8 {
 		t.Fatalf("%d pallets, want a few", n)

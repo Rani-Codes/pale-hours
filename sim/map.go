@@ -58,17 +58,18 @@ var Vaults = []Box{
 	vWall(-4, 4, 6),
 }
 
-// PalletSites are the wooden pallets: thin boxes standing upright in the
-// doorways of the two buildings and beside the loose cover, where a chase
-// ends up. A standing pallet is walked through; thrown down once by a
+// PalletSites are the wooden pallets: thin boxes hinged to a brick wall, in the
+// doorways of the two buildings and at the end of two loose walls, where a
+// chase ends up. Every one touches a wall at one end, and falls across its gap
+// away from it. A standing pallet is walked through; thrown down once by a
 // survivor it blocks everyone and can be vaulted, until the killer breaks it.
 var PalletSites = []Box{
 	hWall(-19, -17, 20), // building A, north doorway
 	hWall(-16, -14, 8),  // building A, south doorway
 	hWall(16, 18, -10),  // building B, north doorway
 	hWall(19, 21, -22),  // building B, south doorway
-	hWall(-8, -5, -14),  // north of the square cover at (-9, -19)
-	hWall(6, 9, 21),     // north of the square cover at (6, 16)
+	hWall(-18, -16, -8), // the east end of the loose wall at y = -8
+	hWall(16, 18, 8),    // the west end of the loose wall at y = 8
 }
 
 // GenSites are the generator positions. They block movement like walls.
