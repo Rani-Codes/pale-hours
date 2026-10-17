@@ -160,6 +160,7 @@ export interface PaleSim {
   /** Where the wooden pallets stand, as boxes in micrometers. */
   palletSites: Wall[];
   palletReach: number;
+  maxRepairers: number;
   spawnFreezeTicks: number;
   hookEscapeChance: number;
   hookEscapeTries: number;

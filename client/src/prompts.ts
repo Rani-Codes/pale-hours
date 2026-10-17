@@ -79,15 +79,41 @@ export function carryBanner(me: SimPlayer, nameOf: (id: number) => string): stri
   return me.carrying ? `${nameOf(me.carrying)} is on your shoulder` : "";
 }
 
-/** How far along the generator a repairing survivor stands beside is, or "" when they are not repairing one. */
-export function repairLine(me: SimPlayer, gens: number[], world: Pick<PaleSim, "genSites" | "repairRange" | "genTicks">): string {
-  if (!me.repairing || me.opening || me.helping || me.onHook) return "";
+type GenWorld = Pick<PaleSim, "genSites" | "repairRange" | "genTicks" | "maxRepairers">;
+
+/** The nearest unfinished generator within reach of p, or -1. */
+function generatorAt(p: { x: number; y: number }, gens: number[], world: Pick<PaleSim, "genSites" | "repairRange" | "genTicks">): number {
   let best = -1;
   world.genSites.forEach((s, i) => {
-    const d = dist(s, me);
-    if (d <= world.repairRange && (best < 0 || d < dist(world.genSites[best], me))) best = i;
+    const d = dist(s, p);
+    if (d <= world.repairRange && gens[i] < world.genTicks && (best < 0 || d < dist(world.genSites[best], p))) best = i;
   });
-  return best < 0 ? "" : `generator ${pct(gens[best], world.genTicks)}`;
+  return best;
+}
+
+/** How many survivors are repairing the generator at index i. */
+function crewAt(i: number, players: SimPlayer[], gens: number[], world: GenWorld): number {
+  return players.filter((q) => q.repairing && generatorAt(q, gens, world) === i).length;
+}
+
+/**
+ * How far along the generator a repairing survivor stands beside is, and how
+ * many are on it: each one adds their own work, so two are twice as fast.
+ * "" when they are not repairing one.
+ */
+export function repairLine(me: SimPlayer, players: SimPlayer[], gens: number[], world: GenWorld): string {
+  if (!me.repairing || me.opening || me.helping || me.onHook) return "";
+  const best = generatorAt(me, gens, world);
+  if (best < 0) return "";
+  const crew = crewAt(best, players, gens, world);
+  return `generator ${pct(gens[best], world.genTicks)}` + (crew > 1 ? `, ${crew} working: ${crew}x speed` : "");
+}
+
+/** What a survivor beside a generator that already has a full crew is told, or "". */
+export function fullGeneratorPrompt(me: SimPlayer, players: SimPlayer[], gens: number[], world: GenWorld): string {
+  if (me.repairing) return "";
+  const i = generatorAt(me, gens, world);
+  return i >= 0 && crewAt(i, players, gens, world) >= world.maxRepairers ? `this generator already has ${world.maxRepairers} survivors working` : "";
 }
 
 const distToBox = (p: { x: number; y: number }, b: { minX: number; minY: number; maxX: number; maxY: number }) =>

@@ -22,15 +22,25 @@ const (
 )
 
 // stepRepair advances one survivor's repair and skill check for this tick.
-// It reads in.Act and press (the skill key went down this tick), and
+// crew counts the survivors working each generator, from the tick before,
+// and was is whether p was one of them. It reads in.Act and press (the
+// skill key went down this tick), and
 // updates p and gens in place. gens is the next state's own slice, so the
 // caller's state is never touched. Each player draws from their own Rng, so
 // one player's checks never depend on who else is repairing and a guest can
 // predict its own checks exactly.
-func stepRepair(p *Player, in Input, hasInput, press bool, gens []Generator) {
+func stepRepair(p *Player, in Input, hasInput, press bool, gens []Generator, crew []int, was bool) {
 	gen := -1
 	if p.Role == Survivor && hasInput && in.Act {
 		gen = repairable(p.Pos, gens)
+		// Someone already working keeps their place; a newcomer needs a free one.
+		if gen >= 0 && !was && crew != nil {
+			if crew[gen] >= MaxRepairers {
+				gen = -1
+			} else {
+				crew[gen]++
+			}
+		}
 	}
 	p.Repairing = gen >= 0
 
@@ -62,6 +72,20 @@ func stepRepair(p *Player, in Input, hasInput, press bool, gens []Generator) {
 		g.Noise = NoiseTicks
 		endCheck(p, r)
 	}
+}
+
+// crewSizes is how many survivors were working each generator at the start of
+// the tick.
+func crewSizes(players []Player, gens []Generator) []int {
+	crew := make([]int, len(gens))
+	for _, p := range players {
+		if p.Repairing && !p.Escaped && !p.Eliminated {
+			if g := repairable(p.Pos, gens); g >= 0 {
+				crew[g]++
+			}
+		}
+	}
+	return crew
 }
 
 // countdownCheck counts down to the next check and starts it when due.

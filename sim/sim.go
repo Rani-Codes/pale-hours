@@ -128,6 +128,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 	}
 	powered := gensDone(s.Gens) >= GensRequired
 	shut := [...]blockers{Survivor: blockersFor(Survivor, s.Gates, s.Pallets), Killer: blockersFor(Killer, s.Gates, s.Pallets)}
+	crew := crewSizes(s.Players, s.Gens)
 	var helped []PlayerID
 	var thrown []int
 	var killerPresses []int
@@ -137,6 +138,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			continue
 		}
 		in, ok := inputs[p.ID]
+		wasRepairing := p.Repairing
 		if p.Freeze > 0 {
 			p.Freeze--
 			in = Input{Yaw: in.Yaw}
@@ -189,7 +191,7 @@ func Step(s State, inputs map[PlayerID]Input) State {
 		case p.Health == Downed:
 			// Letting go of everything: an active skill check counts as a miss.
 			stepGate(&p, in, ok, false, next.Gens, next.Gates, powered)
-			stepRepair(&p, in, ok, false, next.Gens)
+			stepRepair(&p, in, ok, false, next.Gens, nil, false)
 		default:
 			if id := stepHelp(&p, in, ok, skillPress, s.Players, next.Gens); id != 0 {
 				helped = append(helped, id)
@@ -198,10 +200,11 @@ func Step(s State, inputs map[PlayerID]Input) State {
 			case p.Helping != 0:
 				p.Repairing, p.Opening = false, 0
 			default:
-				p.Repairing = false
+				// Someone with no input this tick (a guest predicting itself, for everyone else) keeps working.
+				p.Repairing = !ok && wasRepairing
 				stepGate(&p, in, ok, skillPress, next.Gens, next.Gates, powered)
 				if p.Opening == 0 && !p.Repairing {
-					stepRepair(&p, in, ok, skillPress, next.Gens)
+					stepRepair(&p, in, ok, skillPress, next.Gens, crew, wasRepairing)
 				}
 			}
 		}

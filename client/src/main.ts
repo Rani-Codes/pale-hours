@@ -5,7 +5,7 @@ import { Heartbeat } from "./heartbeat";
 import { look, initLook } from "./look";
 import { Renderer } from "./render";
 import { loadSim, type SimPlayer, type World } from "./sim";
-import { healthPips, carryBanner, killerPrompts, palletPrompt, repairLine, survivorPrompts } from "./prompts";
+import { healthPips, carryBanner, fullGeneratorPrompt, killerPrompts, palletPrompt, repairLine, survivorPrompts } from "./prompts";
 import { hearsHeartbeat, isOut, newExits, results, spectateTarget } from "./endgame";
 import { newlyDone } from "./genflash";
 import { HookAlerts } from "./hookalert";
@@ -165,6 +165,7 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   const lines = ["move: WASD or arrows"];
   const { gens, gates } = world;
   const me = players.find((p) => p.id === self);
+  if (me?.role === sim.roles.survivor) lines.push("mouse wheel: zoom the camera in or out");
   const watching = me && isOut(me) ? spectateTarget(players, spectate.pick, sim) : undefined;
   spectate.id = watching?.id;
   announce(players, !!world.over);
@@ -174,8 +175,8 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
   }
   feed.style.display = world.over ? "none" : "";
   const hooked = hookAlerts.update(players, self, performance.now());
-  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked);
-  else renderer.draw(players, world, self, look.yaw, look.pitch, hooked);
+  if (watching) renderer.draw(players, world, watching.id, (watching.yaw / 65536) * 2 * Math.PI, 0, hooked, look.zoom);
+  else renderer.draw(players, world, self, look.yaw, look.pitch, hooked, look.zoom);
   const killer = players.find((p) => p.role === sim.roles.killer);
   // Only survivors hear it, and only while it can help them. The killer does not hear his own heart.
   const hears = me && killer && me.role !== sim.roles.killer && hearsHeartbeat(me) && !world.over;
@@ -207,10 +208,10 @@ function draw(players: SimPlayer[], self: number | undefined, world: World) {
     if (mine.hideTicks >= sim.hideSettleTicks) lines.push("hidden: stay still, and the killer cannot see you unless he is close");
     else if (mine.crouching && inGrass) lines.push("hold still to hide in the grass...");
     else if (inGrass && able && !mine.boost) lines.push("hold C to crouch, then stay still, to hide in the grass");
-    if (near && able) lines.push("hold E to repair");
+    if (near && able) lines.push(fullGeneratorPrompt(mine, players, gens, sim) || "hold E to repair");
     else if (atGate && powered && able) lines.push("hold E to open the gate");
     else if (mine.opening && !mine.checkActive) lines.push("opening the gate...");
-    const repair = repairLine(mine, gens, sim);
+    const repair = repairLine(mine, players, gens, sim);
     if (repair) lines.push(repair);
   }
   const banner = mine?.role === sim.roles.killer ? carryBanner(mine, nameOfId) : "";

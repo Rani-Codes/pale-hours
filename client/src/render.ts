@@ -160,7 +160,7 @@ export class Renderer {
    * Draw one frame. self is this tab's player and yaw/pitch (radians) where
    * it looks, straight from the mouse so the view never waits on the network.
    */
-  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number, hooks: HookAlert[] = []): void {
+  draw(players: SimPlayer[], world: World, self: number | undefined, yaw: number, pitch: number, hooks: HookAlert[] = [], zoom = 1): void {
     this.resize();
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
@@ -230,7 +230,8 @@ export class Renderer {
       const height = me.crouching ? crouchHeight : view.survivor.height;
       this.eye.fov = fov;
       // Behind the player, a little to the right so the body does not cover the crosshair.
-      this.eye.position.set(x - fx * distance - fz * shoulder, height, z - fz * distance + fx * shoulder);
+      const back = distance * zoom;
+      this.eye.position.set(x - fx * back - fz * shoulder, height, z - fz * back + fx * shoulder);
     }
     this.lantern.position.copy(this.eye.position);
     this.eye.updateProjectionMatrix();
@@ -286,6 +287,8 @@ export class Renderer {
     if (a.model instanceof KillerModel) {
       a.model.pose({ carrying: p.carrying !== 0, stunned: p.stun > 0 }, this.swingView(p, a, now), a.speed, a.phase, t);
     } else {
+      // A freshly hit survivor cannot be hit again for a moment: they glow and pulse so the killer can tell.
+      a.model.glow(p.invuln > 0 ? 0.32 + 0.14 * Math.sin(t * 14) : 0);
       const h = this.sim.health;
       a.model.pose(
         {

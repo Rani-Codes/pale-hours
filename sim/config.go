@@ -35,6 +35,9 @@ const (
 	GeneratorHalf  = 500_000       // half the side of a generator's square body
 	RepairRange    = 1_800_000     // centre to centre, so you can stand at any face
 	GeneratorTicks = 80 * TickRate // repair work for one survivor alone
+	// Survivors working one generator each add their own progress, so two
+	// are twice as fast and three three times; no more than MaxRepairers fit.
+	MaxRepairers = 3
 
 	// A skill check appears every CheckMinGap..CheckMaxGap ticks of repairing.
 	// The player has CheckDuration ticks to press; the good zone starts

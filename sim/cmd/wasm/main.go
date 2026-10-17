@@ -49,6 +49,7 @@ func main() {
 		"canVault":         js.FuncOf(canVault),
 		"palletSites":      boxes(sim.PalletSites),
 		"palletReach":      sim.PalletReach,
+		"maxRepairers":     sim.MaxRepairers,
 		"playerRadius":     sim.PlayerRadius,
 		"palletBreakReach": sim.PalletBreakReach,
 		"palletBreakTicks": sim.PalletBreakTicks,

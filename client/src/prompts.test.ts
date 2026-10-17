@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { carryBanner, healthPips, killerPrompts, palletPrompt, repairLine, status, survivorPrompts } from "./prompts.ts";
+import { carryBanner, fullGeneratorPrompt, healthPips, killerPrompts, palletPrompt, repairLine, status, survivorPrompts } from "./prompts.ts";
 import { newPlayer } from "./sim.ts";
 
 const rules = {
@@ -68,14 +68,33 @@ test("the killer gets a banner naming who is on his shoulder", () => {
   assert.equal(carryBanner({ ...killer, carrying: 0 }, (id) => `Wren${id}`), "");
 });
 
+const genWorld = { genSites: [{ x: 20_000_000, y: 0 }, { x: 0, y: 0 }], repairRange: 1_800_000, genTicks: 2400, maxRepairers: 3 };
+const worker = (id: number, x: number, extra = {}) => survivor(id, x, { repairing: true, ...extra });
+
 test("a repairing survivor sees the progress of the generator beside them", () => {
-  const sites = [{ x: 20_000_000, y: 0 }, { x: 0, y: 0 }];
-  const world = { genSites: sites, repairRange: 1_800_000, genTicks: 2400 };
   const me = survivor(2, 500_000, { repairing: true });
-  assert.equal(repairLine(me, [2400, 600], world), "generator 25%");
-  assert.equal(repairLine({ ...me, repairing: false }, [2400, 600], world), "");
-  assert.equal(repairLine({ ...me, opening: 1 }, [2400, 600], world), "");
-  assert.equal(repairLine(survivor(2, 10_000_000, { repairing: true }), [2400, 600], world), "");
+  assert.equal(repairLine(me, [me], [2400, 600], genWorld), "generator 25%");
+  assert.equal(repairLine({ ...me, repairing: false }, [me], [2400, 600], genWorld), "");
+  assert.equal(repairLine({ ...me, opening: 1 }, [me], [2400, 600], genWorld), "");
+  assert.equal(repairLine(survivor(2, 10_000_000, { repairing: true }), [], [2400, 600], genWorld), "");
+});
+
+test("working together shows how many are on the generator and how fast it goes", () => {
+  const me = worker(2, 500_000);
+  const two = [me, worker(3, 400_000)];
+  assert.equal(repairLine(me, two, [2400, 600], genWorld), "generator 25%, 2 working: 2x speed");
+  const three = [...two, worker(4, 300_000)];
+  assert.equal(repairLine(me, three, [2400, 600], genWorld), "generator 25%, 3 working: 3x speed");
+  const elsewhere = [me, worker(3, 20_000_000)];
+  assert.equal(repairLine(me, elsewhere, [2400, 600], genWorld), "generator 25%");
+});
+
+test("a survivor beside a full generator is told so", () => {
+  const crew = [worker(2, 100_000), worker(3, 200_000), worker(4, 300_000)];
+  const late = survivor(5, 500_000);
+  assert.equal(fullGeneratorPrompt(late, [...crew, late], [2400, 600], genWorld), "this generator already has 3 survivors working");
+  assert.equal(fullGeneratorPrompt(late, [crew[0], crew[1], late], [2400, 600], genWorld), "");
+  assert.equal(fullGeneratorPrompt(crew[0], [...crew, late], [2400, 600], genWorld), "", "someone already working keeps working");
 });
 
 const palletWorld = { palletSites: [{ minX: -1_000_000, minY: -250_000, maxX: 1_000_000, maxY: 250_000 }], palletReach: 3_000_000, palletBreakReach: 1_800_000, palletBreakTicks: 90, playerRadius: 400_000, tickRate: 30, roles: { survivor: 0, killer: 1 }, health: { healthy: 0, injured: 1, downed: 2 } };

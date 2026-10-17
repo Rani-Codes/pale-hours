@@ -108,6 +108,7 @@ const skins = [0xc8a088, 0x8a6048, 0xe0bca0, 0x6a4a38, 0xb08868];
 export class SurvivorModel {
   readonly rig: Rig;
   private readonly blood: Mesh;
+  private readonly materials: MeshLambertMaterial[];
 
   constructor(id: number) {
     const skin = mat(skins[id % skins.length]);
@@ -124,6 +125,19 @@ export class SurvivorModel {
     // A dark stain on the shirt once hurt.
     this.blood = box(0.26, 0.24, 0.02, mat(0x5a0808), 0.3, -0.14);
     this.rig.chest.add(this.blood);
+    const found = new Set<MeshLambertMaterial>();
+    this.rig.root.traverse((o) => {
+      if (o instanceof Mesh && o.material instanceof MeshLambertMaterial) found.add(o.material);
+    });
+    this.materials = [...found];
+  }
+
+  /** A pale blue glow over the whole body while they cannot be hit; strength 0 turns it off. */
+  glow(strength: number) {
+    for (const m of this.materials) {
+      m.emissive.setHex(0x8fdcff);
+      m.emissiveIntensity = strength;
+    }
   }
 
   get object() {
