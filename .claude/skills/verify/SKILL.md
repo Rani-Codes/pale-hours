@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Launch an isolated Pale Hours stack (Go signaling server plus the Vite browser client with the WASM sim) and drive it in real Chrome through Playwright to prove gameplay and netcode behavior, with screenshots and logs as evidence. Use after any change to client/, sim/, or signal/, and always for netcode changes, which must be proven under simulated delay and loss.
+description: Launch an isolated Pale Hours stack (the signaling Worker under `wrangler dev` plus the Vite browser client with the WASM sim) and drive it in real Chrome through Playwright to prove gameplay and netcode behavior, with screenshots and logs as evidence. Use after any change to client/, sim/, or signal/, and always for netcode changes, which must be proven under simulated delay and loss.
 ---
 
 # Verify Pale Hours
@@ -15,7 +15,7 @@ All paths below are relative to the repo root.
 .claude/skills/verify/scripts/launch.sh
 ```
 
-Builds `sim.wasm`, builds the signaling server, and starts both on their own ports: app on 5273, signaling on 8887 (override with `PALE_VERIFY_APP_PORT` and `PALE_VERIFY_SIGNAL_PORT`). It refuses to start if those ports are taken or a stack is already recorded. When both servers are usable it prints the one URL to drive:
+Builds `sim.wasm`, installs the `signal/` dependencies if missing, and starts the signaling Worker (`wrangler dev`, with its state kept in `.verify/run/wrangler-state`) and Vite on their own ports: app on 5273, signaling on 8887 (override with `PALE_VERIFY_APP_PORT` and `PALE_VERIFY_SIGNAL_PORT`). It refuses to start if those ports are taken or a stack is already recorded. When both servers are usable it prints the one URL to drive:
 
 ```
 http://localhost:5273/?signal=http://localhost:8887
@@ -31,7 +31,7 @@ The user often runs their own dev server on 5173 and signaling on 8787. Never dr
 .claude/skills/verify/scripts/doctor.sh
 ```
 
-Read-only. Checks that each recorded process is alive and owns its port, the page is Pale Hours, `sim.wasm` is newer than every `sim/*.go` file, and the signaling room API answers. It prints `DOCTOR FAIL: <reason>` and exits nonzero otherwise. Run it first, and again whenever a driver fails strangely.
+Read-only. Checks that each recorded process is alive and owns its port (for signaling, through its `workerd` grandchild), the page is Pale Hours, `sim.wasm` is newer than every `sim/*.go` file, and the signaling room API answers. It prints `DOCTOR FAIL: <reason>` and exits nonzero otherwise. Run it first, and again whenever a driver fails strangely.
 
 ## Drive
 

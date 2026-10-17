@@ -30,7 +30,7 @@ interface Handlers {
 }
 
 interface SignalMessage {
-  type: "welcome" | "peer-joined" | "peer-left" | "signal" | "room-closed";
+  type: "welcome" | "peer-joined" | "peer-left" | "signal" | "room-closed" | "beat";
   from?: string;
   host?: string;
   data?: { sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
@@ -52,7 +52,7 @@ async function api(path: string, body?: unknown): Promise<Response> {
 export async function hostRoom(handlers: Handlers): Promise<Room> {
   const { code, peer: self } = await (await api("/rooms")).json();
   const conns = new Map<string, Connection>();
-  const stream = openStream(code, self, (m) => {
+  const socket = openSocket(code, self, (m) => {
     if (m.type === "peer-joined" && m.from) {
       const conn = new Connection(code, self, m.from, handlers);
       conns.set(m.from, conn);
@@ -67,7 +67,7 @@ export async function hostRoom(handlers: Handlers): Promise<Room> {
   return {
     code,
     close() {
-      stream.close();
+      socket.close();
       conns.forEach((c) => c.close());
     },
   };
@@ -78,7 +78,7 @@ export async function joinRoom(code: string, handlers: Handlers): Promise<Room> 
   code = code.trim().toUpperCase();
   const { peer: self } = await (await api(`/rooms/${code}/join`)).json();
   let conn: Connection | undefined;
-  const stream = openStream(code, self, (m) => {
+  const socket = openSocket(code, self, (m) => {
     if (m.type === "welcome" && m.host) {
       conn = new Connection(code, self, m.host, handlers);
     } else if (m.type === "signal") {
@@ -90,16 +90,16 @@ export async function joinRoom(code: string, handlers: Handlers): Promise<Room> 
   return {
     code,
     close() {
-      stream.close();
+      socket.close();
       conn?.close();
     },
   };
 }
 
-function openStream(code: string, self: string, onMessage: (m: SignalMessage) => void): EventSource {
-  const es = new EventSource(`${net.signalUrl}/rooms/${code}/peers/${self}/events`);
-  es.onmessage = (e) => onMessage(JSON.parse(e.data));
-  return es;
+function openSocket(code: string, self: string, onMessage: (m: SignalMessage) => void): WebSocket {
+  const ws = new WebSocket(`${net.signalUrl.replace(/^http/, "ws")}/rooms/${code}/peers/${self}/events`);
+  ws.onmessage = (e) => onMessage(JSON.parse(e.data));
+  return ws;
 }
 
 class Connection {

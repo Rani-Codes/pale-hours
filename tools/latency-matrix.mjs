@@ -54,7 +54,7 @@ function drive(query, shots) {
 const range = (xs) => (xs.length ? `${Math.min(...xs)}-${Math.max(...xs)}` : "n/a");
 let allOk = true;
 try {
-  await ensure("signal", signalUrl, "go", ["run", ".", "-addr", `localhost:${signalPort}`], join(root, "signal"));
+  await ensure("signal", signalUrl, "npm", ["run", "dev", "--", "--port", signalPort, "--show-interactive-dev-session=false"], join(root, "signal"));
   await ensure("client", appBase, "npm", ["run", "dev", "--", "--port", appPort, "--strictPort"], join(root, "client"));
   const shotDir = process.env.PALE_EVIDENCE_DIR ?? mkdtempSync(join(tmpdir(), "pale-latency-"));
   mkdirSync(shotDir, { recursive: true });

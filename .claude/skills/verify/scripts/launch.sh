@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts an isolated Pale Hours stack for verification: the signaling server
+# Starts an isolated Pale Hours stack for verification: the signaling Worker
 # and the Vite dev server on their own ports, never the user's 8787 and 5173.
 # Prints the app URL to drive when both are usable.
 set -euo pipefail
@@ -22,10 +22,12 @@ mkdir -p "$run"
 
 [[ -d "$root/client/node_modules" ]] || (cd "$root/client" && npm install --silent)
 [[ -d "$root/tools/node_modules" ]] || (cd "$root/tools" && npm install --silent)
+[[ -d "$root/signal/node_modules" ]] || (cd "$root/signal" && npm install --silent)
 (cd "$root/client" && npm run --silent wasm)
-(cd "$root/signal" && go build -o "$run/signal" .)
+mkdir -p "$root/client/dist"
 
-"$run/signal" -addr "localhost:$signal_port" >"$run/signal.log" 2>&1 &
+(cd "$root/signal" && WRANGLER_SEND_METRICS=false exec ./node_modules/.bin/wrangler dev --port "$signal_port" \
+  --persist-to "$run/wrangler-state" --show-interactive-dev-session=false) >"$run/signal.log" 2>&1 &
 echo "signal $! $signal_port" >"$run/pids"
 (cd "$root/client" && exec ./node_modules/.bin/vite --port "$app_port" --strictPort) >"$run/vite.log" 2>&1 &
 echo "vite $! $app_port" >>"$run/pids"

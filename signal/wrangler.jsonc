@@ -1,0 +1,11 @@
+{
+  // One Worker serves the built client and the signaling API on one origin.
+  "name": "pale-hours",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "../client/dist" },
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "RoomObject" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomObject"] }],
+  "routes": [{ "pattern": "palehours.ranisaro.com", "custom_domain": true }],
+  "observability": { "enabled": true }
+}

@@ -7,7 +7,7 @@ Original 1v4 asymmetric horror game that runs in the browser. One killer hunts f
 ```
 /sim       Go. Pure game simulation. Compiled to WASM for the host's browser now, a dedicated server later.
 /client    TypeScript + Vite + Three.js. Rendering, input, audio, networking glue.
-/signal    Tiny signaling server for WebRTC room codes. Local Go server for dev.
+/signal    TypeScript Cloudflare Worker. Room-code signaling for WebRTC, one Durable Object per room. In production the same Worker also serves the built client.
 /tools     Test harnesses, latency simulators, scripts.
 ```
 
@@ -38,8 +38,11 @@ Fill these in as they get created. Keep this section accurate.
 - Drive host and guest over a simulated bad network in real Chrome: `cd tools && node drive-netplay.mjs http://localhost:5173/ netplay "delay=100&loss=0.05"` (needs signaling and dev servers; checks prediction, host agreement, and remote interpolation)
 - Verify in an isolated stack: `.claude/skills/verify/scripts/launch.sh`, then `doctor.sh`, drive, and `cleanup.sh` (see `.claude/skills/verify/SKILL.md`)
 - Run the latency matrix (every network profile, 3 runs each, one table): `cd tools && node latency-matrix.mjs [runs]` (reuses running signaling and dev servers, or starts and stops its own; exits nonzero on any failure)
-- Run signaling server: `cd signal && go run .` (http://localhost:8787, `-addr` to change)
-- Run signal tests: `cd signal && go test -race ./...`
+- Run signaling server: `cd signal && npm install && npm run dev` (`wrangler dev` on http://localhost:8787, `-- --port N` to change; runs the real Worker and Durable Object locally, no Cloudflare account needed)
+- Run signal tests: `cd signal && npm test` (typecheck, room unit tests, then the real Worker under `wrangler dev` over HTTP and WebSocket)
+- Live site: https://palehours.ranisaro.com (the `pale-hours` Worker on the owner's Cloudflare account, free plan; config in `signal/wrangler.jsonc`)
+- Deploy: push to `main`. `.github/workflows/ci.yml` runs the sim, signal and client tests and the client build on every pull request and push; on `main` a green run then deploys with `wrangler deploy`, using the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. A red check blocks the deploy. The Playwright drivers need real Chrome and do not run in CI, so run them on the isolated stack before pushing
+- Check the live site: `cd tools && node drive-link.mjs https://palehours.ranisaro.com/ live-link` (no `?signal=`; the page signals to its own origin)
 - Run sim tests: `cd sim && go test ./...`
 
 ## Hard rules

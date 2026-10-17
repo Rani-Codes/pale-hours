@@ -11,6 +11,7 @@ Peer to peer. The killer's browser hosts the match, so there's no server to pay 
 - **Sim:** Go, compiled to WebAssembly
 - **Client:** TypeScript, Vite, Three.js
 - **Networking:** WebRTC data channels
+- **Hosting:** one Cloudflare Worker serves the page and the room-code signaling at https://palehours.ranisaro.com
 
 ## License
 

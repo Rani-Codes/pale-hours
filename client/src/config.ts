@@ -2,7 +2,11 @@
 const params = new URLSearchParams(globalThis.location?.search);
 
 export const net = {
-  signalUrl: params.get("signal") ?? "http://localhost:8787", // ?signal= points a test instance at its own server
+  // The deployed Worker serves the page and signaling on one origin; local dev
+  // runs signaling on its own port. ?signal= points a test instance at its own server.
+  signalUrl:
+    params.get("signal") ??
+    (["localhost", "127.0.0.1"].includes(globalThis.location?.hostname) ? "http://localhost:8787" : (globalThis.location?.origin ?? "")),
   stunServers: ["stun:stun.cloudflare.com:3478"],
   // Unreliable, unordered: a late input or snapshot is worthless, never retransmit.
   stateChannel: { ordered: false, maxRetransmits: 0 } as RTCDataChannelInit,

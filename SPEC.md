@@ -69,6 +69,17 @@ Survivor browser  --inputs-->   Killer browser (host)  --snapshots-->  Survivor 
 
 The same `/sim` package later runs as a dedicated Go server with no rewrite.
 
+### Hosting
+
+One Cloudflare Worker on the free plan serves everything at https://palehours.ranisaro.com: the built client as static assets and the signaling API on the same origin. Each room is a Durable Object named by its room code, so one instance holds every peer in that room in memory. Peers create and join over `POST`, send signaling blobs over `POST`, and receive over one WebSocket per peer. Game traffic never touches the Worker; it goes browser to browser over WebRTC once peers connect.
+
+Why a Worker and not the original Go server (decided 2026-10-16):
+
+- Signaling holds a connection open per peer for the life of the room and keeps each room in one process. Free hosts that can run a long-lived Go process either sleep when idle (the first player each session waits about a minute) or require a card. Vercel's free functions stop after 300 s and do not share memory between instances.
+- Durable Objects match the hub's shape (one instance per room), start in milliseconds, and need no card. The free plan allows 100,000 requests and 13,000 GB-s of run time a day; an object counts as running while any peer's socket is open, which is about 29 room-hours of play a day. Past the limit, requests fail until 00:00 UTC. Without a card on file there is no bill.
+- Peers receive over WebSocket instead of Server-Sent Events because a Durable Object gets a reliable close event for a WebSocket. Under `wrangler dev` an event stream's disconnect never reached the object, which would leave a closed tab holding its seat.
+- `wrangler dev` runs the same Worker locally, so dev, tests and production share one implementation. The Go server was deleted rather than kept alongside.
+
 ## Milestones
 
 Phases run in order, each as fast as the work allows. They are not calendar weeks. Items marked "(use Opus)" have subtle netcode timing bugs that are costly to debug, so switch to Opus for them. Sonnet is fine for the rest.
@@ -76,7 +87,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 ### Phase 1: netcode spike (riskiest work first)
 - [x] `/sim`: movement for 2 players on a flat plane, fixed tick, unit tests
 - [x] Compile `/sim` to WASM and run it in the browser
-- [x] `/signal`: local room-code signaling server
+- [x] `/signal`: local room-code signaling server (a Go server at first; now a Cloudflare Worker, see Hosting)
 - [x] Two tabs connected over WebRTC data channels
 - [x] Client prediction and reconciliation for the local player, interpolation for the remote player (use Opus)
 - [x] Latency test harness (delay plus loss), with movement verified at 100ms and 200ms
@@ -102,6 +113,7 @@ Phases run in order, each as fast as the work allows. They are not calendar week
 
 ### Phase 4: playable with friends
 - [x] Lobby with room codes, 5 players: role picks, Start at two or more, any role on any tab, guest killers lag-compensated from `seen` (see Netcode)
+- [ ] Public site at https://palehours.ranisaro.com, deployed from `main` by GitHub Actions after the tests pass (see Hosting)
 - [ ] TURN fallback
 - [x] Low-poly art pass, all built in code (`client/src/art/`): PS1 look (240-row render, banded color with ordered dither, vertex snapping; `view.retro`), painted textures, brick walls, generators, gallows hooks, portcullis gates, animated survivor and killer models with a first-person cleaver, fence, treeline, rocks and grass. Done 2026-10-15, before the lobby, at the owner's request.
 - [ ] Sound pass (footsteps, swing and hit, generator hum, hook, gates); the heartbeat is still the synthesized placeholder
@@ -131,5 +143,4 @@ Killer powers, perks, progression, matchmaking, accounts, mobile, host migration
 
 - Final name.
 - Standard Go vs TinyGo for WASM (bundle size). Start with standard Go, measure, then decide. Measured 2026-10-14 with Go 1.24.5: movement-only `sim.wasm` is 1.74 MB raw, 0.51 MB gzipped.
-- Production signaling host (must fit a free tier).
 - Movement speed. First playtest (2026-10-14, dots page): stops, starts, and diagonals feel good, but both roles feel a little slow. Retune in `sim/config.go` once the map has obstacles.

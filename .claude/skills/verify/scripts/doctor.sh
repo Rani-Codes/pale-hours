@@ -4,12 +4,21 @@ set -uo pipefail
 root="$(cd "$(dirname "$0")/../../../.." && pwd)"
 run="$root/.verify/run"
 fail() { echo "DOCTOR FAIL: $*"; exit 1; }
+# wrangler dev listens through its workerd grandchild, so a port may belong to a descendant.
+descends() {
+  local p="$1"
+  while [[ -n "$p" && "$p" != 0 && "$p" != 1 ]]; do
+    [[ "$p" == "$2" ]] && return 0
+    p="$(ps -o ppid= -p "$p" | tr -d ' ')"
+  done
+  return 1
+}
 
 [[ -f "$run/pids" ]] || fail "no verify stack recorded; run launch.sh"
 while read -r name pid port; do
   kill -0 "$pid" 2>/dev/null || fail "$name (pid $pid) is not running"
   owner="$(lsof -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | head -1)"
-  [[ "$owner" == "$pid" ]] || fail "$name port $port is owned by pid ${owner:-none}, not our pid $pid"
+  descends "$owner" "$pid" || fail "$name port $port is owned by pid ${owner:-none}, not our pid $pid"
   echo "ok   $name pid $pid listening on $port"
   [[ "$name" == vite ]] && app_port="$port"
   [[ "$name" == signal ]] && signal_port="$port"

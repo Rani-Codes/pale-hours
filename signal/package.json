@@ -1,0 +1,17 @@
+{
+  "name": "pale-hours-signal",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "mkdir -p ../client/dist && wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc",
+    "test": "tsc && node --test src/*.test.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260930.2",
+    "typescript": "^7.0.2",
+    "wrangler": "4.145.0"
+  }
+}
